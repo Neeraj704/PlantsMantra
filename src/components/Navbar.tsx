@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Search, Menu, X, Leaf, User } from 'lucide-react';
+import { ShoppingCart, Search, Menu, X, Leaf, User, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/contexts/AuthContext';
+import { useWishlist } from '@/hooks/useWishlist';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { items } = useCart();
+  const { wishlistItems } = useWishlist();
   const { user } = useAuth();
 
   useEffect(() => {
@@ -60,6 +62,23 @@ const Navbar = () => {
             <Button variant="ghost" size="icon" className="hidden md:flex">
               <Search className="w-5 h-5" />
             </Button>
+
+            <Link to="/wishlist">
+              <Button variant="ghost" size="icon" className="relative">
+                <Heart className="w-5 h-5" />
+                {wishlistItems.length > 0 && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1 -right-1"
+                  >
+                    <Badge variant="destructive" className="h-5 w-5 flex items-center justify-center p-0 text-xs">
+                      {wishlistItems.length}
+                    </Badge>
+                  </motion.div>
+                )}
+              </Button>
+            </Link>
             
             <Link to="/cart">
               <Button variant="ghost" size="icon" className="relative">

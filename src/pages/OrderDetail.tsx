@@ -57,6 +57,14 @@ const OrderDetail = () => {
 
   const handleCancelOrder = async () => {
     if (!order || !user) return;
+
+    // Only allow cancellation for pending and processing orders
+    if (order.status !== 'pending' && order.status !== 'processing') {
+      toast.error('This order cannot be cancelled. Please contact us at +91-1234567890 for assistance.', {
+        duration: 5000
+      });
+      return;
+    }
     
     setCancelling(true);
     const { error } = await supabase

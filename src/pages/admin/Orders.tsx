@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { Order } from '@/types/database';
-import { Search, Eye } from 'lucide-react';
+import { Search, Eye, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Orders = () => {
@@ -16,6 +16,8 @@ const Orders = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [sortField, setSortField] = useState<'created_at' | 'total' | 'customer_name'>('created_at');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     fetchOrders();
@@ -46,14 +48,42 @@ const Orders = () => {
     }
   };
 
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.customer_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  const handleSort = (field: 'created_at' | 'total' | 'customer_name') => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const filteredOrders = orders
+    .filter(order => {
+      const matchesSearch = order.customer_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.id.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      let aValue: any = a[sortField];
+      let bValue: any = b[sortField];
+
+      if (sortField === 'created_at') {
+        aValue = new Date(aValue).getTime();
+        bValue = new Date(bValue).getTime();
+      } else if (sortField === 'customer_name') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+
+      if (sortDirection === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
@@ -110,9 +140,39 @@ const Orders = () => {
               <thead className="border-b">
                 <tr>
                   <th className="text-left p-4 font-semibold">Order ID</th>
-                  <th className="text-left p-4 font-semibold">Customer</th>
-                  <th className="text-left p-4 font-semibold">Date</th>
-                  <th className="text-left p-4 font-semibold">Total</th>
+                  <th className="text-left p-4 font-semibold">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleSort('customer_name')}
+                      className="flex items-center gap-1 -ml-3"
+                    >
+                      Customer
+                      <ArrowUpDown className="w-4 h-4" />
+                    </Button>
+                  </th>
+                  <th className="text-left p-4 font-semibold">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleSort('created_at')}
+                      className="flex items-center gap-1 -ml-3"
+                    >
+                      Date
+                      <ArrowUpDown className="w-4 h-4" />
+                    </Button>
+                  </th>
+                  <th className="text-left p-4 font-semibold">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleSort('total')}
+                      className="flex items-center gap-1 -ml-3"
+                    >
+                      Total
+                      <ArrowUpDown className="w-4 h-4" />
+                    </Button>
+                  </th>
                   <th className="text-left p-4 font-semibold">Status</th>
                   <th className="text-right p-4 font-semibold">Actions</th>
                 </tr>

@@ -12,6 +12,7 @@ import Home from "./pages/Home";
 import Shop from "./pages/Shop";
 import ProductDetail from "./pages/ProductDetail";
 import Cart from "./pages/Cart";
+import Wishlist from "./pages/Wishlist";
 import Auth from "./pages/Auth";
 import Account from "./pages/Account";
 import OrderDetail from "./pages/OrderDetail";
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/shop" element={<Shop />} />
               <Route path="/product/:slug" element={<ProductDetail />} />
               <Route path="/cart" element={<Cart />} />
+              <Route path="/wishlist" element={<Wishlist />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/account" element={<Account />} />
               <Route path="/order/:orderId" element={<OrderDetail />} />

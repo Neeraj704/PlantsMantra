@@ -14,6 +14,7 @@ import ProductDetail from "./pages/ProductDetail";
 import Cart from "./pages/Cart";
 import Auth from "./pages/Auth";
 import Account from "./pages/Account";
+import OrderDetail from "./pages/OrderDetail";
 import Checkout from "./pages/Checkout";
 import CareGuides from "./pages/CareGuides";
 import Contact from "./pages/Contact";
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/cart" element={<Cart />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/account" element={<Account />} />
+              <Route path="/order/:orderId" element={<OrderDetail />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/care-guides" element={<CareGuides />} />
               <Route path="/contact" element={<Contact />} />

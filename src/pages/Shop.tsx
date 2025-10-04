@@ -153,9 +153,9 @@ const Shop = () => {
                 onValueChange={setPriceRange}
                 className="mb-2"
               />
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>${priceRange[0]}</span>
-                <span>${priceRange[1]}</span>
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>₹{priceRange[0]}</span>
+                <span>₹{priceRange[1]}</span>
               </div>
             </div>
 
@@ -283,13 +283,13 @@ const Shop = () => {
                               {product.botanical_name}
                             </p>
                           )}
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-bold">
-                              ${displayPrice.toFixed(2)}
-                            </span>
-                            {hasDiscount && (
-                              <span className="text-sm text-muted-foreground line-through">
-                                ${product.base_price.toFixed(2)}
+                           <div className="flex items-center gap-2">
+                             <span className="text-lg font-bold">
+                               ₹{displayPrice.toFixed(2)}
+                             </span>
+                             {hasDiscount && (
+                               <span className="text-sm text-muted-foreground line-through">
+                                 ₹{product.base_price.toFixed(2)}
                               </span>
                             )}
                           </div>

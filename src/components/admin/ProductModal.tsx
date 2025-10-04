@@ -62,9 +62,9 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
       setMainImagePreview(product.main_image_url || '');
       setGalleryImages([]);
       setGalleryPreviews(product.gallery_images || []);
-    } else {
-      setFormData({ name: '', slug: '', description: '', care_guide: '', base_price: '', sale_price: '', category_id: '', stock_status: 'in_stock', status: 'active', is_featured: false });
-      setMainImage(null);
+    } else {
+      setFormData({ name: '', slug: '', botanical_name: '', description: '', care_guide: '', base_price: '', sale_price: '', category_id: '', stock_status: 'in_stock', status: 'active', is_featured: false });
+      setMainImage(null);
       setMainImagePreview('');
       setGalleryImages([]);
       setGalleryPreviews([]);
@@ -107,8 +107,10 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
   };
 
   const removeGalleryImage = (index: number) => {
-    setGalleryImages(galleryImages.filter((_, i) => i !== index));
-    setGalleryPreviews(galleryPreviews.filter((_, i) => i !== index));
+    const newGalleryImages = galleryImages.filter((_, i) => i !== index);
+    const newGalleryPreviews = galleryPreviews.filter((_, i) => i !== index);
+    setGalleryImages(newGalleryImages);
+    setGalleryPreviews(newGalleryPreviews);
   };
 
   const uploadImage = async (file: File, path: string): Promise<string> => {
@@ -140,7 +142,9 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
         mainImageUrl = await uploadImage(mainImage, path);
       }
 
-      // Upload gallery images
+      // Upload gallery images and filter out existing URLs that were removed
+      const existingUrls = galleryPreviews.filter(preview => !preview.startsWith('blob:'));
+      
       if (galleryImages.length > 0) {
         const uploadedUrls = await Promise.all(
           galleryImages.map(async (file, index) => {
@@ -149,7 +153,9 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
             return await uploadImage(file, path);
           })
         );
-        galleryImageUrls = [...(product?.gallery_images || []), ...uploadedUrls];
+        galleryImageUrls = [...existingUrls, ...uploadedUrls];
+      } else {
+        galleryImageUrls = existingUrls;
       }
 
       const productData = {

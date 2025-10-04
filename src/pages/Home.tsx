@@ -235,10 +235,10 @@ const Home = () => {
                           <p className="text-xs text-muted-foreground italic mb-2">{product.botanical_name}</p>
                         )}
                         <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold">${displayPrice.toFixed(2)}</span>
+                          <span className="text-lg font-bold">₹{displayPrice.toFixed(2)}</span>
                           {hasDiscount && (
                             <span className="text-sm text-muted-foreground line-through">
-                              ${product.base_price.toFixed(2)}
+                              ₹{product.base_price.toFixed(2)}
                             </span>
                           )}
                         </div>

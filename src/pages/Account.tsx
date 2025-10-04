@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { Package, Settings, User } from 'lucide-react';
 
 const Account = () => {
   const { user, profile, loading, signOut, refreshProfile } = useAuth();
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [profileData, setProfileData] = useState({
     full_name: '',
@@ -127,7 +128,11 @@ const Account = () => {
                   ) : (
                     <div className="space-y-4">
                       {orders.map((order) => (
-                        <div key={order.id} className="border rounded-lg p-4">
+                        <div 
+                          key={order.id} 
+                          className="border rounded-lg p-4 cursor-pointer hover:border-primary transition-smooth"
+                          onClick={() => navigate(`/order/${order.id}`)}
+                        >
                           <div className="flex justify-between items-start mb-2">
                             <div>
                               <p className="font-semibold">Order #{order.id.slice(0, 8)}</p>
@@ -143,7 +148,7 @@ const Account = () => {
                           <div className="flex justify-between items-center">
                             <p className="text-sm">
                               <span className="text-muted-foreground">Total:</span>{' '}
-                              <span className="font-semibold">${order.total.toFixed(2)}</span>
+                              <span className="font-semibold">₹{order.total.toFixed(2)}</span>
                             </p>
                             {order.tracking_number && (
                               <p className="text-sm text-muted-foreground">

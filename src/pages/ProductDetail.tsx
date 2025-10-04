@@ -170,10 +170,10 @@ const ProductDetail = () => {
             )}
 
             <div className="flex items-baseline gap-3 mb-4">
-              <span className="text-3xl font-bold">${displayPrice.toFixed(2)}</span>
+              <span className="text-3xl font-bold">₹{displayPrice.toFixed(2)}</span>
               {hasDiscount && !selectedVariant && (
                 <span className="text-xl text-muted-foreground line-through">
-                  ${product.base_price.toFixed(2)}
+                  ₹{product.base_price.toFixed(2)}
                 </span>
               )}
             </div>
@@ -194,7 +194,7 @@ const ProductDetail = () => {
                       {variant.price_adjustment !== 0 && (
                         <span className="ml-1 text-xs">
                           ({variant.price_adjustment > 0 ? '+' : ''}
-                          ${variant.price_adjustment.toFixed(2)})
+                          ₹{variant.price_adjustment.toFixed(2)})
                         </span>
                       )}
                     </Button>
@@ -338,11 +338,11 @@ const ProductDetail = () => {
                         </h3>
                         <div className="flex items-center gap-2">
                           <span className="text-lg font-bold">
-                            ${relatedDisplayPrice.toFixed(2)}
+                            ₹{relatedDisplayPrice.toFixed(2)}
                           </span>
                           {relatedHasDiscount && (
                             <span className="text-sm text-muted-foreground line-through">
-                              ${relatedProduct.base_price.toFixed(2)}
+                              ₹{relatedProduct.base_price.toFixed(2)}
                             </span>
                           )}
                         </div>

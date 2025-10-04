@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 
-const Customers = () => {
+const ComingSoon = () => {
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <motion.div
@@ -14,11 +14,11 @@ const Customers = () => {
         </div>
         <h1 className="text-4xl font-serif font-bold mb-4">Coming Soon</h1>
         <p className="text-muted-foreground max-w-md mx-auto">
-          Customer management features are being developed. Stay tuned!
+          We're working hard to bring you this feature. Stay tuned for updates!
         </p>
       </motion.div>
     </div>
   );
 };
 
-export default Customers;
+export default ComingSoon;

@@ -288,7 +288,7 @@ const Checkout = () => {
                             <p className="text-sm">
                               <span className="text-muted-foreground">Qty: {item.quantity}</span>
                               {' × '}
-                              <span className="font-semibold">${price.toFixed(2)}</span>
+                              <span className="font-semibold">₹{price.toFixed(2)}</span>
                             </p>
                           </div>
                         </div>
@@ -301,7 +301,7 @@ const Checkout = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Subtotal</span>
-                      <span className="font-semibold">${getSubtotal().toFixed(2)}</span>
+                      <span className="font-semibold">₹{getSubtotal().toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Shipping</span>
@@ -310,7 +310,7 @@ const Checkout = () => {
                     <Separator className="my-2" />
                     <div className="flex justify-between">
                       <span className="font-semibold">Total</span>
-                      <span className="font-bold text-lg">${getSubtotal().toFixed(2)}</span>
+                      <span className="font-bold text-lg">₹{getSubtotal().toFixed(2)}</span>
                     </div>
                   </div>
                 </CardContent>

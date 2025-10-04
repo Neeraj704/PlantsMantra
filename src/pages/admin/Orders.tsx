@@ -122,7 +122,7 @@ const Orders = () => {
                       </span>
                     </td>
                     <td className="p-4">
-                      <span className="font-semibold">${order.total.toFixed(2)}</span>
+                      <span className="font-semibold">₹{order.total.toFixed(2)}</span>
                     </td>
                     <td className="p-4">
                       <Select

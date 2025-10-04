@@ -132,9 +132,9 @@ const Cart = () => {
                             </div>
 
                             <div className="text-right">
-                              <p className="text-lg font-bold">${itemTotal.toFixed(2)}</p>
+                              <p className="text-lg font-bold">₹{itemTotal.toFixed(2)}</p>
                               <p className="text-sm text-muted-foreground">
-                                ${price.toFixed(2)} each
+                                ₹{price.toFixed(2)} each
                               </p>
                             </div>
                           </div>
@@ -156,7 +156,7 @@ const Cart = () => {
                 <div className="space-y-4 mb-6">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span className="font-semibold">${subtotal.toFixed(2)}</span>
+                    <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
                   </div>
                   
                   <div className="flex justify-between">
@@ -168,7 +168,7 @@ const Cart = () => {
 
                   <div className="flex justify-between text-lg">
                     <span className="font-semibold">Total</span>
-                    <span className="font-bold">${total.toFixed(2)}</span>
+                    <span className="font-bold">₹{total.toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -189,7 +189,7 @@ const Cart = () => {
 
                 <div className="mt-6 p-4 bg-muted/30 rounded-lg">
                   <p className="text-sm text-center text-muted-foreground">
-                    🌱 Free shipping on orders over $75
+                    🌱 Free shipping on orders over ₹3000
                   </p>
                 </div>
               </CardContent>

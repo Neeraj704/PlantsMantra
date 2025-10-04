@@ -34,7 +34,10 @@ const ProductDetail = () => {
         .eq('slug', slug)
         .single();
       
-      if (data) setProduct(data);
+      if (data) {
+        setProduct(data);
+        fetchRelated(data);
+      }
     };
 
     const fetchVariants = async () => {
@@ -57,23 +60,20 @@ const ProductDetail = () => {
       }
     };
 
-    const fetchRelated = async () => {
-      if (!product?.category_id) return;
+    const fetchRelated = async (currentProduct: Product) => {
       const { data } = await supabase
         .from('products')
         .select('*')
-        .eq('category_id', product.category_id)
-        .neq('id', product.id)
+        .neq('id', currentProduct.id)
         .eq('status', 'active')
-        .limit(4);
+        .limit(8);
       
       if (data) setRelatedProducts(data);
     };
 
     fetchProduct();
     fetchVariants();
-    if (product) fetchRelated();
-  }, [slug, product?.category_id]);
+  }, [slug]);
 
   const productImages: Record<string, string> = {
     'monstera-deliciosa': monsteraImg,

@@ -23,6 +23,7 @@ import AdminAuth from "./pages/admin/AdminAuth";
 import Dashboard from "./pages/admin/Dashboard";
 import Products from "./pages/admin/Products";
 import Orders from "./pages/admin/Orders";
+import AdminOrderDetail from "./pages/admin/AdminOrderDetail";
 import Customers from "./pages/admin/Customers";
 import Categories from "./pages/admin/Categories";
 import Coupons from "./pages/admin/Coupons";
@@ -61,6 +62,7 @@ const App = () => (
               <Route path="/admin" element={<Dashboard />} />
               <Route path="/admin/products" element={<Products />} />
               <Route path="/admin/orders" element={<Orders />} />
+              <Route path="/admin/orders/:id" element={<AdminOrderDetail />} />
               <Route path="/admin/customers" element={<Customers />} />
               <Route path="/admin/categories" element={<Categories />} />
               <Route path="/admin/coupons" element={<Coupons />} />

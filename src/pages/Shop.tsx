@@ -17,12 +17,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Filter, X } from 'lucide-react';
+import { Filter, X, Heart } from 'lucide-react';
 import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
 import pothosImg from '@/assets/pothos.jpg';
 import fiddleLeafImg from '@/assets/fiddle-leaf.jpg';
 import { Product } from '@/types/database';
+import { useWishlist } from '@/hooks/useWishlist';
 
 const Shop = () => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -31,6 +32,7 @@ const Shop = () => {
   const [onSaleOnly, setOnSaleOnly] = useState(false);
   const [sortBy, setSortBy] = useState('newest');
   const [showFilters, setShowFilters] = useState(false);
+  const { isInWishlist, toggleWishlist } = useWishlist();
 
   const { data: categories } = useQuery({
     queryKey: ['categories'],
@@ -244,8 +246,20 @@ const Shop = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
                   >
-                    <Link to={`/product/${product.slug}`}>
-                      <Card className="overflow-hidden group cursor-pointer hover:shadow-hover transition-smooth">
+                    <Card className="overflow-hidden group cursor-pointer hover:shadow-hover transition-smooth relative">
+                      <Button
+                        variant={isInWishlist(product.id) ? 'default' : 'outline'}
+                        size="icon"
+                        className="absolute top-2 left-2 z-10"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleWishlist(product.id);
+                        }}
+                      >
+                        <Heart className={`w-4 h-4 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
+                      </Button>
+                      <Link to={`/product/${product.slug}`}>
                         <div className="aspect-square overflow-hidden bg-muted/50 relative">
                           <img
                             src={imgSrc}
@@ -294,8 +308,8 @@ const Shop = () => {
                             )}
                           </div>
                         </CardContent>
-                      </Card>
-                    </Link>
+                      </Link>
+                    </Card>
                   </motion.div>
                 );
               })}

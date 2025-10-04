@@ -56,16 +56,18 @@ const OrderDetail = () => {
   };
 
   const handleCancelOrder = async () => {
-    if (!order) return;
+    if (!order || !user) return;
     
     setCancelling(true);
     const { error } = await supabase
       .from('orders' as any)
       .update({
         status: 'cancelled',
-        cancelled_at: new Date().toISOString()
+        cancelled_at: new Date().toISOString(),
+        cancellation_reason: 'Cancelled by customer'
       } as any)
-      .eq('id', order.id);
+      .eq('id', order.id)
+      .eq('user_id', user.id);
 
     if (error) {
       toast.error('Failed to cancel order');

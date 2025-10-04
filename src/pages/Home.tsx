@@ -57,7 +57,7 @@ const Home = () => {
           playsInline
           className="absolute inset-0 w-full h-full object-cover"
         >
-          <source src="https://cdn.pixabay.com/video/2019/10/25/28634-371094025_large.mp4" type="video/mp4" />
+          <source src="https://videos.pexels.com/video-files/4505965/4505965-uhd_2560_1440_25fps.mp4" type="video/mp4" />
         </video>
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30" />
         
@@ -205,7 +205,7 @@ const Home = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {featuredProducts?.map((product, index) => {
-              const imgSrc = productImages[product.slug] || monsteraImg;
+              const imgSrc = product.main_image_url || productImages[product.slug] || monsteraImg;
               const displayPrice = product.sale_price || product.base_price;
               const hasDiscount = product.sale_price !== null;
 

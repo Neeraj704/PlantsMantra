@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { ShoppingCart, Heart, Share2, ChevronLeft } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
+import { useWishlist } from '@/hooks/useWishlist';
 import { Product, ProductVariant } from '@/types/database';
 import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
@@ -22,7 +23,9 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [mainImage, setMainImage] = useState<string>('');
   const { addItem } = useCart();
+  const { isInWishlist, toggleWishlist } = useWishlist();
 
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
 
@@ -36,6 +39,8 @@ const ProductDetail = () => {
       
       if (data) {
         setProduct(data);
+        const imgSrc = data.main_image_url || productImages[data.slug] || monsteraImg;
+        setMainImage(imgSrc);
         fetchRelated(data);
       }
     };
@@ -102,8 +107,20 @@ const ProductDetail = () => {
   const displayPrice = getCurrentPrice();
   const hasDiscount = product.sale_price !== null;
 
+  const handleImageClick = (clickedImage: string) => {
+    if (product) {
+      setMainImage(clickedImage);
+    }
+  };
+
   const handleAddToCart = () => {
-    addItem(product, selectedVariant || undefined, quantity);
+    addItem(product!, selectedVariant || undefined, quantity);
+  };
+
+  const handleWishlistToggle = () => {
+    if (product) {
+      toggleWishlist(product.id);
+    }
   };
 
   return (
@@ -124,17 +141,28 @@ const ProductDetail = () => {
           >
             <div className="aspect-square rounded-2xl overflow-hidden shadow-card">
               <img
-                src={product.main_image_url || imgSrc}
+                src={mainImage}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
             </div>
             {product.gallery_images && product.gallery_images.length > 0 && (
               <div className="grid grid-cols-4 gap-4">
+                <div
+                  className="aspect-square rounded-lg overflow-hidden border-2 border-primary cursor-pointer hover:opacity-80 transition-smooth"
+                  onClick={() => handleImageClick(product.main_image_url || imgSrc)}
+                >
+                  <img
+                    src={product.main_image_url || imgSrc}
+                    alt={`${product.name} main`}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
                 {product.gallery_images.map((image, index) => (
                   <div
                     key={index}
                     className="aspect-square rounded-lg overflow-hidden border border-border cursor-pointer hover:border-primary transition-smooth"
+                    onClick={() => handleImageClick(image)}
                   >
                     <img
                       src={image}
@@ -256,8 +284,12 @@ const ProductDetail = () => {
                 <ShoppingCart className="w-5 h-5 mr-2" />
                 Add to Cart
               </Button>
-              <Button size="lg" variant="outline">
-                <Heart className="w-5 h-5" />
+              <Button 
+                size="lg" 
+                variant={isInWishlist(product.id) ? 'default' : 'outline'}
+                onClick={handleWishlistToggle}
+              >
+                <Heart className={`w-5 h-5 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
               </Button>
               <Button size="lg" variant="outline">
                 <Share2 className="w-5 h-5" />

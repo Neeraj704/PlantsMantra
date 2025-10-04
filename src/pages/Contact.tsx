@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Mail, Phone, MapPin, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -21,12 +22,23 @@ const Contact = () => {
     e.preventDefault();
     setSubmitting(true);
 
-    // Simulate form submission
-    setTimeout(() => {
+    const { error } = await supabase
+      .from('contact_submissions')
+      .insert([{
+        name: formData.name,
+        email: formData.email,
+        subject: formData.subject,
+        message: formData.message,
+      }]);
+
+    if (error) {
+      toast.error('Failed to send message. Please try again.');
+      console.error('Contact form error:', error);
+    } else {
       toast.success('Message sent! We\'ll get back to you soon.');
       setFormData({ name: '', email: '', subject: '', message: '' });
-      setSubmitting(false);
-    }, 1000);
+    }
+    setSubmitting(false);
   };
 
   return (

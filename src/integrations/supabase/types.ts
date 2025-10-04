@@ -14,54 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      addresses: {
-        Row: {
-          address_line1: string
-          address_line2: string | null
-          city: string
-          country: string
-          created_at: string
-          full_name: string
-          id: string
-          is_default: boolean
-          phone: string
-          postal_code: string
-          state: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          address_line1: string
-          address_line2?: string | null
-          city: string
-          country?: string
-          created_at?: string
-          full_name: string
-          id?: string
-          is_default?: boolean
-          phone: string
-          postal_code: string
-          state: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          address_line1?: string
-          address_line2?: string | null
-          city?: string
-          country?: string
-          created_at?: string
-          full_name?: string
-          id?: string
-          is_default?: boolean
-          phone?: string
-          postal_code?: string
-          state?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       cart_items: {
         Row: {
           created_at: string
@@ -254,7 +206,6 @@ export type Database = {
           total: number
           tracking_number: string | null
           updated_at: string | null
-          user_id: string | null
         }
         Insert: {
           coupon_code?: string | null
@@ -272,7 +223,6 @@ export type Database = {
           total: number
           tracking_number?: string | null
           updated_at?: string | null
-          user_id?: string | null
         }
         Update: {
           coupon_code?: string | null
@@ -290,7 +240,6 @@ export type Database = {
           total?: number
           tracking_number?: string | null
           updated_at?: string | null
-          user_id?: string | null
         }
         Relationships: []
       }

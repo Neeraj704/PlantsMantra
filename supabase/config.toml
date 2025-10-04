@@ -1,1 +1,8 @@
 project_id = "fuhpzltwbiblcxeixtsz"
+
+[functions.validate-coupon]
+verify_jwt = false
+
+[functions.create-payment-intent]
+
+[functions.verify-payment]

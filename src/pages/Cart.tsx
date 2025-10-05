@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,87 +6,67 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Trash2, Minus, Plus, ShoppingBag, Percent } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
-import { useState } from 'react'; // Added useState import
-import { supabase } from '@/integrations/supabase/client'; // Import supabase for coupon check
+import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-// --- Image Imports (assuming they are correctly defined in your file system) ---
-import monsteraImg from '@/assets/monstera.jpg';
-import snakePlantImg from '@/assets/snake-plant.jpg';
-import pothosImg from '@/assets/pothos.jpg';
-import fiddleLeafImg from '@/assets/fiddle-leaf.jpg';
-// ------------------------------------------------------------------------------
-
 const Cart = () => {
-  const { 
-    items, 
-    removeItem, 
-    updateQuantity, 
-    getSubtotal, 
-    getShippingCost, 
-    getDiscountAmount, 
+  const {
+    items,
+    removeItem,
+    updateQuantity,
+    getSubtotal,
+    getShippingCost,
+    getDiscountAmount,
     getTotal,
     appliedCoupon,
     applyCoupon,
-    removeCoupon
+    removeCoupon,
   } = useCart();
-  
+
+  const navigate = useNavigate(); // FIX: Use useNavigate for programmatic navigation
+
   const [couponCode, setCouponCode] = useState(appliedCoupon?.code || '');
   const [couponLoading, setCouponLoading] = useState(false);
 
-  // NOTE: This array should ideally come from a centralized product data source, 
-  // but we keep it here as in the original code.
-  const productImages: Record<string, string> = {
-    'monstera-deliciosa': monsteraImg,
-    'snake-plant': snakePlantImg,
-    'pothos': pothosImg,
-    'fiddle-leaf-fig': fiddleLeafImg,
-  };
-
   const subtotal = getSubtotal();
-  const shipping = getShippingCost(); // Use new getter
-  const discount = getDiscountAmount(); // Use new getter
-  const total = getTotal(); // Use new getter
+  const shipping = getShippingCost();
+  const discount = getDiscountAmount();
+  const total = getTotal();
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
-        toast.error('Please enter a coupon code.');
-        return;
+      toast.error('Please enter a coupon code.');
+      return;
     }
-    
-    setCouponLoading(true);
-    
-    // Check local subtotal to prevent unnecessary API call if minimum is clearly not met
-    // NOTE: For true validation, the backend should handle all checks. This is just for UX.
-    
-    try {
-        // Call a Supabase Edge function to validate the coupon code
-        const { data: result, error } = await supabase.functions.invoke('validate-coupon', {
-            body: { 
-                code: couponCode.trim(), 
-                cartTotal: subtotal 
-            },
-        });
-        
-        if (error || !result.valid) {
-            throw new Error(result.message || error?.message || 'Invalid coupon or unknown error.');
-        }
 
-        // Successfully applied the coupon from the database check
-        applyCoupon({
-            code: result.coupon.code,
-            discountAmount: result.discount,
-            min_purchase: result.coupon.min_purchase 
-        });
-        
-        toast.success(`Coupon "${result.coupon.code}" applied! You saved ₹${result.discount.toFixed(2)}.`);
-        
+    setCouponLoading(true);
+
+    try {
+      const { data: result, error } = await supabase.functions.invoke('validate-coupon', {
+        body: {
+          code: couponCode.trim(),
+          cartTotal: subtotal,
+        },
+      });
+
+      if (error || !result.valid) {
+        throw new Error(result.message || error?.message || 'Invalid coupon or unknown error.');
+      }
+
+      applyCoupon({
+        code: result.coupon.code,
+        discountAmount: result.discount,
+        min_purchase: result.coupon.min_purchase,
+      });
+
+      toast.success(`Coupon "${result.coupon.code}" applied! You saved ₹${result.discount.toFixed(2)}.`);
     } catch (error: any) {
-        console.error('Coupon validation error:', error);
-        removeCoupon(); // Clear local state of any potentially stale coupon
-        toast.error(error.message || 'Failed to apply coupon.');
+      console.error('Coupon validation error:', error);
+      removeCoupon();
+      toast.error(error.message || 'Failed to apply coupon.');
     } finally {
-        setCouponLoading(false);
+      setCouponLoading(false);
     }
   };
 
@@ -95,7 +75,7 @@ const Cart = () => {
     setCouponCode('');
     toast.success('Coupon removed.');
   };
-  
+
   if (items.length === 0) {
     return (
       <div className="min-h-screen pt-24 pb-12">
@@ -124,8 +104,10 @@ const Cart = () => {
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-4">
             {items.map((item, index) => {
-              const imgSrc = productImages[item.product.slug] || monsteraImg;
-              const price = (item.product.sale_price || item.product.base_price) + (item.variant?.price_adjustment || 0);
+              const imgSrc = item.product.main_image_url || '/placeholder.svg';
+              const price =
+                (item.product.sale_price || item.product.base_price) +
+                (item.variant?.price_adjustment || 0);
               const itemTotal = price * item.quantity;
 
               return (
@@ -156,9 +138,7 @@ const Cart = () => {
                                 {item.product.name}
                               </Link>
                               {item.variant && (
-                                <p className="text-sm text-muted-foreground">
-                                  {item.variant.name}
-                                </p>
+                                <p className="text-sm text-muted-foreground">{item.variant.name}</p>
                               )}
                             </div>
                             <Button
@@ -230,24 +210,22 @@ const Cart = () => {
                     <span className="text-muted-foreground">Subtotal</span>
                     <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
                   </div>
-                  
-                  {/* Discount Row - New */}
+
                   {discount > 0 && (
-                      <div className="flex justify-between text-sm text-green-600">
-                          <span className="flex items-center gap-1">
-                              <Percent className="w-4 h-4" /> Coupon Discount ({appliedCoupon?.code})
-                          </span>
-                          <span className="font-semibold">-₹{discount.toFixed(2)}</span>
-                      </div>
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span className="flex items-center gap-1">
+                        <Percent className="w-4 h-4" /> Coupon Discount ({appliedCoupon?.code})
+                      </span>
+                      <span className="font-semibold">-₹{discount.toFixed(2)}</span>
+                    </div>
                   )}
-                  
-                  {/* Shipping Row - Updated */}
+
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Shipping</span>
                     {shipping === 0 ? (
-                        <span className="font-semibold text-green-600">FREE</span>
+                      <span className="font-semibold text-green-600">FREE</span>
                     ) : (
-                        <span className="font-semibold">₹{shipping.toFixed(2)}</span>
+                      <span className="font-semibold">₹{shipping.toFixed(2)}</span>
                     )}
                   </div>
 
@@ -259,48 +237,52 @@ const Cart = () => {
                   </div>
                 </div>
 
-                {/* Coupon Input/Display - Updated */}
                 <div className="space-y-3 mb-6">
                   {appliedCoupon && discount > 0 ? (
-                      <div className="flex justify-between items-center bg-green-50/50 p-3 rounded-md border border-green-200">
-                          <p className="text-sm font-medium text-green-700">
-                              Applied: <span className="font-mono">{appliedCoupon.code}</span>
-                          </p>
-                          <Button variant="ghost" size="sm" onClick={handleRemoveCoupon}>
-                              Remove
-                          </Button>
-                      </div>
+                    <div className="flex justify-between items-center bg-green-50/50 p-3 rounded-md border border-green-200">
+                      <p className="text-sm font-medium text-green-700">
+                        Applied: <span className="font-mono">{appliedCoupon.code}</span>
+                      </p>
+                      <Button variant="ghost" size="sm" onClick={handleRemoveCoupon}>
+                        Remove
+                      </Button>
+                    </div>
                   ) : (
-                      <div className="flex gap-2">
-                          <Input 
-                              placeholder="Coupon code" 
-                              value={couponCode}
-                              onChange={(e) => setCouponCode(e.target.value)}
-                              disabled={couponLoading}
-                          />
-                          <Button 
-                              variant="outline" 
-                              onClick={handleApplyCoupon}
-                              disabled={couponLoading}
-                          >
-                              {couponLoading ? 'Applying...' : 'Apply'}
-                          </Button>
-                      </div>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Coupon code"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        disabled={couponLoading}
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={handleApplyCoupon}
+                        disabled={couponLoading}
+                      >
+                        {couponLoading ? 'Applying...' : 'Apply'}
+                      </Button>
+                    </div>
                   )}
                 </div>
 
-                <Button size="lg" className="w-full gradient-hero mb-3" asChild>
-                  <Link to="/checkout">Proceed to Checkout</Link>
+                <Button
+                  size="lg"
+                  className="w-full gradient-hero mb-3"
+                  onClick={() => navigate('/checkout')}
+                >
+                  Proceed to Checkout
                 </Button>
-                
+
                 <Button size="lg" variant="outline" className="w-full" asChild>
                   <Link to="/shop">Continue Shopping</Link>
                 </Button>
 
-                {/* Free Shipping Message - Updated */}
                 <div className="mt-6 p-4 bg-muted/30 rounded-lg">
                   <p className="text-sm text-center text-muted-foreground">
-                    {shipping === 0 ? '✅ You qualify for FREE shipping!' : `⚠️ Shipping is ₹${shipping.toFixed(2)} on orders under ₹399 MRP.`}
+                    {shipping === 0
+                      ? '✅ You qualify for FREE shipping!'
+                      : `⚠️ Shipping is ₹${shipping.toFixed(2)} on orders under ₹399 MRP.`}
                   </p>
                 </div>
               </CardContent>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import fiddleLeafImg from '@/assets/fiddle-leaf.jpg';
 
 const ProductDetail = () => {
   const { slug } = useParams();
+  const navigate = useNavigate(); 
   const [product, setProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
@@ -31,18 +32,28 @@ const ProductDetail = () => {
 
   useEffect(() => {
     const fetchProduct = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('products')
         .select('*')
         .eq('slug', slug)
-        .single();
-      
-      if (data) {
-        setProduct(data);
-        const imgSrc = data.main_image_url || productImages[data.slug] || monsteraImg;
-        setMainImage(imgSrc);
-        fetchRelated(data);
+        .maybeSingle(); 
+
+      if (error) {
+        console.error("Error fetching product:", error);
+        navigate('/shop');
+        return;
       }
+      
+      if (!data) {
+        console.warn(`Product with slug "${slug}" not found.`);
+        navigate('/404');
+        return;
+      }
+
+      setProduct(data);
+      const imgSrc = data.main_image_url || productImages[data.slug] || monsteraImg;
+      setMainImage(imgSrc);
+      fetchRelated(data);
     };
 
     const fetchVariants = async () => {

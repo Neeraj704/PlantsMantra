@@ -25,22 +25,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
+    // Use .maybeSingle() to gracefully handle cases where a profile doesn't exist yet.
+    const { data, error } = await supabase
       .from('profiles' as any)
       .select('*')
       .eq('id', userId)
-      .single();
-    
-    if (data) setProfile(data as unknown as Profile);
+      .maybeSingle(); // Changed from .single()
+
+    if (error) {
+      console.error("Error fetching profile:", error.message);
+      setProfile(null);
+    } else {
+      setProfile(data as unknown as Profile); // data will be null if not found
+    }
   };
 
   const checkAdminRole = async (userId: string) => {
+    // Also good practice to use maybeSingle() here
     const { data } = await supabase
       .from('user_roles' as any)
       .select('role')
       .eq('user_id', userId)
       .eq('role', 'admin')
-      .single();
+      .maybeSingle(); // Changed from .single()
     
     setIsAdmin(!!data);
   };

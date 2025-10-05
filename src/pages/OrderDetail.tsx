@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Order } from '@/types/database';
 import { toast } from 'sonner';
-import { ChevronLeft, Package, MapPin, CreditCard, Calendar, Truck, X } from 'lucide-react';
+import { ChevronLeft, Package, MapPin, CreditCard, Truck, X, IndianRupee } from 'lucide-react'; // Added IndianRupee and removed Calendar
 
 const OrderDetail = () => {
   const { orderId } = useParams();
@@ -86,6 +86,17 @@ const OrderDetail = () => {
     setCancelling(false);
   };
 
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      processing: 'bg-blue-100 text-blue-800',
+      shipped: 'bg-purple-100 text-purple-800',
+      delivered: 'bg-green-100 text-green-800',
+      cancelled: 'bg-red-100 text-red-800'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
   if (authLoading || loading) {
     return <div className="min-h-screen pt-24 flex items-center justify-center">Loading...</div>;
   }
@@ -98,19 +109,10 @@ const OrderDetail = () => {
     return <div className="min-h-screen pt-24 flex items-center justify-center">Order not found</div>;
   }
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      processing: 'bg-blue-100 text-blue-800',
-      shipped: 'bg-purple-100 text-purple-800',
-      delivered: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800'
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
-
   const canCancelOrder = order.status === 'pending' || order.status === 'processing';
   const shippingAddress = order.shipping_address as any;
+  const shippingCost = (order as any).shipping_cost || 0; // Read new field
+  const discountAmount = order.discount_amount || 0; // Read new field
 
   return (
     <div className="min-h-screen pt-24 pb-12">
@@ -187,6 +189,13 @@ const OrderDetail = () => {
                     {order.payment_status || 'Pending'}
                   </Badge>
                 </div>
+                {/* Payment Method - Added */}
+                <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Payment Method</span>
+                    <Badge variant="secondary" className="capitalize">
+                        {order.payment_method || 'N/A'}
+                    </Badge>
+                </div>
                 {order.tracking_number && (
                   <div>
                     <div className="flex items-center gap-2 mb-1">
@@ -235,7 +244,7 @@ const OrderDetail = () => {
             </CardContent>
           </Card>
 
-          {/* Order Summary */}
+          {/* Order Summary - Updated to include Shipping Cost and Discount */}
           <Card>
             <CardHeader>
               <CardTitle>Order Summary</CardTitle>
@@ -246,15 +255,19 @@ const OrderDetail = () => {
                   <span className="text-muted-foreground">Subtotal</span>
                   <span className="font-semibold">₹{order.subtotal.toFixed(2)}</span>
                 </div>
-                {order.discount_amount > 0 && (
+                {discountAmount > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
                     <span>Discount {order.coupon_code && `(${order.coupon_code})`}</span>
-                    <span>-₹{order.discount_amount.toFixed(2)}</span>
+                    <span>-₹{discountAmount.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span className="font-semibold">Free</span>
+                  {shippingCost === 0 ? (
+                      <span className="font-semibold text-green-600">FREE</span>
+                  ) : (
+                      <span className="font-semibold">₹{shippingCost.toFixed(2)}</span>
+                  )}
                 </div>
                 <Separator />
                 <div className="flex justify-between text-lg">

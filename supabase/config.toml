@@ -6,3 +6,9 @@ verify_jwt = false
 [functions.create-payment-intent]
 
 [functions.verify-payment]
+
+[functions.create-razorpay-order]
+verify_jwt = true
+
+[functions.verify-razorpay-payment]
+verify_jwt = true

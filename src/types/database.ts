@@ -1,6 +1,6 @@
 export type ProductStatus = 'active' | 'archived' | 'draft';
 export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
+export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';``
 
 export interface Category {
   id: string;
@@ -71,6 +71,8 @@ export interface Order {
   shipping_address: any;
   subtotal: number;
   discount_amount: number;
+  shipping_cost: number;
+  payment_method: 'stripe' | 'razorpay' | 'cod';
   total: number;
   coupon_code: string | null;
   status: OrderStatus;

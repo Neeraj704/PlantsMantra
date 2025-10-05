@@ -4,27 +4,51 @@ import { CartItem, Product, ProductVariant } from '@/types/database';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
+// Define the structure for applied coupon
+interface AppliedCoupon {
+  code: string;
+  discountAmount: number;
+  // NOTE: Assuming min_purchase might be stored on the coupon object for local validation
+  min_purchase?: number; 
+}
+
 interface CartStore {
   items: CartItem[];
   isInitialized: boolean;
+  appliedCoupon: AppliedCoupon | null; // Added for coupon tracking
+  shippingCost: number; // Added for shipping cost (managed by getters/setters)
   addItem: (product: Product, variant?: ProductVariant, quantity?: number) => void;
   removeItem: (productId: string, variantId?: string) => void;
   updateQuantity: (productId: string, quantity: number, variantId?: string) => void;
   clearCart: () => void;
-  getTotal: () => number;
   getSubtotal: () => number;
+  getShippingCost: () => number; // New method for shipping cost
+  getDiscountAmount: () => number; // New method for discount
+  getTotal: () => number;
+  applyCoupon: (coupon: AppliedCoupon) => void; // New action
+  removeCoupon: () => void; // New action
   syncWithDatabase: (userId: string) => Promise<void>;
   loadFromDatabase: (userId: string) => Promise<void>;
   setInitialized: (value: boolean) => void;
 }
+
+// --- Constants for Shipping Logic ---
+const FREE_SHIPPING_THRESHOLD = 399; // ₹399
+const DELIVERY_CHARGE = 99; // ₹99
+// ------------------------------------
 
 export const useCart = create<CartStore>()(
   persist(
     (set, get) => ({
       items: [],
       isInitialized: false,
+      appliedCoupon: null, // Default
+      shippingCost: 0, // Default
 
       setInitialized: (value) => set({ isInitialized: value }),
+
+      applyCoupon: (coupon) => set({ appliedCoupon: coupon }),
+      removeCoupon: () => set({ appliedCoupon: null }),
 
       loadFromDatabase: async (userId: string) => {
         try {
@@ -75,7 +99,8 @@ export const useCart = create<CartStore>()(
             quantity: item.quantity,
           }));
 
-          set({ items, isInitialized: true });
+          // Reset Coupon/Shipping when loading to force a fresh calculation/re-validation in UI
+          set({ items, isInitialized: true, appliedCoupon: null, shippingCost: 0 });
         } catch (error) {
           console.error('Error loading cart from database:', error);
           set({ isInitialized: true });
@@ -154,7 +179,7 @@ export const useCart = create<CartStore>()(
               toast.success('Added to cart');
             }
 
-            // Reload from database
+            // Reload from database, which resets appliedCoupon and shippingCost for safety
             await get().loadFromDatabase(user.id);
           } catch (error) {
             console.error('Error adding to cart:', error);
@@ -169,16 +194,28 @@ export const useCart = create<CartStore>()(
                 item.variant?.id === variant?.id
             );
 
+            let newItems = [...state.items];
             if (existingItemIndex > -1) {
-              const newItems = [...state.items];
               newItems[existingItemIndex].quantity += quantity;
               toast.success('Updated cart quantity');
-              return { items: newItems };
+            } else {
+              newItems = [...state.items, { product, variant, quantity }];
+              toast.success('Added to cart');
             }
+            
+            // Recalculate derived state for local storage persistence
+            const newSubtotal = newItems.reduce((total, item) => {
+                const price = item.product.sale_price || item.product.base_price;
+                const variantAdjustment = item.variant?.price_adjustment || 0;
+                return total + (price + variantAdjustment) * item.quantity;
+            }, 0);
 
-            toast.success('Added to cart');
-            return {
-              items: [...state.items, { product, variant, quantity }],
+            const newShippingCost = newSubtotal < FREE_SHIPPING_THRESHOLD ? DELIVERY_CHARGE : 0;
+            
+            return { 
+                items: newItems,
+                shippingCost: newShippingCost,
+                // appliedCoupon is kept as is, but its validation happens in getDiscountAmount
             };
           });
         }
@@ -197,6 +234,7 @@ export const useCart = create<CartStore>()(
               .eq('product_id', productId)
               .eq('variant_id', variantId || null);
 
+            // Reload from database, which resets appliedCoupon and shippingCost for safety
             await get().loadFromDatabase(user.id);
             toast.success('Removed from cart');
           } catch (error) {
@@ -205,13 +243,39 @@ export const useCart = create<CartStore>()(
           }
         } else {
           // Remove from local storage
-          set((state) => ({
-            items: state.items.filter(
+          set((state) => {
+            const newItems = state.items.filter(
               (item) =>
                 !(item.product.id === productId && item.variant?.id === variantId)
-            ),
-          }));
-          toast.success('Removed from cart');
+            );
+            
+            // Recalculate derived state for local storage persistence
+            const newSubtotal = newItems.reduce((total, item) => {
+                const price = item.product.sale_price || item.product.base_price;
+                const variantAdjustment = item.variant?.price_adjustment || 0;
+                return total + (price + variantAdjustment) * item.quantity;
+            }, 0);
+
+            const newShippingCost = newSubtotal < FREE_SHIPPING_THRESHOLD && newSubtotal > 0 ? DELIVERY_CHARGE : 0;
+            
+            // Recalculate coupon status
+            // Note: Uses the min_purchase property if available for local validation
+            const isCouponValid = state.appliedCoupon && 
+              (!state.appliedCoupon.min_purchase || newSubtotal >= state.appliedCoupon.min_purchase);
+
+            const newCoupon = isCouponValid ? state.appliedCoupon : null;
+            if (state.appliedCoupon && !newCoupon) {
+                 toast.warning('Coupon removed. Minimum purchase is no longer met.');
+            }
+            
+            toast.success('Removed from cart');
+            
+            return { 
+                items: newItems,
+                appliedCoupon: newCoupon,
+                shippingCost: newShippingCost
+            };
+          });
         }
       },
 
@@ -233,6 +297,7 @@ export const useCart = create<CartStore>()(
               .eq('product_id', productId)
               .eq('variant_id', variantId || null);
 
+            // Reload from database, which resets appliedCoupon and shippingCost for safety
             await get().loadFromDatabase(user.id);
           } catch (error) {
             console.error('Error updating quantity:', error);
@@ -240,13 +305,38 @@ export const useCart = create<CartStore>()(
           }
         } else {
           // Update in local storage
-          set((state) => ({
-            items: state.items.map((item) =>
+          set((state) => {
+            const newItems = state.items.map((item) =>
               item.product.id === productId && item.variant?.id === variantId
                 ? { ...item, quantity }
                 : item
-            ),
-          }));
+            );
+
+            // Recalculate derived state for local storage persistence
+            const newSubtotal = newItems.reduce((total, item) => {
+                const price = item.product.sale_price || item.product.base_price;
+                const variantAdjustment = item.variant?.price_adjustment || 0;
+                return total + (price + variantAdjustment) * item.quantity;
+            }, 0);
+
+            const newShippingCost = newSubtotal < FREE_SHIPPING_THRESHOLD && newSubtotal > 0 ? DELIVERY_CHARGE : 0;
+            
+            // Recalculate coupon status
+            // Note: Uses the min_purchase property if available for local validation
+            const isCouponValid = state.appliedCoupon && 
+              (!state.appliedCoupon.min_purchase || newSubtotal >= state.appliedCoupon.min_purchase);
+            
+            const newCoupon = isCouponValid ? state.appliedCoupon : null;
+            if (state.appliedCoupon && !newCoupon) {
+                 toast.warning('Coupon removed. Minimum purchase is no longer met.');
+            }
+            
+            return { 
+                items: newItems,
+                appliedCoupon: newCoupon,
+                shippingCost: newShippingCost
+            };
+          });
         }
       },
 
@@ -261,7 +351,7 @@ export const useCart = create<CartStore>()(
               .delete()
               .eq('user_id', user.id);
 
-            set({ items: [] });
+            set({ items: [], appliedCoupon: null, shippingCost: 0 });
             toast.success('Cart cleared');
           } catch (error) {
             console.error('Error clearing cart:', error);
@@ -269,11 +359,12 @@ export const useCart = create<CartStore>()(
           }
         } else {
           // Clear from local storage
-          set({ items: [] });
+          set({ items: [], appliedCoupon: null, shippingCost: 0 });
           toast.success('Cart cleared');
         }
       },
 
+      // --- Getter Functions ---
       getSubtotal: () => {
         return get().items.reduce((total, item) => {
           const price = item.product.sale_price || item.product.base_price;
@@ -281,10 +372,37 @@ export const useCart = create<CartStore>()(
           return total + (price + variantAdjustment) * item.quantity;
         }, 0);
       },
+      
+      getShippingCost: () => {
+        const subtotal = get().getSubtotal();
+        // Shipping is only applied if subtotal is greater than 0 but below the free shipping threshold
+        return subtotal < FREE_SHIPPING_THRESHOLD && subtotal > 0 ? DELIVERY_CHARGE : 0;
+      },
+      
+      getDiscountAmount: () => {
+          const subtotal = get().getSubtotal();
+          const appliedCoupon = get().appliedCoupon;
+          
+          // Check if coupon exists AND if subtotal meets its minimum purchase
+          // If min_purchase is not present, assume it's always valid (but this is risky in real apps)
+          const minPurchase = appliedCoupon?.min_purchase || 0;
+          
+          if (appliedCoupon && subtotal >= minPurchase) {
+              return appliedCoupon.discountAmount;
+          }
+          
+          return 0;
+      },
 
       getTotal: () => {
-        return get().getSubtotal();
+        const subtotal = get().getSubtotal();
+        const shipping = get().getShippingCost();
+        const discount = get().getDiscountAmount();
+        
+        return Math.max(0, subtotal + shipping - discount);
       },
+      // ----------------------------
+
     }),
     {
       name: 'verdant-cart',

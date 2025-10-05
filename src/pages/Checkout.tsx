@@ -11,25 +11,36 @@ import { useCart } from '@/hooks/useCart';
 import { supabase } from '@/integrations/supabase/client';
 import { Address } from '@/types/database';
 import { toast } from 'sonner';
-import { Plus, MapPin, CreditCard } from 'lucide-react';
+import { Plus, MapPin, CreditCard, IndianRupee, Truck, Percent } from 'lucide-react';
 import AddressForm from '@/components/AddressForm';
 import { StripePayment } from '@/components/StripePayment';
+import { RazorpayPayment } from '@/components/RazorpayPayment'; // Import new Razorpay component
 import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
 import pothosImg from '@/assets/pothos.jpg';
 import fiddleLeafImg from '@/assets/fiddle-leaf.jpg';
 
 const Checkout = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth(); // Also get profile
   const navigate = useNavigate();
-  const { items, getSubtotal, clearCart } = useCart();
+  const { 
+    items, 
+    getSubtotal, 
+    getShippingCost, 
+    getDiscountAmount, 
+    getTotal, 
+    clearCart, 
+    appliedCoupon // New
+  } = useCart();
+  
   const [step, setStep] = useState<'shipping' | 'payment'>('shipping');
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<string>('');
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'cod'>('stripe');
+  // Default to Razorpay, which is common in India
+  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'razorpay' | 'cod'>('razorpay'); 
 
   const productImages: Record<string, string> = {
     'monstera-deliciosa': monsteraImg,
@@ -37,6 +48,12 @@ const Checkout = () => {
     'pothos': pothosImg,
     'fiddle-leaf-fig': fiddleLeafImg,
   };
+  
+  // Use new cart getters for accurate totals
+  const subtotal = getSubtotal();
+  const shippingCost = getShippingCost();
+  const discountAmount = getDiscountAmount();
+  const total = getTotal();
 
   useEffect(() => {
     if (user) {
@@ -63,18 +80,20 @@ const Checkout = () => {
     setShowAddressForm(false);
   };
 
-  const handlePlaceOrder = async (skipPayment = false) => {
+  const handlePlaceOrder = async () => {
     if (!selectedAddress) {
       toast.error('Please select a shipping address');
       return;
     }
 
     setProcessing(true);
+    const isCod = paymentMethod === 'cod';
 
     try {
       const address = addresses.find(a => a.id === selectedAddress);
-      const subtotal = getSubtotal();
+      if (!address) throw new Error('Selected address not found.');
       
+      // 1. Create the Order entry in the database
       const { data: order, error } = await supabase
         .from('orders' as any)
         .insert({
@@ -83,28 +102,35 @@ const Checkout = () => {
           customer_name: address?.full_name,
           customer_phone: address?.phone,
           shipping_address: address,
-          subtotal,
-          discount_amount: 0,
-          total: subtotal,
-          status: 'pending',
-          payment_status: skipPayment ? 'pending' : 'pending'
+          subtotal: subtotal,
+          discount_amount: discountAmount, // Save discount
+          shipping_cost: shippingCost,     // Save shipping
+          coupon_code: appliedCoupon?.code || null, // Save coupon
+          payment_method: paymentMethod,   // Save payment method
+          total: total,                    // Save final total
+          status: isCod ? 'pending' : 'pending',
+          payment_status: isCod ? 'unpaid' : 'pending' 
         } as any)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error || !order) throw error || new Error('Failed to create order.');
 
-      // Insert order items
-      const orderItems = items.map(item => ({
-        order_id: (order as any).id,
-        product_id: item.product.id,
-        variant_id: item.variant?.id,
-        product_name: item.product.name,
-        variant_name: item.variant?.name,
-        quantity: item.quantity,
-        unit_price: item.product.sale_price || item.product.base_price,
-        subtotal: (item.product.sale_price || item.product.base_price) * item.quantity
-      }));
+      // 2. Insert order items
+      const orderItems = items.map(item => {
+        // Calculate unit price including variant adjustment
+        const unitPriceWithVariant = (item.product.sale_price || item.product.base_price) + (item.variant?.price_adjustment || 0);
+        return {
+          order_id: (order as any).id,
+          product_id: item.product.id,
+          variant_id: item.variant?.id,
+          product_name: item.product.name,
+          variant_name: item.variant?.name,
+          quantity: item.quantity,
+          unit_price: unitPriceWithVariant,
+          subtotal: unitPriceWithVariant * item.quantity
+        };
+      });
 
       const { error: itemsError } = await supabase
         .from('order_items')
@@ -112,11 +138,13 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
-      if (skipPayment) {
+      if (isCod) {
+        // 3. COD flow
         clearCart();
-        toast.success('Order placed successfully!');
+        toast.success('Order placed successfully! Please pay ₹' + total.toFixed(2) + ' upon delivery.');
         navigate('/account');
       } else {
+        // 3. Move to payment step (Stripe/Razorpay)
         setCurrentOrderId((order as any).id);
         setStep('payment');
       }
@@ -133,13 +161,17 @@ const Checkout = () => {
     navigate('/account');
   };
 
-  if (!user) {
+  // Ensure user and profile are available before rendering
+  if (!user || !profile) {
     return <Navigate to="/auth" replace />;
   }
 
   if (items.length === 0) {
     return <Navigate to="/cart" replace />;
   }
+  
+  // Get selected address details for Razorpay prefill
+  const currentAddress = addresses.find(a => a.id === selectedAddress);
 
   return (
     <div className="min-h-screen pt-24 pb-12">
@@ -159,7 +191,7 @@ const Checkout = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <MapPin className="w-5 h-5" />
-                    Shipping Address
+                    1. Shipping Address
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -223,39 +255,59 @@ const Checkout = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <CreditCard className="w-5 h-5" />
-                      Payment Method
+                      2. Payment Method
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     {!currentOrderId ? (
                       <>
                         <RadioGroup value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)} className="mb-4">
+                          {/* Razorpay Option (Primary for Indian market) */}
                           <div className="flex items-center space-x-2 border rounded-lg p-3">
-                            <RadioGroupItem value="stripe" id="stripe" />
-                            <Label htmlFor="stripe" className="flex-1 cursor-pointer">
-                              Credit/Debit Card (Stripe)
+                            <RadioGroupItem value="razorpay" id="razorpay" />
+                            <Label htmlFor="razorpay" className="flex-1 cursor-pointer font-medium">
+                              Card / UPI / Netbanking (Razorpay)
                             </Label>
                           </div>
+                          {/* Stripe Option */}
+                          <div className="flex items-center space-x-2 border rounded-lg p-3">
+                            <RadioGroupItem value="stripe" id="stripe" />
+                            <Label htmlFor="stripe" className="flex-1 cursor-pointer font-medium">
+                              Credit/Debit Card (Stripe - Test Mode Only)
+                            </Label>
+                          </div>
+                          {/* COD Option */}
                           <div className="flex items-center space-x-2 border rounded-lg p-3">
                             <RadioGroupItem value="cod" id="cod" />
-                            <Label htmlFor="cod" className="flex-1 cursor-pointer">
-                              Cash on Delivery
+                            <Label htmlFor="cod" className="flex-1 cursor-pointer font-medium">
+                              Cash on Delivery (COD) - Total Due: ₹{total.toFixed(2)}
                             </Label>
                           </div>
                         </RadioGroup>
                         <Button
                           className="w-full gradient-hero"
-                          onClick={() => handlePlaceOrder(paymentMethod === 'cod')}
-                          disabled={processing}
+                          onClick={handlePlaceOrder}
+                          disabled={processing || !currentAddress}
                         >
-                          {processing ? 'Processing...' : paymentMethod === 'cod' ? 'Place Order (COD)' : 'Continue to Payment'}
+                          {processing ? 'Processing...' : paymentMethod === 'cod' ? 'Place Order (COD)' : `Continue to Pay ₹${total.toFixed(2)}`}
                         </Button>
                       </>
-                    ) : (
+                    ) : paymentMethod === 'stripe' ? (
                       <StripePayment
-                        orderId={currentOrderId}
-                        amount={getSubtotal()}
+                        orderId={currentOrderId!}
+                        amount={total} // Use final total
                         onSuccess={handlePaymentSuccess}
+                      />
+                    ) : (
+                      // Razorpay flow
+                      <RazorpayPayment
+                        orderId={currentOrderId!}
+                        amount={total} // Use final total
+                        onSuccess={handlePaymentSuccess}
+                        // Fallback to profile or user data if address fields are missing
+                        customerName={currentAddress?.full_name || profile.full_name || user.email!.split('@')[0]}
+                        customerEmail={user.email!}
+                        customerPhone={currentAddress?.phone || profile.phone || '9999999999'}
                       />
                     )}
                   </CardContent>
@@ -270,10 +322,10 @@ const Checkout = () => {
                   <CardTitle>Order Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3 mb-4">
+                  <div className="space-y-3 mb-4 max-h-64 overflow-y-auto pr-2">
                     {items.map((item) => {
                       const imgSrc = productImages[item.product.slug] || monsteraImg;
-                      const price = item.product.sale_price || item.product.base_price;
+                      const price = (item.product.sale_price || item.product.base_price) + (item.variant?.price_adjustment || 0); // Price including variant adj
                       
                       return (
                         <div key={`${item.product.id}-${item.variant?.id}`} className="flex gap-3">
@@ -301,16 +353,30 @@ const Checkout = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Subtotal</span>
-                      <span className="font-semibold">₹{getSubtotal().toFixed(2)}</span>
+                      <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
                     </div>
+                    
+                    {discountAmount > 0 && (
+                        <div className="flex justify-between text-sm text-green-600">
+                            <span className="text-muted-foreground flex items-center gap-1">
+                                <Percent className="w-3 h-3" /> Discount ({appliedCoupon?.code})
+                            </span>
+                            <span className="font-semibold">-₹{discountAmount.toFixed(2)}</span>
+                        </div>
+                    )}
+                    
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Shipping</span>
-                      <span className="font-semibold">Free</span>
+                      {shippingCost === 0 ? (
+                          <span className="font-semibold text-green-600">FREE</span>
+                      ) : (
+                          <span className="font-semibold">₹{shippingCost.toFixed(2)}</span>
+                      )}
                     </div>
                     <Separator className="my-2" />
                     <div className="flex justify-between">
-                      <span className="font-semibold">Total</span>
-                      <span className="font-bold text-lg">₹{getSubtotal().toFixed(2)}</span>
+                      <span className="font-semibold">Order Total</span>
+                      <span className="font-bold text-lg">₹{total.toFixed(2)}</span>
                     </div>
                   </div>
                 </CardContent>

@@ -146,13 +146,13 @@ const Products = () => {
                       <div>
                         {product.sale_price ? (
                           <>
-                            <span className="font-semibold">${product.sale_price.toFixed(2)}</span>
+                            <span className="font-semibold">₹{product.sale_price.toFixed(2)}</span>
                             <span className="text-sm text-muted-foreground line-through ml-2">
                               ${product.base_price.toFixed(2)}
                             </span>
                           </>
                         ) : (
-                          <span className="font-semibold">${product.base_price.toFixed(2)}</span>
+                          <span className="font-semibold">₹{product.base_price.toFixed(2)}</span>
                         )}
                       </div>
                     </td>

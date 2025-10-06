@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Lock } from 'lucide-react';
@@ -69,18 +69,14 @@ export const RazorpayPayment = ({
     setProcessing(true);
 
     try {
-      // Get the Supabase URL and anon key
-      const supabaseUrl = supabase.supabaseUrl;
-      const anonKey = supabase.supabaseKey;
-
       // 1. Create a Razorpay Order ID on the backend using fetch
       const createOrderResponse = await fetch(
-        `${supabaseUrl}/functions/v1/create-razorpay-order`,
+        `${SUPABASE_URL}/functions/v1/create-razorpay-order`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${anonKey}`,
+            'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({ amount })
         }
@@ -109,12 +105,12 @@ export const RazorpayPayment = ({
           // 3. VERIFY the payment on your backend
           try {
             const verifyResponse = await fetch(
-              `${supabaseUrl}/functions/v1/verify-razorpay-payment`,
+              `${SUPABASE_URL}/functions/v1/verify-razorpay-payment`,
               {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${anonKey}`,
+                  'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
                 },
                 body: JSON.stringify({
                   razorpay_order_id: response.razorpay_order_id,

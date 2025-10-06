@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ShoppingCart, Search, Menu, X, Leaf, User, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,8 @@ const Navbar = () => {
   const { items } = useCart();
   const { wishlistItems } = useWishlist();
   const { user } = useAuth();
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -28,14 +30,22 @@ const Navbar = () => {
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-smooth ${
-        isScrolled ? 'bg-background/95 backdrop-blur-md shadow-sm' : 'bg-transparent'
+        isScrolled 
+          ? 'bg-background/80 backdrop-blur-lg shadow-sm border-b border-border/40' 
+          : isHomePage 
+            ? 'bg-transparent text-white' 
+            : 'bg-background/80 backdrop-blur-lg border-b border-border/40'
       }`}
     >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="bg-primary text-primary-foreground p-2 rounded-lg transition-smooth group-hover:scale-105">
+            <div className={`p-2 rounded-lg transition-smooth group-hover:scale-105 ${
+              isHomePage && !isScrolled 
+                ? 'bg-white/20 text-white' 
+                : 'bg-primary text-primary-foreground'
+            }`}>
               <Leaf className="w-5 h-5 md:w-6 md:h-6" />
             </div>
             <span className="text-xl md:text-2xl font-serif font-bold">Verdant</span>
@@ -43,16 +53,24 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
-            <Link to="/" className="text-sm font-medium hover:text-primary transition-smooth">
+            <Link to="/" className={`text-sm font-medium transition-smooth ${
+              isHomePage && !isScrolled ? 'hover:text-white/80' : 'hover:text-primary'
+            }`}>
               Home
             </Link>
-            <Link to="/shop" className="text-sm font-medium hover:text-primary transition-smooth">
+            <Link to="/shop" className={`text-sm font-medium transition-smooth ${
+              isHomePage && !isScrolled ? 'hover:text-white/80' : 'hover:text-primary'
+            }`}>
               Shop
             </Link>
-            <Link to="/care-guides" className="text-sm font-medium hover:text-primary transition-smooth">
+            <Link to="/care-guides" className={`text-sm font-medium transition-smooth ${
+              isHomePage && !isScrolled ? 'hover:text-white/80' : 'hover:text-primary'
+            }`}>
               Care Guides
             </Link>
-            <Link to="/contact" className="text-sm font-medium hover:text-primary transition-smooth">
+            <Link to="/contact" className={`text-sm font-medium transition-smooth ${
+              isHomePage && !isScrolled ? 'hover:text-white/80' : 'hover:text-primary'
+            }`}>
               Contact
             </Link>
           </div>

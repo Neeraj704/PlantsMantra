@@ -57,7 +57,7 @@ const Home = () => {
           playsInline
           className="absolute inset-0 w-full h-full object-cover"
         >
-          <source src="https://videos.pexels.com/video-files/4505965/4505965-uhd_2560_1440_25fps.mp4" type="video/mp4" />
+          <source src="https://cdn.pixabay.com/video/2023/06/09/166394-834930270_large.mp4" type="video/mp4" />
         </video>
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30" />
         

@@ -1,16 +1,14 @@
-// FILE: src/components/RazorpayPayment.tsx
+// src/components/RazorpayPayment.tsx
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { IndianRupee, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { Lock } from 'lucide-react';
 
-// Type definition for the Razorpay handler window object
 declare global {
   interface Window {
-    Razorpay: new (options: any) => any;
+    Razorpay: any;
   }
 }
 
@@ -23,7 +21,6 @@ interface RazorpayPaymentProps {
   customerPhone: string;
 }
 
-// Function to load the Razorpay SDK script dynamically
 const loadScript = (src: string) => {
   return new Promise((resolve) => {
     const script = document.createElement('script');
@@ -44,32 +41,24 @@ export const RazorpayPayment = ({
 }: RazorpayPaymentProps) => {
   const { user } = useAuth();
   const [processing, setProcessing] = useState(false);
-  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
 
   useEffect(() => {
-    // Load Razorpay script only once
-    const initRazorpay = async () => {
-      const res = await loadScript('https://checkout.razorpay.com/v1/checkout.js');
-      if (res) {
-        setIsScriptLoaded(true);
-      } else {
-        toast.error('Razorpay SDK failed to load. Please refresh.');
+    loadScript('https://checkout.razorpay.com/v1/checkout.js').then((loaded) => {
+      if (!loaded) {
+        toast.error('Payment gateway failed to load. Please refresh.');
       }
-    };
-    initRazorpay();
+    });
   }, []);
 
   const handlePayment = async () => {
-    if (!isScriptLoaded || !user) return;
+    if (!user) return;
     setProcessing(true);
 
     try {
       // 1. Create a Razorpay Order ID on the backend
       const { data: orderData, error: orderError } = await supabase.functions.invoke(
         'create-razorpay-order',
-        {
-          body: { amount, orderId },
-        }
+        { body: { amount, orderId } }
       );
 
       if (orderError) throw new Error(orderError.message);
@@ -78,39 +67,14 @@ export const RazorpayPayment = ({
       // 2. Open the Razorpay Checkout Modal
       const options = {
         key: orderData.key,
-        amount: orderData.amount, // amount in paise
+        amount: orderData.amount,
         currency: orderData.currency,
         name: 'Verdant',
         description: `Order ID: ${orderId.slice(0, 8)}`,
         order_id: orderData.razorpayOrderId,
-        handler: async (response: any) => {
-          // This is executed upon successful payment
-          setProcessing(true); // Re-enable loading state for verification
-          try {
-            // 3. Verify the payment on the backend
-            const { data: verificationData, error: verificationError } = await supabase.functions.invoke(
-              'verify-razorpay-payment',
-              {
-                body: {
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                  orderId: orderId, // Pass your database order ID
-                },
-              }
-            );
-
-            if (verificationError || !verificationData?.success) {
-              throw new Error(verificationError?.message || 'Payment verification failed. Contact support with payment ID.');
-            }
-
-            toast.success('Payment successful! Order confirmed.');
-            onSuccess();
-          } catch (error: any) {
-            console.error('Verification Error:', error);
-            toast.error(error.message || 'Payment successful, but verification failed. Contact support.');
-            setProcessing(false);
-          }
+        handler: (response: any) => {
+          // This function is called after successful payment
+          onSuccess(); // The onSuccess from props will handle clearing cart and navigation
         },
         prefill: {
           name: customerName,
@@ -118,8 +82,14 @@ export const RazorpayPayment = ({
           contact: customerPhone,
         },
         theme: {
-          color: '#4ADE80', // Tailwind green-400, matches primary color in index.css
+          color: '#4ADE80',
         },
+        modal: {
+          ondismiss: () => {
+            setProcessing(false);
+            toast.info("Payment was cancelled.");
+          }
+        }
       };
 
       const rzp1 = new window.Razorpay(options);
@@ -128,42 +98,28 @@ export const RazorpayPayment = ({
         setProcessing(false);
       });
       rzp1.open();
-
-      // If the modal opens, remove the processing state. It will be re-enabled in the handler.
-      setProcessing(false);
-
+      // Don't set processing to false here, it's handled by the modal callbacks
     } catch (error: any) {
-      toast.error(error.message || 'Failed to initiate Razorpay checkout');
+      toast.error(error.message || 'Failed to initiate checkout');
       setProcessing(false);
     }
   };
 
   return (
-    <Card>
-      <CardContent className="p-6 space-y-4">
-        <div className="flex items-center gap-2 mb-4">
-          <IndianRupee className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold">Razorpay Payment</h3>
-        </div>
-
-        <Button
-          className="w-full gradient-hero"
-          onClick={handlePayment}
-          disabled={processing || !isScriptLoaded}
-        >
-          {processing ? (
-            'Processing...'
-          ) : (
-            <>
-              <Lock className="w-4 h-4 mr-2" />
-              Pay ₹{amount.toFixed(2)}
-            </>
-          )}
-        </Button>
-        <p className="text-xs text-muted-foreground text-center mt-2">
-          Secure payment powered by Razorpay
-        </p>
-      </CardContent>
-    </Card>
+    <Button
+      className="w-full gradient-hero"
+      onClick={handlePayment}
+      disabled={processing}
+      size="lg"
+    >
+      {processing ? (
+        'Processing...'
+      ) : (
+        <>
+          <Lock className="w-4 h-4 mr-2" />
+          Pay ₹{amount.toFixed(2)}
+        </>
+      )}
+    </Button>
   );
 };

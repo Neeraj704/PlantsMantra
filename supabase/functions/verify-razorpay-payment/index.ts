@@ -1,4 +1,4 @@
-// FILE: supabase/functions/verify-razorpay-payment/index.ts
+// supabase/functions/verify-razorpay-payment/index.ts
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
 import * as crypto from 'https://deno.land/std@0.224.0/crypto/mod.ts';
@@ -8,87 +8,73 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Use environment variables for Razorpay credentials
 const RAZORPAY_KEY_SECRET = Deno.env.get('RAZORPAY_KEY_SECRET') || '';
 
-// Utility function to verify the Razorpay signature
-async function verifySignature(orderId: string, paymentId: string, signature: string): Promise<boolean> {
-  const hmac = crypto.createHmac('sha256', RAZORPAY_KEY_SECRET);
-  const data = `${orderId}|${paymentId}`;
-  const generatedSignature = hmac.update(data).digest('hex');
-  return generatedSignature === signature;
+async function verifySignature(body: string, signature: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(RAZORPAY_KEY_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(body));
+  const expectedSignature = Array.from(new Uint8Array(signatureBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  
+  return expectedSignature === signature;
 }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
-  const supabaseClient = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '' // Use service role key for order update
-  );
-
   try {
-    const authHeader = req.headers.get('Authorization')!;
-    const token = authHeader.replace('Bearer ', '');
-    const { data: userData } = await supabaseClient.auth.getUser(token);
-    const user = userData.user;
-    if (!user) throw new Error('User not authenticated');
+    const body = await req.text();
+    const signature = req.headers.get('x-razorpay-signature');
 
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      orderId: dbOrderId, // Your database order ID
-    } = await req.json();
-
-    console.log(`Verifying Razorpay payment for DB Order ID: ${dbOrderId}`);
-
-    const isVerified = await verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
+    if (!signature) {
+        throw new Error("Razorpay signature not found in headers.");
+    }
+    
+    const isVerified = await verifySignature(body, signature);
 
     if (!isVerified) {
-      console.log('Razorpay signature verification failed.');
-      return new Response(
-        JSON.stringify({ success: false, message: 'Payment verification failed (Invalid signature)' }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        }
-      );
+      throw new Error("Invalid Razorpay signature.");
     }
 
-    // Payment succeeded and signature verified, update your database order
-    console.log('Payment succeeded and signature verified, updating order');
+    const payload = JSON.parse(body);
+    const paymentId = payload.payload.payment.entity.id;
+    const orderId = payload.payload.payment.entity.order_id;
 
-    const { error: updateError } = await supabaseClient
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    const { data, error } = await supabaseAdmin
       .from('orders')
       .update({
         payment_status: 'paid',
-        payment_intent_id: razorpay_payment_id,
         status: 'processing',
+        payment_intent_id: paymentId,
       })
-      .eq('id', dbOrderId);
+      .eq('id', orderId) // Assuming the order was created in your DB with the Razorpay order_id
+      .select()
+      .single();
 
-    if (updateError) {
-      console.error('Error updating order:', updateError);
-      throw updateError;
-    }
+    if (error) throw error;
 
-    console.log('Order updated successfully');
-
-    return new Response(
-      JSON.stringify({ success: true, message: 'Payment verified and order updated' }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
-    );
+    return new Response(JSON.stringify({ success: true, order: data }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    });
   } catch (error) {
     console.error('Error verifying Razorpay payment:', error);
-    return new Response(JSON.stringify({ error: (error as Error).message }), {
+    return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
+      status: 400,
     });
   }
 });

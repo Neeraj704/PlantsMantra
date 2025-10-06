@@ -31,10 +31,10 @@ const Navbar = () => {
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-smooth ${
         isScrolled 
-          ? 'bg-background/70 backdrop-blur-xl shadow-sm border-b border-border/50' 
+          ? 'bg-background/60 backdrop-blur-2xl shadow-lg border-b border-border/50' 
           : isHomePage 
-            ? 'bg-background/30 backdrop-blur-xl text-white border-b border-white/20' 
-            : 'bg-background/70 backdrop-blur-xl border-b border-border/50'
+            ? 'bg-transparent text-white' 
+            : 'bg-background/60 backdrop-blur-2xl border-b border-border/50'
       }`}
     >
       <div className="container mx-auto px-4">

@@ -145,21 +145,23 @@ const Shop = () => {
             </div>
 
             {/* Price Range */}
-            <div className="mb-6">
-              <h3 className="font-semibold mb-3">Price Range</h3>
-              <Slider
-                min={0}
-                max={5000} 
-                step={10}
-                value={priceRange}
-                onValueChange={setPriceRange}
-                className="mb-2"
-              />
-              <div className="flex justify-between text-sm text-muted-foreground">
+            <div className="mb-6">
+              <h3 className="font-semibold mb-3">Price Range</h3>
+              <div className="px-1">
+                <Slider
+                  min={0}
+                  max={5000} 
+                  step={10}
+                  value={priceRange}
+                  onValueChange={setPriceRange}
+                  className="mb-3 mt-2"
+                />
+              </div>
+              <div className="flex justify-between text-sm font-medium">
                 <span>₹{priceRange[0]}</span>
                 <span>₹{priceRange[1]}</span>
-              </div>
-            </div>
+              </div>
+            </div>
 
             {/* Availability */}
             <div className="mb-6">
@@ -193,7 +195,7 @@ const Shop = () => {
               className="w-full"
               onClick={() => {
                 setSelectedCategories([]);
-                setPriceRange([0, 200]);
+                setPriceRange([0, 5000]);
                 setInStockOnly(false);
                 setOnSaleOnly(false);
               }}
@@ -322,7 +324,7 @@ const Shop = () => {
                   variant="link"
                   onClick={() => {
                     setSelectedCategories([]);
-                    setPriceRange([0, 200]);
+                    setPriceRange([0, 5000]);
                     setInStockOnly(false);
                     setOnSaleOnly(false);
                   }}

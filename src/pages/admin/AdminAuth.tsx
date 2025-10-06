@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Shield } from 'lucide-react';
 
-const ADMIN_SECRET = 'verdant-admin-2024'; // In production, this should be in env
+const ADMIN_SECRET = 'verdant-admin-2025'; // In production, this should be in env
 
 const AdminAuth = () => {
   const { user, isAdmin, signIn } = useAuth();

@@ -16,7 +16,6 @@ import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
 import pothosImg from '@/assets/pothos.jpg';
 import fiddleLeafImg from '@/assets/fiddle-leaf.jpg';
-// B.1: Import the new SEOTags component
 import SEOTags from '@/components/SEOTags';
 
 const ProductDetail = () => {
@@ -27,6 +26,7 @@ const ProductDetail = () => {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [mainImage, setMainImage] = useState<string>('');
+  const [mainImageAltText, setMainImageAltText] = useState<string>('');
   const { addItem } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
 
@@ -55,6 +55,7 @@ const ProductDetail = () => {
       setProduct(data);
       const imgSrc = data.main_image_url || productImages[data.slug] || monsteraImg;
       setMainImage(imgSrc);
+      setMainImageAltText(data.main_image_alt || data.name);
       fetchRelated(data);
     };
 
@@ -108,7 +109,6 @@ const ProductDetail = () => {
     );
   }
 
-  // B.2: Add logic to generate default SEO content
   const defaultSeoTitle = `${product.name} - ${product.botanical_name || 'Plant'} | Verdant`;
   const defaultMetaDescription = product.description
     ? `Buy the ${product.name} (${product.botanical_name}). ${product.description.substring(0, 100).trim()}... View care guide, price, and customer reviews at Verdant.`
@@ -129,9 +129,15 @@ const ProductDetail = () => {
   const displayPrice = getCurrentPrice();
   const hasDiscount = product.sale_price !== null;
 
-  const handleImageClick = (clickedImage: string) => {
+  const handleImageClick = (clickedImage: string, altIndex: number) => { 
     if (product) {
       setMainImage(clickedImage);
+      // Determine the alt text based on index: 0 is main image, 1+ is gallery (needs alt_texts[index - 1])
+      const altText = altIndex === 0
+        ? product.main_image_alt || product.name
+        : product.gallery_alt_texts?.[altIndex - 1] || `${product.name} gallery image ${altIndex}`;
+
+      setMainImageAltText(altText);
     }
   };
 
@@ -147,7 +153,6 @@ const ProductDetail = () => {
 
   return (
     <div className="min-h-screen pt-24 pb-12">
-      {/* B.3: Render the SEOTags component */}
       <SEOTags title={seoTitle} description={metaDescription} />
       <div className="container mx-auto px-4">
         {/* Breadcrumb */}
@@ -166,7 +171,7 @@ const ProductDetail = () => {
             <div className="aspect-square rounded-2xl overflow-hidden shadow-card">
               <img
                 src={mainImage}
-                alt={product.name}
+                alt={mainImageAltText}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -174,27 +179,30 @@ const ProductDetail = () => {
               <div className="grid grid-cols-4 gap-4">
                 <div
                   className="aspect-square rounded-lg overflow-hidden border-2 border-primary cursor-pointer hover:opacity-80 transition-smooth"
-                  onClick={() => handleImageClick(product.main_image_url || imgSrc)}
+                  onClick={() => handleImageClick(product.main_image_url || imgSrc, 0)}
                 >
                   <img
                     src={product.main_image_url || imgSrc}
-                    alt={`${product.name} main`}
+                    alt={product.main_image_alt || product.name}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                {product.gallery_images.map((image, index) => (
-                  <div
-                    key={index}
-                    className="aspect-square rounded-lg overflow-hidden border border-border cursor-pointer hover:border-primary transition-smooth"
-                    onClick={() => handleImageClick(image)}
-                  >
-                    <img
-                      src={image}
-                      alt={`${product.name} view ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ))}
+                {product.gallery_images.map((image, index) => {
+                  const altText = product.gallery_alt_texts?.[index] || `${product.name} close-up view ${index + 1}`;
+                  return (
+                    <div
+                      key={index}
+                      className="aspect-square rounded-lg overflow-hidden border border-border cursor-pointer hover:border-primary transition-smooth"
+                      onClick={() => handleImageClick(image, index + 1)}
+                    >
+                      <img
+                        src={image}
+                        alt={altText}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  );
+                })}
               </div>
             )}
           </motion.div>
@@ -379,7 +387,7 @@ const ProductDetail = () => {
                       <div className="aspect-square overflow-hidden bg-muted/50">
                         <img
                           src={relatedImgSrc}
-                          alt={relatedProduct.name}
+                          alt={relatedProduct.main_image_alt || relatedProduct.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-smooth"
                         />
                       </div>

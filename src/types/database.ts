@@ -21,14 +21,16 @@ export interface Product {
   category_id: string | null;
   main_image_url: string | null;
   gallery_images: string[] | null;
+  main_image_alt: string | null;
+  gallery_alt_texts: string[] | null; 
+  seo_title: string | null;
+  meta_description: string | null;
   base_price: number;
   sale_price: number | null;
   stock_status: StockStatus;
   status: ProductStatus;
   is_featured: boolean;
   tags: string[] | null;
-  seo_title: string | null; 
-  meta_description: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -41,6 +43,7 @@ export interface ProductVariant {
   price_adjustment: number;
   stock_quantity: number;
   image_url: string | null;
+  image_alt: string | null; 
   created_at: string;
 }
 

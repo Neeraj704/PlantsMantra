@@ -25,6 +25,10 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
   const [mainImagePreview, setMainImagePreview] = useState<string>('');
   const [galleryImages, setGalleryImages] = useState<File[]>([]);
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
+  
+  const [mainImageAlt, setMainImageAlt] = useState<string>('');
+  const [galleryAltTexts, setGalleryAltTexts] = useState<string[]>([]);
+
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -37,7 +41,6 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
     stock_status: 'in_stock',
     status: 'active',
     is_featured: false,
-    // A.1: Add new SEO fields to state
     seo_title: '',
     meta_description: '',
   });
@@ -48,7 +51,6 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
 
   useEffect(() => {
     if (product) {
-      // A.2: Initialize new SEO fields from the product object
       setFormData({
         name: product.name,
         slug: product.slug,
@@ -61,18 +63,21 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
         stock_status: product.stock_status,
         status: product.status,
         is_featured: product.is_featured,
-        seo_title: product.seo_title || '', // New field initialization
-        meta_description: product.meta_description || '', // New field initialization
+        seo_title: product.seo_title || '',
+        meta_description: product.meta_description || '',
       });
       setMainImage(null);
       setMainImagePreview(product.main_image_url || '');
+      setMainImageAlt(product.main_image_alt || '');
+      setGalleryAltTexts(product.gallery_alt_texts || []);
       setGalleryImages([]);
       setGalleryPreviews(product.gallery_images || []);
     } else {
-      // Initialize with empty SEO fields for new product
       setFormData({ name: '', slug: '', botanical_name: '', description: '', care_guide: '', base_price: '', sale_price: '', category_id: '', stock_status: 'in_stock', status: 'active', is_featured: false, seo_title: '', meta_description: '' });
       setMainImage(null);
       setMainImagePreview('');
+      setMainImageAlt('');
+      setGalleryAltTexts([]);
       setGalleryImages([]);
       setGalleryPreviews([]);
     }
@@ -111,11 +116,16 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
     const newPreviews = validImages.map(file => URL.createObjectURL(file));
     setGalleryImages([...galleryImages, ...validImages]);
     setGalleryPreviews([...galleryPreviews, ...newPreviews]);
+    
+    const newAltTexts = validImages.map(() => `${formData.name} - additional view`);
+    setGalleryAltTexts(prev => [...prev, ...newAltTexts]);
   };
 
   const removeGalleryImage = (index: number) => {
     const newGalleryImages = galleryImages.filter((_, i) => i !== index);
     const newGalleryPreviews = galleryPreviews.filter((_, i) => i !== index);
+    const newGalleryAltTexts = galleryAltTexts.filter((_, i) => i !== index);
+    setGalleryAltTexts(newGalleryAltTexts);
     setGalleryImages(newGalleryImages);
     setGalleryPreviews(newGalleryPreviews);
   };
@@ -140,7 +150,9 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
 
     try {
       let mainImageUrl = product?.main_image_url || null;
+      let currentMainImageAlt = mainImageAlt;
       let galleryImageUrls = product?.gallery_images || [];
+      let currentGalleryAltTexts = galleryAltTexts;
 
       // Upload main image if new one selected
       if (mainImage) {
@@ -161,16 +173,21 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
           })
         );
         galleryImageUrls = [...existingUrls, ...uploadedUrls];
+        // Re-aligns alt texts for consistency after upload (simple copy)
+        currentGalleryAltTexts = currentGalleryAltTexts.slice(0, existingUrls.length).concat(Array(uploadedUrls.length).fill(`${formData.name} additional view`));
       } else {
         galleryImageUrls = existingUrls;
       }
+      
+      // Ensure gallery alt texts array length matches image URL array length after removal
+      currentGalleryAltTexts = currentGalleryAltTexts.slice(0, galleryImageUrls.length);
 
       const productData = {
         ...formData,
-        // A.3: Include new SEO fields in productData
         seo_title: formData.seo_title || null,
         meta_description: formData.meta_description || null,
-        // Existing fields mapping
+        main_image_alt: currentMainImageAlt || null,
+        gallery_alt_texts: currentGalleryAltTexts.length > 0 ? currentGalleryAltTexts : null,
         base_price: parseFloat(formData.base_price),
         sale_price: formData.sale_price ? parseFloat(formData.sale_price) : null,
         category_id: formData.category_id || null,
@@ -249,7 +266,7 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
                 <div className="relative inline-block">
                   <img
                     src={mainImagePreview}
-                    alt="Main preview"
+                    alt={mainImageAlt || formData.name || 'Product Image'}
                     className="w-32 h-32 object-cover rounded-lg border"
                   />
                   <Button
@@ -260,6 +277,7 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
                     onClick={() => {
                       setMainImage(null);
                       setMainImagePreview('');
+                      setMainImageAlt('');
                     }}
                   >
                     <X className="h-4 w-4" />
@@ -282,6 +300,24 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
             </div>
           </div>
 
+          {/* Main Image Alt Text Input */}
+          {mainImagePreview && (
+            <div>
+              <Label htmlFor="main_image_alt">Main Image Alt Text *</Label>
+              <Input
+                id="main_image_alt"
+                value={mainImageAlt}
+                onChange={(e) => setMainImageAlt(e.target.value)}
+                maxLength={125}
+                placeholder={`e.g., A lush green ${formData.name} in a terracotta pot`}
+                required
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {mainImageAlt.length}/125 characters. Describe the image for accessibility and search engines.
+              </p>
+            </div>
+          )}
+
           {/* Gallery Images Upload */}
           <div>
             <Label>Gallery Images (Up to 5)</Label>
@@ -290,7 +326,7 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
                 <div key={index} className="relative">
                   <img
                     src={preview}
-                    alt={`Gallery ${index + 1}`}
+                    alt={galleryAltTexts[index] || `${formData.name} image ${index + 2}`}
                     className="w-24 h-24 object-cover rounded-lg border"
                   />
                   <Button
@@ -421,8 +457,6 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
               <Label htmlFor="is_featured">Featured Product</Label>
             </div>
           </div>
-
-          {/* A.4: Add JSX for new SEO fields */}
           <hr />
 
           <h2 className="text-xl font-serif font-bold pt-4">SEO Optimization</h2>
@@ -455,8 +489,6 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
               {formData.meta_description.length}/160 characters.
             </p>
           </div>
-          {/* END: NEW SEO Section */}
-
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>

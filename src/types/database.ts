@@ -1,6 +1,6 @@
 export type ProductStatus = 'active' | 'archived' | 'draft';
 export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';``
+export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
 
 export interface Category {
   id: string;
@@ -27,6 +27,8 @@ export interface Product {
   status: ProductStatus;
   is_featured: boolean;
   tags: string[] | null;
+  seo_title: string | null; 
+  meta_description: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -16,6 +16,8 @@ import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
 import pothosImg from '@/assets/pothos.jpg';
 import fiddleLeafImg from '@/assets/fiddle-leaf.jpg';
+// B.1: Import the new SEOTags component
+import SEOTags from '@/components/SEOTags';
 
 const ProductDetail = () => {
   const { slug } = useParams();
@@ -106,6 +108,15 @@ const ProductDetail = () => {
     );
   }
 
+  // B.2: Add logic to generate default SEO content
+  const defaultSeoTitle = `${product.name} - ${product.botanical_name || 'Plant'} | Verdant`;
+  const defaultMetaDescription = product.description
+    ? `Buy the ${product.name} (${product.botanical_name}). ${product.description.substring(0, 100).trim()}... View care guide, price, and customer reviews at Verdant.`
+    : `Buy the ${product.name} online at Verdant. Premium quality, easy-care plant delivered to your door.`;
+    
+  const seoTitle = product.seo_title || defaultSeoTitle;
+  const metaDescription = product.meta_description || defaultMetaDescription;
+
   const imgSrc = productImages[product.slug] || monsteraImg;
   const isOutOfStock = product.stock_status === 'out_of_stock';
 
@@ -136,6 +147,8 @@ const ProductDetail = () => {
 
   return (
     <div className="min-h-screen pt-24 pb-12">
+      {/* B.3: Render the SEOTags component */}
+      <SEOTags title={seoTitle} description={metaDescription} />
       <div className="container mx-auto px-4">
         {/* Breadcrumb */}
         <Link to="/shop" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-8 transition-smooth">

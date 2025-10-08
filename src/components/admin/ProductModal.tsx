@@ -37,39 +37,46 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
     stock_status: 'in_stock',
     status: 'active',
     is_featured: false,
+    // A.1: Add new SEO fields to state
+    seo_title: '',
+    meta_description: '',
   });
 
   useEffect(() => {
     fetchCategories();
   }, []);
 
-  useEffect(() => {
-    if (product) {
-      setFormData({
-        name: product.name,
-        slug: product.slug,
-        botanical_name: product.botanical_name || '',
-        description: product.description || '',
-        care_guide: product.care_guide || '',
-        base_price: product.base_price.toString(),
-        sale_price: product.sale_price?.toString() || '',
-        category_id: product.category_id || '',
-        stock_status: product.stock_status,
-        status: product.status,
-        is_featured: product.is_featured,
-      });
-      setMainImage(null);
-      setMainImagePreview(product.main_image_url || '');
-      setGalleryImages([]);
-      setGalleryPreviews(product.gallery_images || []);
-    } else {
-      setFormData({ name: '', slug: '', botanical_name: '', description: '', care_guide: '', base_price: '', sale_price: '', category_id: '', stock_status: 'in_stock', status: 'active', is_featured: false });
+  useEffect(() => {
+    if (product) {
+      // A.2: Initialize new SEO fields from the product object
+      setFormData({
+        name: product.name,
+        slug: product.slug,
+        botanical_name: product.botanical_name || '',
+        description: product.description || '',
+        care_guide: product.care_guide || '',
+        base_price: product.base_price.toString(),
+        sale_price: product.sale_price?.toString() || '',
+        category_id: product.category_id || '',
+        stock_status: product.stock_status,
+        status: product.status,
+        is_featured: product.is_featured,
+        seo_title: product.seo_title || '', // New field initialization
+        meta_description: product.meta_description || '', // New field initialization
+      });
       setMainImage(null);
-      setMainImagePreview('');
-      setGalleryImages([]);
-      setGalleryPreviews([]);
-    }
-  }, [product]);
+      setMainImagePreview(product.main_image_url || '');
+      setGalleryImages([]);
+      setGalleryPreviews(product.gallery_images || []);
+    } else {
+      // Initialize with empty SEO fields for new product
+      setFormData({ name: '', slug: '', botanical_name: '', description: '', care_guide: '', base_price: '', sale_price: '', category_id: '', stock_status: 'in_stock', status: 'active', is_featured: false, seo_title: '', meta_description: '' });
+      setMainImage(null);
+      setMainImagePreview('');
+      setGalleryImages([]);
+      setGalleryPreviews([]);
+    }
+  }, [product]);
 
   const fetchCategories = async () => {
     const { data } = await supabase.from('categories').select('*');
@@ -160,6 +167,10 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
 
       const productData = {
         ...formData,
+        // A.3: Include new SEO fields in productData
+        seo_title: formData.seo_title || null,
+        meta_description: formData.meta_description || null,
+        // Existing fields mapping
         base_price: parseFloat(formData.base_price),
         sale_price: formData.sale_price ? parseFloat(formData.sale_price) : null,
         category_id: formData.category_id || null,
@@ -410,6 +421,42 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
               <Label htmlFor="is_featured">Featured Product</Label>
             </div>
           </div>
+
+          {/* A.4: Add JSX for new SEO fields */}
+          <hr />
+
+          <h2 className="text-xl font-serif font-bold pt-4">SEO Optimization</h2>
+
+          <div>
+            <Label htmlFor="seo_title">SEO Title (max 60 chars)</Label>
+            <Input
+              id="seo_title"
+              value={formData.seo_title}
+              onChange={(e) => setFormData({ ...formData, seo_title: e.target.value })}
+              maxLength={60}
+              placeholder={`${formData.name} | Verdant`}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              {formData.seo_title.length}/60 characters.
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="meta_description">Meta Description (max 160 chars)</Label>
+            <Textarea
+              id="meta_description"
+              value={formData.meta_description}
+              onChange={(e) => setFormData({ ...formData, meta_description: e.target.value })}
+              maxLength={160}
+              rows={2}
+              placeholder={`Buy the beautiful ${formData.name} online at Verdant. Perfect for indoor spaces...`}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              {formData.meta_description.length}/160 characters.
+            </p>
+          </div>
+          {/* END: NEW SEO Section */}
+
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>

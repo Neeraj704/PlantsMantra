@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, Search, Menu, X, Leaf, User, Heart } from 'lucide-react';
+import { ShoppingCart, Search, Menu, X, User, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWishlist } from '@/hooks/useWishlist';
 import { motion, AnimatePresence } from 'framer-motion';
+import logo from '@/assets/logo.png';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -40,15 +41,12 @@ const Navbar = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className={`p-2 rounded-lg transition-smooth group-hover:scale-105 ${
-              isHomePage && !isScrolled 
-                ? 'bg-white/20 text-white' 
-                : 'bg-primary text-primary-foreground'
-            }`}>
-              <Leaf className="w-5 h-5 md:w-6 md:h-6" />
-            </div>
-            <span className="text-xl md:text-2xl font-serif font-bold">Verdant</span>
+          <Link to="/" className="flex items-center group">
+            <img 
+              src={logo} 
+              alt="Verdant Logo" 
+              className="h-10 md:h-12 w-auto transition-smooth group-hover:scale-105"
+            />
           </Link>
 
           {/* Desktop Navigation */}

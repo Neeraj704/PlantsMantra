@@ -276,8 +276,10 @@ export type Database = {
           discount_amount: number | null
           id: string
           payment_intent_id: string | null
+          payment_method: string | null
           payment_status: string | null
           shipping_address: Json
+          shipping_cost: number | null
           status: Database["public"]["Enums"]["order_status"] | null
           subtotal: number
           total: number
@@ -296,8 +298,10 @@ export type Database = {
           discount_amount?: number | null
           id?: string
           payment_intent_id?: string | null
+          payment_method?: string | null
           payment_status?: string | null
           shipping_address: Json
+          shipping_cost?: number | null
           status?: Database["public"]["Enums"]["order_status"] | null
           subtotal: number
           total: number
@@ -316,8 +320,10 @@ export type Database = {
           discount_amount?: number | null
           id?: string
           payment_intent_id?: string | null
+          payment_method?: string | null
           payment_status?: string | null
           shipping_address?: Json
+          shipping_cost?: number | null
           status?: Database["public"]["Enums"]["order_status"] | null
           subtotal?: number
           total?: number
@@ -331,6 +337,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          image_alt: string | null
           image_url: string | null
           name: string
           price_adjustment: number | null
@@ -341,6 +348,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          image_alt?: string | null
           image_url?: string | null
           name: string
           price_adjustment?: number | null
@@ -351,6 +359,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          image_alt?: string | null
           image_url?: string | null
           name?: string
           price_adjustment?: number | null
@@ -376,12 +385,16 @@ export type Database = {
           category_id: string | null
           created_at: string | null
           description: string | null
+          gallery_alt_texts: string[] | null
           gallery_images: string[] | null
           id: string
           is_featured: boolean | null
+          main_image_alt: string | null
           main_image_url: string | null
+          meta_description: string | null
           name: string
           sale_price: number | null
+          seo_title: string | null
           slug: string
           status: Database["public"]["Enums"]["product_status"] | null
           stock_status: Database["public"]["Enums"]["stock_status"] | null
@@ -395,12 +408,16 @@ export type Database = {
           category_id?: string | null
           created_at?: string | null
           description?: string | null
+          gallery_alt_texts?: string[] | null
           gallery_images?: string[] | null
           id?: string
           is_featured?: boolean | null
+          main_image_alt?: string | null
           main_image_url?: string | null
+          meta_description?: string | null
           name: string
           sale_price?: number | null
+          seo_title?: string | null
           slug: string
           status?: Database["public"]["Enums"]["product_status"] | null
           stock_status?: Database["public"]["Enums"]["stock_status"] | null
@@ -414,12 +431,16 @@ export type Database = {
           category_id?: string | null
           created_at?: string | null
           description?: string | null
+          gallery_alt_texts?: string[] | null
           gallery_images?: string[] | null
           id?: string
           is_featured?: boolean | null
+          main_image_alt?: string | null
           main_image_url?: string | null
+          meta_description?: string | null
           name?: string
           sale_price?: number | null
+          seo_title?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["product_status"] | null
           stock_status?: Database["public"]["Enums"]["stock_status"] | null
@@ -435,6 +456,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {

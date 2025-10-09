@@ -19,7 +19,7 @@ const Home = () => {
       const { data, error } = await supabase
         .from('categories')
         .select('*')
-        .limit(6);
+        .limit(4);
       if (error) throw error;
       return data;
     },
@@ -163,7 +163,7 @@ const Home = () => {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {categories?.map((category, index) => (
             <motion.div
               key={category.id}
@@ -174,12 +174,12 @@ const Home = () => {
             >
               <Link to={`/shop?category=${category.slug}`}>
                 <Card className="hover:shadow-hover transition-smooth overflow-hidden group cursor-pointer">
-                  <CardContent className="p-6 text-center">
-                    <div className="text-4xl mb-3 group-hover:scale-110 transition-smooth">
-                      {index % 6 === 0 ? '🌿' : index % 6 === 1 ? '🐾' : index % 6 === 2 ? '🌬️' : index % 6 === 3 ? '🌸' : index % 6 === 4 ? '✨' : '🌵'}
+                  <CardContent className="p-8 text-center">
+                    <div className="text-5xl mb-4 group-hover:scale-110 transition-smooth">
+                      {index === 0 ? '🌿' : index === 1 ? '🌵' : index === 2 ? '🐍' : '🌱'}
                     </div>
-                    <h3 className="font-serif font-semibold mb-1">{category.name}</h3>
-                    <p className="text-xs text-muted-foreground">{category.description}</p>
+                    <h3 className="font-serif font-semibold text-lg mb-2">{category.name}</h3>
+                    <p className="text-sm text-muted-foreground">{category.description}</p>
                   </CardContent>
                 </Card>
               </Link>

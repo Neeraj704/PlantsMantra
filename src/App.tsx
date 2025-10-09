@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartSync } from "@/components/CartSync";
+import { ScrollToTop } from "@/components/ScrollToTop";
 import Layout from "./components/Layout";
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminRoute from "./components/AdminRoute";
@@ -20,6 +21,12 @@ import Checkout from "./pages/Checkout";
 import CareGuides from "./pages/CareGuides";
 import Contact from "./pages/Contact";
 import About from "./pages/About";
+import ShippingInfo from "./pages/ShippingInfo";
+import Returns from "./pages/Returns";
+import FAQ from "./pages/FAQ";
+import Guarantee from "./pages/Guarantee";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 import AdminAuth from "./pages/admin/AdminAuth";
 import Dashboard from "./pages/admin/Dashboard";
 import Products from "./pages/admin/Products";
@@ -40,6 +47,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <ScrollToTop />
           <CartSync />
           <Routes>
             {/* Public Routes */}
@@ -56,6 +64,12 @@ const App = () => (
               <Route path="/care-guides" element={<CareGuides />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/about" element={<About />} />
+              <Route path="/shipping" element={<ShippingInfo />} />
+              <Route path="/returns" element={<Returns />} />
+              <Route path="/faq" element={<FAQ />} />
+              <Route path="/guarantee" element={<Guarantee />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<TermsOfService />} />
             </Route>
 
             {/* Admin Routes */}

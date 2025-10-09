@@ -462,16 +462,16 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
           <h2 className="text-xl font-serif font-bold pt-4">SEO Optimization</h2>
 
           <div>
-            <Label htmlFor="seo_title">SEO Title (max 60 chars)</Label>
+            <Label htmlFor="seo_title">SEO Title (max 100 chars)</Label>
             <Input
               id="seo_title"
               value={formData.seo_title}
               onChange={(e) => setFormData({ ...formData, seo_title: e.target.value })}
-              maxLength={60}
+              maxLength={100}
               placeholder={`${formData.name} | Verdant`}
             />
             <p className="text-xs text-muted-foreground mt-1">
-              {formData.seo_title.length}/60 characters.
+              {formData.seo_title.length}/100 characters.
             </p>
           </div>
 

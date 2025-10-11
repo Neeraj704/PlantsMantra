@@ -10,14 +10,14 @@ const FAQ = () => {
   return (
     <>
       <SEOTags
-        title="Frequently Asked Questions | Verdant"
+        title="Frequently Asked Questions | PlantsMantra"
         description="Find answers to common questions about ordering plants, care instructions, shipping, and more."
       />
       <div className="pt-24 pb-16 min-h-screen bg-gradient-to-b from-muted/30 to-background">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-4xl md:text-5xl font-serif font-bold mb-4">Frequently Asked Questions</h1>
-            <p className="text-lg text-muted-foreground mb-12">Everything you need to know about Verdant</p>
+            <p className="text-lg text-muted-foreground mb-12">Everything you need to know about PlantsMantra</p>
             
             <div className="bg-card p-8 rounded-2xl border shadow-sm">
               <Accordion type="single" collapsible className="space-y-4">

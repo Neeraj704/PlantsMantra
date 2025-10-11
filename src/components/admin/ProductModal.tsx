@@ -468,7 +468,7 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
               value={formData.seo_title}
               onChange={(e) => setFormData({ ...formData, seo_title: e.target.value })}
               maxLength={100}
-              placeholder={`${formData.name} | Verdant`}
+              placeholder={`${formData.name} | PlantsMantra`}
             />
             <p className="text-xs text-muted-foreground mt-1">
               {formData.seo_title.length}/100 characters.
@@ -483,7 +483,7 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
               onChange={(e) => setFormData({ ...formData, meta_description: e.target.value })}
               maxLength={160}
               rows={2}
-              placeholder={`Buy the beautiful ${formData.name} online at Verdant. Perfect for indoor spaces...`}
+              placeholder={`Buy the beautiful ${formData.name} online at PlantsMantra. Perfect for indoor spaces...`}
             />
             <p className="text-xs text-muted-foreground mt-1">
               {formData.meta_description.length}/160 characters.

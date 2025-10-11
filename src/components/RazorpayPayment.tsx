@@ -98,7 +98,7 @@ export const RazorpayPayment = ({
         key: orderData.key,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: 'Verdant',
+        name: 'PlantsMantra',
         description: `Order ID: ${orderId.slice(0, 8)}`,
         order_id: orderData.razorpayOrderId,
         handler: async (response: any) => {

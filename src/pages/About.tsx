@@ -36,7 +36,7 @@ const About = () => {
         >
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-serif font-bold mb-4">About Verdant</h1>
+            <h1 className="text-4xl md:text-5xl font-serif font-bold mb-4">About PlantsMantra</h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Bringing the beauty of nature into your home, one plant at a time
             </p>
@@ -54,7 +54,7 @@ const About = () => {
                 <h2 className="text-2xl font-serif font-bold mb-4">Our Story</h2>
                 <div className="space-y-4 text-muted-foreground">
                   <p>
-                    Verdant was born from a simple belief: everyone deserves to experience the joy and benefits of living with plants. Founded in 2020, we started as a small local nursery with a big vision—to make plant ownership accessible, enjoyable, and sustainable for everyone.
+                    Plants Mantra was born from a simple belief: everyone deserves to experience the joy and benefits of living with plants. Founded in 2020, we started as a small local nursery with a big vision—to make plant ownership accessible, enjoyable, and sustainable for everyone.
                   </p>
                   <p>
                     What began as weekend plant sales has blossomed into a thriving online community of over 50,000 plant parents. We've carefully curated our collection to include only the healthiest, most beautiful specimens, each one handpicked and nurtured by our team of expert horticulturists.

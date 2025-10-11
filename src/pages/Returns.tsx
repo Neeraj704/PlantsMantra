@@ -4,7 +4,7 @@ const Returns = () => {
   return (
     <>
       <SEOTags
-        title="Returns & Exchanges | Verdant"
+        title="Returns & Exchanges | PlantsMantra"
         description="Learn about our return and exchange policy for plants and plant products."
       />
       <div className="pt-24 pb-16 min-h-screen bg-gradient-to-b from-muted/30 to-background">

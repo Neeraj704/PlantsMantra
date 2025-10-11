@@ -4,8 +4,8 @@ const TermsOfService = () => {
   return (
     <>
       <SEOTags
-        title="Terms of Service | Verdant"
-        description="Read our terms and conditions for using Verdant's services and purchasing plants."
+        title="Terms of Service | PlantsMantra"
+        description="Read our terms and conditions for using PlantsMantra's services and purchasing plants."
       />
       <div className="pt-24 pb-16 min-h-screen bg-gradient-to-b from-muted/30 to-background">
         <div className="container mx-auto px-4">
@@ -20,14 +20,14 @@ const TermsOfService = () => {
               <div className="bg-card p-8 rounded-2xl border shadow-sm">
                 <h2 className="text-2xl font-serif font-semibold mb-4">Agreement to Terms</h2>
                 <p className="text-muted-foreground">
-                  By accessing and using Verdant's website, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any of these terms, you are prohibited from using this site.
+                  By accessing and using PlantsMantra's website, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any of these terms, you are prohibited from using this site.
                 </p>
               </div>
 
               <div className="bg-card p-8 rounded-2xl border shadow-sm">
                 <h2 className="text-2xl font-serif font-semibold mb-4">Use License</h2>
                 <p className="text-muted-foreground">
-                  Permission is granted to temporarily access the materials on Verdant's website for personal, non-commercial use only. This license shall automatically terminate if you violate any of these restrictions.
+                  Permission is granted to temporarily access the materials on PlantsMantra's website for personal, non-commercial use only. This license shall automatically terminate if you violate any of these restrictions.
                 </p>
               </div>
 
@@ -131,7 +131,7 @@ const TermsOfService = () => {
               <div className="bg-card p-8 rounded-2xl border shadow-sm">
                 <h2 className="text-2xl font-serif font-semibold mb-4">Intellectual Property</h2>
                 <p className="text-muted-foreground">
-                  All content on this website, including text, graphics, logos, images, and software, is the property of Verdant and protected by copyright laws. Unauthorized use is prohibited.
+                  All content on this website, including text, graphics, logos, images, and software, is the property of PlantsMantra and protected by copyright laws. Unauthorized use is prohibited.
                 </p>
               </div>
 

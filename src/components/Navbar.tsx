@@ -44,7 +44,7 @@ const Navbar = () => {
           <Link to="/" className="flex items-center group">
             <img 
               src={logo} 
-              alt="Verdant Logo" 
+              alt="PlantsMantra Logo" 
               className="h-10 md:h-12 w-auto transition-smooth group-hover:scale-105"
             />
           </Link>

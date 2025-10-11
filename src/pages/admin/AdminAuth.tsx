@@ -98,7 +98,7 @@ const AdminAuth = () => {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="admin@verdant.com"
+                    placeholder="admin@plantsmantra.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required

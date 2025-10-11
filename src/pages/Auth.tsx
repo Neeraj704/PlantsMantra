@@ -85,7 +85,7 @@ const Auth = () => {
         >
           <div className="text-center mb-8">
             <Leaf className="w-12 h-12 mx-auto mb-4 text-primary" />
-            <h1 className="text-3xl font-serif font-bold mb-2">Welcome to Verdant</h1>
+            <h1 className="text-3xl font-serif font-bold mb-2">Welcome to Plants Mantra</h1>
             <p className="text-muted-foreground">Your Urban Jungle, Delivered</p>
           </div>
 

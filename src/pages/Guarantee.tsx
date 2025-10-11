@@ -5,7 +5,7 @@ const Guarantee = () => {
   return (
     <>
       <SEOTags
-        title="7-Day Guarantee | Verdant"
+        title="7-Day Guarantee | PlantsMantra"
         description="Our commitment to quality - all plants come with a 7-day health guarantee."
       />
       <div className="pt-24 pb-16 min-h-screen bg-gradient-to-b from-muted/30 to-background">

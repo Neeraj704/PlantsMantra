@@ -4,7 +4,7 @@ const PrivacyPolicy = () => {
   return (
     <>
       <SEOTags
-        title="Privacy Policy | Verdant"
+        title="Privacy Policy | PlantsMantra"
         description="Learn how we collect, use, and protect your personal information."
       />
       <div className="pt-24 pb-16 min-h-screen bg-gradient-to-b from-muted/30 to-background">
@@ -20,7 +20,7 @@ const PrivacyPolicy = () => {
               <div className="bg-card p-8 rounded-2xl border shadow-sm">
                 <h2 className="text-2xl font-serif font-semibold mb-4">Introduction</h2>
                 <p className="text-muted-foreground">
-                  At Verdant, we respect your privacy and are committed to protecting your personal data. This privacy policy explains how we collect, use, and safeguard your information when you visit our website or make a purchase.
+                  At Plants Mantra, we respect your privacy and are committed to protecting your personal data. This privacy policy explains how we collect, use, and safeguard your information when you visit our website or make a purchase.
                 </p>
               </div>
 

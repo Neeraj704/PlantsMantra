@@ -131,7 +131,7 @@ const Contact = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold mb-1">Email Us</h3>
-                      <p className="text-sm text-muted-foreground">support@verdant.com</p>
+                      <p className="text-sm text-muted-foreground">support@plantsmantra.com</p>
                       <p className="text-sm text-muted-foreground">We reply within 24 hours</p>
                     </div>
                   </div>

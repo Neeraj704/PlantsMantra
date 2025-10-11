@@ -109,10 +109,10 @@ const ProductDetail = () => {
     );
   }
 
-  const defaultSeoTitle = `${product.name} - ${product.botanical_name || 'Plant'} | Verdant`;
+  const defaultSeoTitle = `${product.name} - ${product.botanical_name || 'Plant'} | Plants Mantra`;
   const defaultMetaDescription = product.description
-    ? `Buy the ${product.name} (${product.botanical_name}). ${product.description.substring(0, 100).trim()}... View care guide, price, and customer reviews at Verdant.`
-    : `Buy the ${product.name} online at Verdant. Premium quality, easy-care plant delivered to your door.`;
+    ? `Buy the ${product.name} (${product.botanical_name}). ${product.description.substring(0, 100).trim()}... View care guide, price, and customer reviews at PlantsMantra.`
+    : `Buy the ${product.name} online at PlantsMantra. Premium quality, easy-care plant delivered to your door.`;
     
   const seoTitle = product.seo_title || defaultSeoTitle;
   const metaDescription = product.meta_description || defaultMetaDescription;

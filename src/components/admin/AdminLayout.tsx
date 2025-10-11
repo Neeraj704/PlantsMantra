@@ -53,7 +53,7 @@ const AdminLayout = () => {
             </Button>
             <Link to="/admin" className="flex items-center gap-2">
               <Leaf className="w-6 h-6 text-primary" />
-              <span className="text-xl font-serif font-bold">Verdant Admin</span>
+              <span className="text-xl font-serif font-bold">PlantsMantra Admin</span>
             </Link>
           </div>
           <div className="flex items-center gap-4">

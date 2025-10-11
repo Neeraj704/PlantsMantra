@@ -20,7 +20,7 @@ const SEOTags = ({ title, description }: SEOTagsProps) => {
     const originalTitle = document.title;
     // Save original description content for fallback/reset
     const metaDescriptionTag = document.querySelector('meta[name="description"]');
-    const originalDescription = metaDescriptionTag?.getAttribute('content') || "Verdant - Your Urban Jungle, Delivered. Premium indoor and outdoor plants delivered to your door.";
+    const originalDescription = metaDescriptionTag?.getAttribute('content') || "PlantsMantra - Your Urban Jungle, Delivered. Premium indoor and outdoor plants delivered to your door.";
     
     // Set Dynamic Title (if provided)
     if (title) {

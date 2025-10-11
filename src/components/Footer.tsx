@@ -15,7 +15,7 @@ const Footer = () => {
             <Link to="/" className="flex items-center group mb-5">
               <img 
                 src={logo} 
-                alt="Verdant Logo" 
+                alt="PlantsMantra Logo" 
                 className="h-10 md:h-12 w-auto transition-smooth group-hover:scale-105"
               />
             </Link>
@@ -125,7 +125,7 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © 2025 Verdant. All rights reserved.
+            © 2025 PlantsMantra. All rights reserved.
           </p>
           <div className="flex gap-6">
             <Link to="/privacy" className="text-sm text-muted-foreground hover:text-primary transition-smooth">

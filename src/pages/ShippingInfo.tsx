@@ -4,7 +4,7 @@ const ShippingInfo = () => {
   return (
     <>
       <SEOTags
-        title="Shipping Information | Verdant"
+        title="Shipping Information | PlantsMantra"
         description="Learn about our shipping policies, delivery times, and rates for plant orders."
       />
       <div className="pt-24 pb-16 min-h-screen bg-gradient-to-b from-muted/30 to-background">

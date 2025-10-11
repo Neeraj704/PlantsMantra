@@ -316,7 +316,7 @@ export const useCart = create<CartStore>()(
       },
     }),
     {
-      name: 'verdant-cart',
+      name: 'plantsmantra-cart',
     }
   )
 );

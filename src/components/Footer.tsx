@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Leaf, Instagram, Facebook, Twitter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import logo from '@/assets/logo.png';
 
 const Footer = () => {
   return (
@@ -10,11 +11,13 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           {/* Brand */}
           <div>
-            <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="bg-primary text-primary-foreground p-2 rounded-lg">
-                <Leaf className="w-5 h-5" />
-              </div>
-              <span className="text-xl font-serif font-bold">Verdant</span>
+            {/* Logo */}
+            <Link to="/" className="flex items-center group mb-5">
+              <img 
+                src={logo} 
+                alt="Verdant Logo" 
+                className="h-10 md:h-12 w-auto transition-smooth group-hover:scale-105"
+              />
             </Link>
             <p className="text-sm text-muted-foreground mb-4">
               Your Urban Jungle, Delivered. Premium plants for every space and every soul.

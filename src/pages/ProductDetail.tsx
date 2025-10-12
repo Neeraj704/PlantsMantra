@@ -17,6 +17,7 @@ import snakePlantImg from '@/assets/snake-plant.jpg';
 import pothosImg from '@/assets/pothos.jpg';
 import fiddleLeafImg from '@/assets/fiddle-leaf.jpg';
 import SEOTags from '@/components/SEOTags';
+import { toast, Toaster } from 'react-hot-toast';
 
 const ProductDetail = () => {
   const { slug } = useParams();
@@ -29,8 +30,14 @@ const ProductDetail = () => {
   const [mainImageAltText, setMainImageAltText] = useState<string>('');
   const { addItem } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
-
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+
+  const productImages: Record<string, string> = {
+    'monstera-deliciosa': monsteraImg,
+    'snake-plant': snakePlantImg,
+    'pothos': pothosImg,
+    'fiddle-leaf-fig': fiddleLeafImg,
+  };
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -94,13 +101,6 @@ const ProductDetail = () => {
     fetchVariants();
   }, [slug]);
 
-  const productImages: Record<string, string> = {
-    'monstera-deliciosa': monsteraImg,
-    'snake-plant': snakePlantImg,
-    'pothos': pothosImg,
-    'fiddle-leaf-fig': fiddleLeafImg,
-  };
-
   if (!product) {
     return (
       <div className="min-h-screen pt-24 flex items-center justify-center">
@@ -132,11 +132,9 @@ const ProductDetail = () => {
   const handleImageClick = (clickedImage: string, altIndex: number) => { 
     if (product) {
       setMainImage(clickedImage);
-      // Determine the alt text based on index: 0 is main image, 1+ is gallery (needs alt_texts[index - 1])
       const altText = altIndex === 0
         ? product.main_image_alt || product.name
         : product.gallery_alt_texts?.[altIndex - 1] || `${product.name} gallery image ${altIndex}`;
-
       setMainImageAltText(altText);
     }
   };
@@ -151,11 +149,37 @@ const ProductDetail = () => {
     }
   };
 
+  // --- SHARE BUTTON LOGIC ---
+  const handleShare = async () => {
+    const shareData = {
+      title: product?.name || 'Check this out!',
+      text: product?.description?.substring(0, 100) || 'Check this product!',
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        console.log('Content shared successfully');
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success('Link copied to clipboard!');
+      } catch (err) {
+        console.error('Failed to copy:', err);
+        alert('Could not copy link. Please copy manually.');
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen pt-24 pb-12">
       <SEOTags title={seoTitle} description={metaDescription} />
+      <Toaster position="top-right" />
       <div className="container mx-auto px-4">
-        {/* Breadcrumb */}
         <Link to="/shop" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-8 transition-smooth">
           <ChevronLeft className="w-4 h-4 mr-1" />
           Back to Shop
@@ -163,17 +187,9 @@ const ProductDetail = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
           {/* Image Gallery */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="space-y-4"
-          >
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
             <div className="aspect-square rounded-2xl overflow-hidden shadow-card">
-              <img
-                src={mainImage}
-                alt={mainImageAltText}
-                className="w-full h-full object-cover"
-              />
+              <img src={mainImage} alt={mainImageAltText} className="w-full h-full object-cover" />
             </div>
             {product.gallery_images && product.gallery_images.length > 0 && (
               <div className="grid grid-cols-4 gap-4">
@@ -181,11 +197,7 @@ const ProductDetail = () => {
                   className="aspect-square rounded-lg overflow-hidden border-2 border-primary cursor-pointer hover:opacity-80 transition-smooth"
                   onClick={() => handleImageClick(product.main_image_url || imgSrc, 0)}
                 >
-                  <img
-                    src={product.main_image_url || imgSrc}
-                    alt={product.main_image_alt || product.name}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={product.main_image_url || imgSrc} alt={product.main_image_alt || product.name} className="w-full h-full object-cover" />
                 </div>
                 {product.gallery_images.map((image, index) => {
                   const altText = product.gallery_alt_texts?.[index] || `${product.name} close-up view ${index + 1}`;
@@ -195,11 +207,7 @@ const ProductDetail = () => {
                       className="aspect-square rounded-lg overflow-hidden border border-border cursor-pointer hover:border-primary transition-smooth"
                       onClick={() => handleImageClick(image, index + 1)}
                     >
-                      <img
-                        src={image}
-                        alt={altText}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={image} alt={altText} className="w-full h-full object-cover" />
                     </div>
                   );
                 })}
@@ -208,37 +216,20 @@ const ProductDetail = () => {
           </motion.div>
 
           {/* Product Info */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
             <div className="mb-4">
-              {hasDiscount && (
-                <Badge variant="destructive" className="mb-2">On Sale</Badge>
-              )}
-              {product.stock_status === 'low_stock' && (
-                <Badge variant="secondary" className="mb-2 ml-2">Low Stock</Badge>
-              )}
+              {hasDiscount && <Badge variant="destructive" className="mb-2">On Sale</Badge>}
+              {product.stock_status === 'low_stock' && <Badge variant="secondary" className="mb-2 ml-2">Low Stock</Badge>}
             </div>
 
-            <h1 className="text-3xl md:text-4xl font-serif font-bold mb-2">
-              {product.name}
-            </h1>
-            
-            {product.botanical_name && (
-              <p className="text-muted-foreground italic mb-4">{product.botanical_name}</p>
-            )}
+            <h1 className="text-3xl md:text-4xl font-serif font-bold mb-2">{product.name}</h1>
+            {product.botanical_name && <p className="text-muted-foreground italic mb-4">{product.botanical_name}</p>}
 
             <div className="flex items-baseline gap-3 mb-4">
               <span className="text-3xl font-bold">₹{displayPrice.toFixed(2)}</span>
-              {hasDiscount && !selectedVariant && (
-                <span className="text-xl text-muted-foreground line-through">
-                  ₹{product.base_price.toFixed(2)}
-                </span>
-              )}
+              {hasDiscount && !selectedVariant && <span className="text-xl text-muted-foreground line-through">₹{product.base_price.toFixed(2)}</span>}
             </div>
 
-            {/* Variant Selection */}
             {variants.length > 0 && (
               <div className="mb-6">
                 <Label className="text-base mb-3 block">Select Size</Label>
@@ -252,10 +243,7 @@ const ProductDetail = () => {
                     >
                       {variant.name}
                       {variant.price_adjustment !== 0 && (
-                        <span className="ml-1 text-xs">
-                          ({variant.price_adjustment > 0 ? '+' : ''}
-                          ₹{variant.price_adjustment.toFixed(2)})
-                        </span>
+                        <span className="ml-1 text-xs">({variant.price_adjustment > 0 ? '+' : ''}₹{variant.price_adjustment.toFixed(2)})</span>
                       )}
                     </Button>
                   ))}
@@ -267,70 +255,34 @@ const ProductDetail = () => {
 
             <div className="mb-6">
               <h3 className="font-semibold mb-2">Stock Status</h3>
-              <Badge
-                variant={
-                  product.stock_status === 'in_stock'
-                    ? 'default'
-                    : product.stock_status === 'low_stock'
-                    ? 'secondary'
-                    : 'destructive'
-                }
-              >
-                {product.stock_status === 'in_stock'
-                  ? 'In Stock'
-                  : product.stock_status === 'low_stock'
-                  ? 'Low Stock'
-                  : 'Out of Stock'}
+              <Badge variant={product.stock_status === 'in_stock' ? 'default' : product.stock_status === 'low_stock' ? 'secondary' : 'destructive'}>
+                {product.stock_status === 'in_stock' ? 'In Stock' : product.stock_status === 'low_stock' ? 'Low Stock' : 'Out of Stock'}
               </Badge>
             </div>
 
             <div className="flex items-center gap-4 mb-6">
               <div className="flex items-center border border-border rounded-lg">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  disabled={isOutOfStock}
-                >
-                  -
-                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={isOutOfStock}>-</Button>
                 <span className="px-4 py-2 min-w-[3rem] text-center">{quantity}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setQuantity(quantity + 1)}
-                  disabled={isOutOfStock}
-                >
-                  +
-                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setQuantity(quantity + 1)} disabled={isOutOfStock}>+</Button>
               </div>
             </div>
 
             <div className="flex gap-3 mb-6">
-              <Button
-                size="lg"
-                className="flex-1 gradient-hero"
-                onClick={handleAddToCart}
-                disabled={isOutOfStock}
-              >
+              <Button size="lg" className="flex-1 gradient-hero" onClick={handleAddToCart} disabled={isOutOfStock}>
                 <ShoppingCart className="w-5 h-5 mr-2" />
                 Add to Cart
               </Button>
-              <Button 
-                size="lg" 
-                variant={isInWishlist(product.id) ? 'default' : 'outline'}
-                onClick={handleWishlistToggle}
-              >
+              <Button size="lg" variant={isInWishlist(product.id) ? 'default' : 'outline'} onClick={handleWishlistToggle}>
                 <Heart className={`w-5 h-5 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
               </Button>
-              <Button size="lg" variant="outline">
+              <Button size="lg" variant="outline" onClick={handleShare}>
                 <Share2 className="w-5 h-5" />
               </Button>
             </div>
 
             <Separator className="my-6" />
 
-            {/* Product Details */}
             <Tabs defaultValue="description" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="description">Description</TabsTrigger>
@@ -339,15 +291,11 @@ const ProductDetail = () => {
               </TabsList>
               
               <TabsContent value="description" className="mt-4">
-                <p className="text-muted-foreground leading-relaxed">
-                  {product.description || 'No description available.'}
-                </p>
+                <p className="text-muted-foreground leading-relaxed">{product.description || 'No description available.'}</p>
               </TabsContent>
               
               <TabsContent value="care" className="mt-4">
-                <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                  {product.care_guide || 'Care guide coming soon.'}
-                </p>
+                <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{product.care_guide || 'Care guide coming soon.'}</p>
               </TabsContent>
               
               <TabsContent value="details" className="mt-4">
@@ -358,9 +306,7 @@ const ProductDetail = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Tags</span>
-                    <span className="font-medium">
-                      {product.tags?.join(', ') || 'N/A'}
-                    </span>
+                    <span className="font-medium">{product.tags?.join(', ') || 'N/A'}</span>
                   </div>
                 </div>
               </TabsContent>
@@ -368,47 +314,27 @@ const ProductDetail = () => {
           </motion.div>
         </div>
 
-        {/* Related Products */}
         {relatedProducts && relatedProducts.length > 0 && (
           <section>
-            <h2 className="text-2xl md:text-3xl font-serif font-bold mb-8">
-              You May Also Like
-            </h2>
+            <h2 className="text-2xl md:text-3xl font-serif font-bold mb-8">You May Also Like</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {relatedProducts.map((relatedProduct) => {
                 const relatedImgSrc = relatedProduct.main_image_url || productImages[relatedProduct.slug] || monsteraImg;
-                const relatedDisplayPrice =
-                  relatedProduct.sale_price || relatedProduct.base_price;
+                const relatedDisplayPrice = relatedProduct.sale_price || relatedProduct.base_price;
                 const relatedHasDiscount = relatedProduct.sale_price !== null;
 
                 return (
                   <Link key={relatedProduct.id} to={`/product/${relatedProduct.slug}`}>
                     <Card className="overflow-hidden group cursor-pointer hover:shadow-hover transition-smooth">
                       <div className="aspect-square overflow-hidden bg-muted/50">
-                        <img
-                          src={relatedImgSrc}
-                          alt={relatedProduct.main_image_alt || relatedProduct.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-smooth"
-                        />
+                        <img src={relatedImgSrc} alt={relatedProduct.main_image_alt || relatedProduct.name} className="w-full h-full object-cover group-hover:scale-105 transition-smooth" />
                       </div>
                       <CardContent className="p-4">
-                        {relatedHasDiscount && (
-                          <Badge variant="destructive" className="mb-2">
-                            Sale
-                          </Badge>
-                        )}
-                        <h3 className="font-serif font-semibold text-lg mb-1">
-                          {relatedProduct.name}
-                        </h3>
+                        {relatedHasDiscount && <Badge variant="destructive" className="mb-2">Sale</Badge>}
+                        <h3 className="font-serif font-semibold text-lg mb-1">{relatedProduct.name}</h3>
                         <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold">
-                            ₹{relatedDisplayPrice.toFixed(2)}
-                          </span>
-                          {relatedHasDiscount && (
-                            <span className="text-sm text-muted-foreground line-through">
-                              ₹{relatedProduct.base_price.toFixed(2)}
-                            </span>
-                          )}
+                          <span className="text-lg font-bold">₹{relatedDisplayPrice.toFixed(2)}</span>
+                          {relatedHasDiscount && <span className="text-sm text-muted-foreground line-through">₹{relatedProduct.base_price.toFixed(2)}</span>}
                         </div>
                       </CardContent>
                     </Card>

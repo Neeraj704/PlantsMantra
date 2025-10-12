@@ -57,7 +57,7 @@ const BannerCarousel = () => {
   if (!banners || banners.length === 0) return null;
 
   return (
-    <section className="py-8 bg-muted/30">
+    <section className="py-8 mt-16 mb-16 bg-muted/30">
       <div className="container mx-auto px-4">
         <div className="relative rounded-lg overflow-hidden">
           <div className="overflow-hidden" ref={emblaRef}>
@@ -70,14 +70,14 @@ const BannerCarousel = () => {
                         <img
                           src={banner.image_url}
                           alt={banner.title}
-                          className="w-full h-auto max-h-[280px] object-contain hover:opacity-90 transition-opacity"
+                          className="w-full h-auto max-h-[580px] object-contain hover:opacity-90 transition-opacity"
                         />
                       </Link>
                     ) : (
                       <img
                         src={banner.image_url}
                         alt={banner.title}
-                        className="w-full h-auto max-h-[280px] object-contain"
+                        className="w-full h-auto max-h-[580px] object-contain"
                       />
                     )}
                   </div>

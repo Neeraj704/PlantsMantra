@@ -88,70 +88,8 @@ const Home = () => {
       {/* Banner Carousel */}
       <BannerCarousel />
 
-      {/* Features */}
-      <section className="py-16 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-center"
-            >
-              <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Leaf className="w-8 h-8 text-primary" />
-              </div>
-              <h3 className="font-serif font-semibold text-lg mb-2">Sustainable</h3>
-              <p className="text-sm text-muted-foreground">Eco-friendly packaging and practices</p>
-            </motion.div>
-            
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-              className="text-center"
-            >
-              <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Heart className="w-8 h-8 text-primary" />
-              </div>
-              <h3 className="font-serif font-semibold text-lg mb-2">Expert Care</h3>
-              <p className="text-sm text-muted-foreground">Lifetime plant care support</p>
-            </motion.div>
-            
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-              className="text-center"
-            >
-              <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-8 h-8 text-primary" />
-              </div>
-              <h3 className="font-serif font-semibold text-lg mb-2">7-Day Guarantee</h3>
-              <p className="text-sm text-muted-foreground">Happy plants or your money back</p>
-            </motion.div>
-            
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.3 }}
-              className="text-center"
-            >
-              <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Sparkles className="w-8 h-8 text-primary" />
-              </div>
-              <h3 className="font-serif font-semibold text-lg mb-2">Premium Quality</h3>
-              <p className="text-sm text-muted-foreground">Hand-picked healthy plants</p>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
       {/* Categories */}
-      <section className="py-20 container mx-auto px-4">
+      <section className="py-20 container mx-auto px-4 mt-[-100px]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -257,6 +195,68 @@ const Home = () => {
                 View All Plants <ArrowRight className="ml-2 w-5 h-5" />
               </Link>
             </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center"
+            >
+              <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Leaf className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="font-serif font-semibold text-lg mb-2">Sustainable</h3>
+              <p className="text-sm text-muted-foreground">Eco-friendly packaging and practices</p>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="text-center"
+            >
+              <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Heart className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="font-serif font-semibold text-lg mb-2">Expert Care</h3>
+              <p className="text-sm text-muted-foreground">Lifetime plant care support</p>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="text-center"
+            >
+              <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="font-serif font-semibold text-lg mb-2">7-Day Guarantee</h3>
+              <p className="text-sm text-muted-foreground">Happy plants or your money back</p>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 }}
+              className="text-center"
+            >
+              <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Sparkles className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="font-serif font-semibold text-lg mb-2">Premium Quality</h3>
+              <p className="text-sm text-muted-foreground">Hand-picked healthy plants</p>
+            </motion.div>
           </div>
         </div>
       </section>

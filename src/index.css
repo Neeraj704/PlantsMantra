@@ -9,22 +9,22 @@ All colors MUST be HSL.
 @layer base {
   :root {
     /* PlantsMantra Brand Colors - Green-Tinted Natural Palette */
-    --background: 140 25% 96%;
+    --background: 140 28% 94%;
     --foreground: 140 15% 15%;
 
-    --card: 140 30% 98%;
+    --card: 140 32% 96%;
     --card-foreground: 140 15% 15%;
 
-    --popover: 140 30% 98%;
+    --popover: 140 32% 96%;
     --popover-foreground: 140 15% 15%;
 
     --primary: 140 35% 35%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 140 25% 92%;
+    --secondary: 140 28% 90%;
     --secondary-foreground: 140 15% 15%;
 
-    --muted: 140 20% 93%;
+    --muted: 140 25% 91%;
     --muted-foreground: 140 10% 45%;
 
     --accent: 140 45% 45%;

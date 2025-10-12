@@ -66,6 +66,10 @@ export const RazorpayPayment = ({
       return;
     }
 
+    if (processing) {
+      return; // Prevent double-click
+    }
+
     setProcessing(true);
 
     try {

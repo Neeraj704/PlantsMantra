@@ -13,7 +13,8 @@ import {
   Menu, 
   X,
   LogOut,
-  Leaf
+  Leaf,
+  Image
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -28,6 +29,7 @@ const AdminLayout = () => {
     { icon: Users, label: 'Customers', path: '/admin/customers' },
     { icon: Tag, label: 'Categories', path: '/admin/categories' },
     { icon: Ticket, label: 'Coupons', path: '/admin/coupons' },
+    { icon: Image, label: 'Banners', path: '/admin/banners' },
     { icon: Settings, label: 'Settings', path: '/admin/settings' },
   ];
 

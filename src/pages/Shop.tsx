@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,6 +26,7 @@ import { Product } from '@/types/database';
 import { useWishlist } from '@/hooks/useWishlist';
 
 const Shop = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState([0, 5000]);
   const [inStockOnly, setInStockOnly] = useState(false);
@@ -42,6 +43,17 @@ const Shop = () => {
       return data;
     },
   });
+
+  // Handle category from URL params
+  useEffect(() => {
+    const categorySlug = searchParams.get('category');
+    if (categorySlug && categories) {
+      const category = categories.find(cat => cat.slug === categorySlug);
+      if (category && !selectedCategories.includes(category.id)) {
+        setSelectedCategories([category.id]);
+      }
+    }
+  }, [searchParams, categories]);
 
   const { data: products } = useQuery({
     queryKey: ['products', selectedCategories, priceRange, inStockOnly, onSaleOnly, sortBy],

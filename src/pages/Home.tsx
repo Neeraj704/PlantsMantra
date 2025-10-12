@@ -11,19 +11,17 @@ import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
 import pothosImg from '@/assets/pothos.jpg';
 import fiddleLeafImg from '@/assets/fiddle-leaf.jpg';
+import BannerCarousel from '@/components/BannerCarousel';
 
 const Home = () => {
-  const { data: categories } = useQuery({
-    queryKey: ['categories'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .limit(4);
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Define the exact 5 categories to show
+  const displayCategories = [
+    { slug: 'succulents', name: 'Succulents', description: 'Low maintenance desert', emoji: '🌵' },
+    { slug: 'cactus', name: 'Cactus', description: 'Hardy and resilient plants', emoji: '🌵' },
+    { slug: 'snake', name: 'Snake Plants', description: 'Perfect for low light spaces', emoji: '🐍' },
+    { slug: 'indoor-plants', name: 'Indoor Plants', description: 'Lush greenery for your home', emoji: '🪴' },
+    { slug: 'air-purifying', name: 'Air Purifying', description: 'Clean your air naturally', emoji: '🌬️' },
+  ];
 
   const { data: featuredProducts } = useQuery({
     queryKey: ['featured-products'],
@@ -81,11 +79,14 @@ const Home = () => {
               </Link>
             </Button>
             <Button size="lg" variant="outline" asChild className="bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20">
-              <Link to="/quiz">Find Your Perfect Plant</Link>
+              <Link to="/plant-finder">Find Your Perfect Plant</Link>
             </Button>
           </div>
         </motion.div>
       </section>
+
+      {/* Banner Carousel */}
+      <BannerCarousel />
 
       {/* Features */}
       <section className="py-16 bg-muted/30">
@@ -163,10 +164,10 @@ const Home = () => {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {categories?.map((category, index) => (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+          {displayCategories.map((category, index) => (
             <motion.div
-              key={category.id}
+              key={category.slug}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -174,12 +175,12 @@ const Home = () => {
             >
               <Link to={`/shop?category=${category.slug}`}>
                 <Card className="hover:shadow-hover transition-smooth overflow-hidden group cursor-pointer">
-                  <CardContent className="p-8 text-center">
-                    <div className="text-5xl mb-4 group-hover:scale-110 transition-smooth">
-                      {index === 0 ? '🌿' : index === 1 ? '🌵' : index === 2 ? '🐍' : '🌱'}
+                  <CardContent className="p-6 text-center">
+                    <div className="text-4xl mb-3 group-hover:scale-110 transition-smooth">
+                      {category.emoji}
                     </div>
-                    <h3 className="font-serif font-semibold text-lg mb-2">{category.name}</h3>
-                    <p className="text-sm text-muted-foreground">{category.description}</p>
+                    <h3 className="font-serif font-semibold text-base mb-1">{category.name}</h3>
+                    <p className="text-xs text-muted-foreground">{category.description}</p>
                   </CardContent>
                 </Card>
               </Link>

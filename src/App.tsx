@@ -36,6 +36,8 @@ import Customers from "./pages/admin/Customers";
 import Categories from "./pages/admin/Categories";
 import Coupons from "./pages/admin/Coupons";
 import AdminSettings from "./pages/admin/AdminSettings";
+import Banners from "./pages/admin/Banners";
+import PlantFinder from "./pages/PlantFinder";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -70,6 +72,7 @@ const App = () => (
               <Route path="/guarantee" element={<Guarantee />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/plant-finder" element={<PlantFinder />} />
             </Route>
 
             {/* Admin Routes */}
@@ -82,6 +85,7 @@ const App = () => (
               <Route path="/admin/customers" element={<Customers />} />
               <Route path="/admin/categories" element={<Categories />} />
               <Route path="/admin/coupons" element={<Coupons />} />
+              <Route path="/admin/banners" element={<Banners />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
             </Route>
 

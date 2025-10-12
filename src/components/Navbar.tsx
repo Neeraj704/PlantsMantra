@@ -1,17 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ShoppingCart, Search, Menu, X, User, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWishlist } from '@/hooks/useWishlist';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchRef = useRef<HTMLDivElement>(null);
   const { items } = useCart();
   const { wishlistItems } = useWishlist();
   const { user } = useAuth();
@@ -25,6 +31,34 @@ const Navbar = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const { data: searchResults } = useQuery({
+    queryKey: ['search', searchQuery],
+    queryFn: async () => {
+      if (!searchQuery || searchQuery.length < 2) return [];
+      
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, slug, main_image_url, base_price')
+        .eq('status', 'active')
+        .or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,care_guide.ilike.%${searchQuery}%`)
+        .limit(10);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: searchQuery.length >= 2,
+  });
 
   const cartItemsCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -75,9 +109,68 @@ const Navbar = () => {
 
           {/* Right Actions */}
           <div className="flex items-center gap-2 md:gap-4">
-            <Button variant="ghost" size="icon" className="hidden md:flex">
-              <Search className="w-5 h-5" />
-            </Button>
+            <div ref={searchRef} className="relative hidden md:block">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setSearchOpen(!searchOpen)}
+              >
+                <Search className="w-5 h-5" />
+              </Button>
+              
+              <AnimatePresence>
+                {searchOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                    className="absolute right-0 top-full mt-2 w-[400px] bg-background/95 backdrop-blur-md border rounded-lg shadow-lg z-50"
+                  >
+                    <div className="p-4">
+                      <Input
+                        placeholder="Search plants..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        autoFocus
+                        className="mb-2"
+                      />
+                      {searchResults && searchResults.length > 0 && (
+                        <div className="max-h-[400px] overflow-y-auto space-y-2 scrollbar-hide">
+                          {searchResults.slice(0, 10).map((product) => (
+                            <Link
+                              key={product.id}
+                              to={`/product/${product.slug}`}
+                              onClick={() => {
+                                setSearchOpen(false);
+                                setSearchQuery('');
+                              }}
+                              className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg transition-colors"
+                            >
+                              <img
+                                src={product.main_image_url}
+                                alt={product.name}
+                                className="w-12 h-12 object-cover rounded"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium truncate text-foreground">{product.name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  ₹{product.base_price.toFixed(2)}
+                                </p>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                      {searchQuery.length >= 2 && (!searchResults || searchResults.length === 0) && (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          No plants found
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             <Link to="/wishlist">
               <Button variant="ghost" size="icon" className="relative">

@@ -62,6 +62,39 @@ export type Database = {
         }
         Relationships: []
       }
+      banners: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          image_url: string
+          is_active: boolean
+          link_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url: string
+          is_active?: boolean
+          link_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url?: string
+          is_active?: boolean
+          link_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cart_items: {
         Row: {
           created_at: string
@@ -163,40 +196,61 @@ export type Database = {
       }
       coupons: {
         Row: {
+          applicable_categories: string[] | null
+          applicable_products: string[] | null
           code: string
           created_at: string | null
+          description: string | null
           discount_type: string
           discount_value: number
+          exclude_sale_items: boolean | null
+          first_purchase_only: boolean | null
           id: string
           is_active: boolean | null
+          max_discount_amount: number | null
           max_uses: number | null
           min_purchase: number | null
+          usage_limit_per_user: number | null
           used_count: number | null
           valid_from: string | null
           valid_until: string | null
         }
         Insert: {
+          applicable_categories?: string[] | null
+          applicable_products?: string[] | null
           code: string
           created_at?: string | null
+          description?: string | null
           discount_type: string
           discount_value: number
+          exclude_sale_items?: boolean | null
+          first_purchase_only?: boolean | null
           id?: string
           is_active?: boolean | null
+          max_discount_amount?: number | null
           max_uses?: number | null
           min_purchase?: number | null
+          usage_limit_per_user?: number | null
           used_count?: number | null
           valid_from?: string | null
           valid_until?: string | null
         }
         Update: {
+          applicable_categories?: string[] | null
+          applicable_products?: string[] | null
           code?: string
           created_at?: string | null
+          description?: string | null
           discount_type?: string
           discount_value?: number
+          exclude_sale_items?: boolean | null
+          first_purchase_only?: boolean | null
           id?: string
           is_active?: boolean | null
+          max_discount_amount?: number | null
           max_uses?: number | null
           min_purchase?: number | null
+          usage_limit_per_user?: number | null
           used_count?: number | null
           valid_from?: string | null
           valid_until?: string | null

@@ -44,15 +44,35 @@ const Footer = () => {
               Your Urban Jungle, Delivered. Premium plants for every space and every soul.
             </p>
             <div className="flex gap-2">
-              <Button variant="outline" size="icon">
-                <Instagram className="w-4 h-4" />
-              </Button>
-              <Button variant="outline" size="icon">
-                <Facebook className="w-4 h-4" />
-              </Button>
-              <Button variant="outline" size="icon">
-                <Twitter className="w-4 h-4" />
-              </Button>
+              <a 
+                href="https://www.instagram.com/plants_mantra?igsh=b3JzajdxNjdyeHA=" 
+                target="_blank" 
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" size="icon">
+                  <Instagram className="w-4 h-4" />
+                </Button>
+              </a>
+
+              <a 
+                href="https://www.facebook.com/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" size="icon">
+                  <Facebook className="w-4 h-4" />
+                </Button>
+              </a>
+
+              <a 
+                href="https://twitter.com/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" size="icon">
+                  <Twitter className="w-4 h-4" />
+                </Button>
+              </a>
             </div>
           </div>
 

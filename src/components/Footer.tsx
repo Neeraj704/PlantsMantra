@@ -7,6 +7,27 @@ import logo from '@/assets/logo.png';
 const Footer = () => {
   return (
     <footer className="bg-card border-t border-border mt-20">
+
+      {/* Trust Badges */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-8 border-t border-border border-b">
+        <div className="text-center">
+          <div className="text-2xl mb-2">🌱</div>
+          <p className="text-sm font-medium">Sustainable Packaging</p>
+        </div>
+        <div className="text-center">
+          <div className="text-2xl mb-2">💚</div>
+          <p className="text-sm font-medium">Plant Care Support</p>
+        </div>
+        <div className="text-center">
+          <div className="text-2xl mb-2">🔒</div>
+          <p className="text-sm font-medium">Secure Checkout</p>
+        </div>
+        <div className="text-center">
+          <div className="text-2xl mb-2">✨</div>
+          <p className="text-sm font-medium">7-Day Guarantee</p>
+        </div>
+      </div>
+
       <div className="container mx-auto px-4 py-12 md:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           {/* Brand */}
@@ -99,26 +120,6 @@ const Footer = () => {
               <Input placeholder="Your email" className="flex-1" />
               <Button className="gradient-hero">Subscribe</Button>
             </div>
-          </div>
-        </div>
-
-        {/* Trust Badges */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-8 border-t border-border">
-          <div className="text-center">
-            <div className="text-2xl mb-2">🌱</div>
-            <p className="text-sm font-medium">Sustainable Packaging</p>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl mb-2">💚</div>
-            <p className="text-sm font-medium">Plant Care Support</p>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl mb-2">🔒</div>
-            <p className="text-sm font-medium">Secure Checkout</p>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl mb-2">✨</div>
-            <p className="text-sm font-medium">7-Day Guarantee</p>
           </div>
         </div>
 

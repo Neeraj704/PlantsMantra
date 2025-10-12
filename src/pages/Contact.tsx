@@ -167,22 +167,6 @@ const Contact = () => {
                   </div>
                 </CardContent>
               </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="bg-primary/10 p-3 rounded-lg">
-                      <Clock className="w-6 h-6 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold mb-1">Business Hours</h3>
-                      <p className="text-sm text-muted-foreground">Monday - Friday: 9am - 6pm</p>
-                      <p className="text-sm text-muted-foreground">Saturday: 10am - 4pm</p>
-                      <p className="text-sm text-muted-foreground">Sunday: Closed</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </motion.div>
           </div>
 

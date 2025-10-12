@@ -276,7 +276,26 @@ const Home = () => {
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {[1, 2, 3].map((i) => (
+          {[
+            {
+              rating: "⭐⭐⭐⭐⭐ (5/5)",
+              name: "Riya Patel, Lucknow",
+              content: `I bought the Fairy Castle Cactus and a few Echinopsis varieties from Plants Mantra. The plants arrived fresh and well-hydrated, even after a long-distance shipment. The soil mix suggestions on their care guide really helped me maintain them properly. I’ve been recommending this site to all my friends who love indoor gardening. It’s like having a trusted local nursery online.`,
+              img: "https://media.istockphoto.com/id/2156062809/photo/headshot-closeup-portrait-middle-eastern-israel-businesswoman-business-lady-standing-isolated.jpg?s=612x612&w=0&k=20&c=SrsOr7hFwcm7O2xr1hbx0ZVkB_eJPLScCc7CPNW7pZQ=",
+            },
+            {
+              rating: "⭐⭐⭐⭐⭐ (5/5)",
+              name: "Arjun Sharma, Haldwani",
+              content: `Plants Mantra is easily the best online nursery I’ve tried so far. The plants are healthy, affordable, and exactly as shown in the pictures. What I loved most was their “bare-rooted” cactus collection clean, pest-free, and easy to pot. Delivery was faster than expected, and they even replaced one damaged plant without any hassle. Great customer service and premium quality!`,
+              img: "https://img.freepik.com/free-photo/cheerful-indian-businessman-smiling-closeup-portrait-jobs-career-campaign_53876-129416.jpg",
+            },
+            {
+              rating: "⭐⭐⭐⭐⭐ (5/5)",
+              name: "Neha Joshi, Dehradun",
+              content: `I recently ordered a few succulents and indoor plants from Plants Mantra, and I’m genuinely impressed! The packaging was super secure not a single leaf was damaged. Each plant came with a small care note, which was very helpful for a beginner like me. Within a week, my cactus started showing new growth! You can tell they really care about plant quality and customer satisfaction!`,
+              img: "https://static.vecteezy.com/system/resources/previews/039/334/804/non_2x/ai-generated-indian-female-student-free-photo.jpg",
+            },
+          ].map((t, i) => (
             <motion.div
               key={i}
               initial={{ opacity: 0, y: 20 }}
@@ -286,15 +305,16 @@ const Home = () => {
             >
               <Card className="shadow-card">
                 <CardContent className="p-6">
-                  <div className="text-accent mb-4">★★★★★</div>
-                  <p className="text-sm mb-4 text-muted-foreground">
-                    "My Monstera arrived in perfect condition and has been thriving ever since. 
-                    The care guide was incredibly helpful for a beginner like me!"
-                  </p>
+                  <div className="text-accent mb-4">{t.rating}</div>
+                  <p className="text-sm mb-4 text-muted-foreground">{t.content}</p>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10" />
+                    <img
+                      src={t.img}
+                      alt={t.name}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
                     <div>
-                      <p className="font-semibold text-sm">Sarah M.</p>
+                      <p className="font-semibold text-sm">{t.name}</p>
                       <p className="text-xs text-muted-foreground">Verified Buyer</p>
                     </div>
                   </div>

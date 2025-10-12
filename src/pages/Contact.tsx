@@ -131,7 +131,7 @@ const Contact = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold mb-1">Email Us</h3>
-                      <p className="text-sm text-muted-foreground">support@plantsmantra.com</p>
+                      <p className="text-sm text-muted-foreground">plantsmantra@gmail.com</p>
                       <p className="text-sm text-muted-foreground">We reply within 24 hours</p>
                     </div>
                   </div>
@@ -146,8 +146,8 @@ const Contact = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold mb-1">Call Us</h3>
-                      <p className="text-sm text-muted-foreground">+1 (555) 123-4567</p>
-                      <p className="text-sm text-muted-foreground">Mon-Fri, 9am-6pm EST</p>
+                      <p className="text-sm text-muted-foreground">+91 8126324889</p>
+                      <p className="text-sm text-muted-foreground">Mon-Fri, 9am-11pm IST</p>
                     </div>
                   </div>
                 </CardContent>
@@ -161,8 +161,9 @@ const Contact = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold mb-1">Visit Us</h3>
-                      <p className="text-sm text-muted-foreground">123 Green Street</p>
-                      <p className="text-sm text-muted-foreground">Plant City, PC 12345</p>
+                      <p className="text-sm text-muted-foreground">Kailash Vatika Nursery</p>
+                      <p className="text-sm text-muted-foreground">Village Siloti, Naukuchiatal</p>
+                      <p className="text-sm text-muted-foreground">District Nanital, Uttrakhand, 263136</p>
                     </div>
                   </div>
                 </CardContent>

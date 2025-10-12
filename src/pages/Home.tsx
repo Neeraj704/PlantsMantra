@@ -16,7 +16,7 @@ import BannerCarousel from '@/components/BannerCarousel';
 const Home = () => {
   // Define the exact 5 categories to show
   const displayCategories = [
-    { slug: 'succulents', name: 'Succulents', description: 'Low maintenance desert', emoji: '🌵' },
+    { slug: 'succulents', name: 'Succulents', description: 'Low maintenance desert', emoji: '🎍' },
     { slug: 'cactus', name: 'Cactus', description: 'Hardy and resilient plants', emoji: '🌵' },
     { slug: 'snake', name: 'Snake Plants', description: 'Perfect for low light spaces', emoji: '🐍' },
     { slug: 'indoor-plants', name: 'Indoor Plants', description: 'Lush greenery for your home', emoji: '🪴' },

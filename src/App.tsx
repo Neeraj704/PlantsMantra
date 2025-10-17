@@ -29,6 +29,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import AdminAuth from "./pages/admin/AdminAuth";
 import Dashboard from "./pages/admin/Dashboard";
+import Analytics from "./pages/admin/Analytics";
 import Products from "./pages/admin/Products";
 import Orders from "./pages/admin/Orders";
 import AdminOrderDetail from "./pages/admin/AdminOrderDetail";
@@ -79,6 +80,7 @@ const App = () => (
             <Route path="/admin/auth" element={<AdminAuth />} />
             <Route element={<AdminRoute><AdminLayout /></AdminRoute>}>
               <Route path="/admin" element={<Dashboard />} />
+              <Route path="/admin/analytics" element={<Analytics />} />
               <Route path="/admin/products" element={<Products />} />
               <Route path="/admin/orders" element={<Orders />} />
               <Route path="/admin/orders/:id" element={<AdminOrderDetail />} />

@@ -13,7 +13,8 @@ import {
   Menu, 
   X,
   LogOut,
-  Image
+  Image,
+  TrendingUp
 } from 'lucide-react';
 import logo from '@/assets/logo.png';
 
@@ -24,6 +25,7 @@ const AdminLayout = () => {
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
+    { icon: TrendingUp, label: 'Analytics', path: '/admin/analytics' },
     { icon: Package, label: 'Products', path: '/admin/products' },
     { icon: ShoppingCart, label: 'Orders', path: '/admin/orders' },
     { icon: Users, label: 'Customers', path: '/admin/customers' },

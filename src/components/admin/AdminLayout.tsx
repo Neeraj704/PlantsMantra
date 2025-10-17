@@ -13,9 +13,9 @@ import {
   Menu, 
   X,
   LogOut,
-  Leaf,
   Image
 } from 'lucide-react';
+import logo from '@/assets/logo.png';
 
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -53,8 +53,8 @@ const AdminLayout = () => {
             >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </Button>
-            <Link to="/admin" className="flex items-center gap-2">
-              <Leaf className="w-6 h-6 text-primary" />
+            <Link to="/admin" className="flex items-center gap-6">
+              <img src={logo} alt="PlantsMantra Logo" className="h-10 md:h-12 w-auto transition-transform duration-500 group-hover:scale-105" />
               <span className="text-xl font-serif font-bold">PlantsMantra Admin</span>
             </Link>
           </div>

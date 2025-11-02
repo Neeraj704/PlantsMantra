@@ -8,10 +8,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
-import { ShoppingCart, Heart, Share2, ChevronLeft } from 'lucide-react';
+import { ShoppingCart, Heart, Share2, ChevronLeft, Zap } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { useWishlist } from '@/hooks/useWishlist';
-import { Product, ProductVariant } from '@/types/database';
+import { useBuyNow } from '@/hooks/useBuyNow';
+import { useAuth } from '@/contexts/AuthContext';
+import { Product, ProductVariant, CartItem } from '@/types/database';
 import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
 import pothosImg from '@/assets/pothos.jpg';
@@ -22,6 +24,7 @@ import { toast, Toaster } from 'react-hot-toast';
 const ProductDetail = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
@@ -29,6 +32,7 @@ const ProductDetail = () => {
   const [mainImage, setMainImage] = useState<string>('');
   const [mainImageAltText, setMainImageAltText] = useState<string>('');
   const { addItem } = useCart();
+  const { setItemAndProceed } = useBuyNow();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
 
@@ -47,14 +51,8 @@ const ProductDetail = () => {
         .eq('slug', slug)
         .maybeSingle();
 
-      if (error) {
-        console.error("Error fetching product:", error);
-        navigate('/shop');
-        return;
-      }
-      
-      if (!data) {
-        console.warn(`Product with slug "${slug}" not found.`);
+      if (error || !data) {
+        console.error("Error fetching product or product not found:", error);
         navigate('/404');
         return;
       }
@@ -117,7 +115,7 @@ const ProductDetail = () => {
   const seoTitle = product.seo_title || defaultSeoTitle;
   const metaDescription = product.meta_description || defaultMetaDescription;
 
-  const imgSrc = productImages[product.slug] || monsteraImg;
+  const imgSrc = product.main_image_url || productImages[product.slug] || monsteraImg;
   const isOutOfStock = product.stock_status === 'out_of_stock';
 
   const getCurrentPrice = () => {
@@ -143,6 +141,17 @@ const ProductDetail = () => {
     addItem(product!, selectedVariant || undefined, quantity);
   };
 
+  const handleBuyNow = () => {
+    if (!user) {
+      toast.error("Please log in to proceed with your purchase.");
+      navigate('/auth');
+      return;
+    }
+    const buyNowItem: CartItem = { product, variant: selectedVariant || undefined, quantity };
+    setItemAndProceed(buyNowItem);
+    navigate('/checkout');
+  };
+  
   const handleWishlistToggle = () => {
     if (product) {
       toggleWishlist(product.id);
@@ -159,7 +168,6 @@ const ProductDetail = () => {
     if (navigator.share) {
       try {
         await navigator.share(shareData);
-        console.log('Content shared successfully');
       } catch (err) {
         console.error('Error sharing:', err);
       }
@@ -168,8 +176,7 @@ const ProductDetail = () => {
         await navigator.clipboard.writeText(window.location.href);
         toast.success('Link copied to clipboard!');
       } catch (err) {
-        console.error('Failed to copy:', err);
-        alert('Could not copy link. Please copy manually.');
+        toast.error('Could not copy link.');
       }
     }
   };
@@ -194,7 +201,7 @@ const ProductDetail = () => {
             <div className="aspect-square rounded-2xl overflow-hidden shadow-card">
               <img src={mainImage} alt={mainImageAltText} className="w-full h-full object-cover" />
             </div>
-            {product.gallery_images && product.gallery_images.length > 0 && (
+            {(product.gallery_images && product.gallery_images.length > 0) && (
               <div className="grid grid-cols-4 gap-4">
                 <div
                   className="aspect-square rounded-lg overflow-hidden border-2 border-primary cursor-pointer hover:opacity-80 transition-smooth"
@@ -256,30 +263,33 @@ const ProductDetail = () => {
 
             <Separator className="my-6" />
 
-            <div className="mb-6">
-              <h3 className="font-semibold mb-2">Stock Status</h3>
-              <Badge variant={product.stock_status === 'in_stock' ? 'default' : product.stock_status === 'low_stock' ? 'secondary' : 'destructive'}>
-                {product.stock_status === 'in_stock' ? 'In Stock' : product.stock_status === 'low_stock' ? 'Low Stock' : 'Out of Stock'}
-              </Badge>
-            </div>
-
             <div className="flex items-center gap-4 mb-6">
               <div className="flex items-center border border-border rounded-lg">
                 <Button variant="ghost" size="sm" onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={isOutOfStock}>-</Button>
                 <span className="px-4 py-2 min-w-[3rem] text-center">{quantity}</span>
                 <Button variant="ghost" size="sm" onClick={() => setQuantity(quantity + 1)} disabled={isOutOfStock}>+</Button>
               </div>
+              <Badge variant={isOutOfStock ? 'destructive' : 'default'}>
+                {isOutOfStock ? 'Out of Stock' : 'In Stock'}
+              </Badge>
             </div>
 
-            <div className="flex gap-3 mb-6">
-              <Button size="lg" className="flex-1 gradient-hero" onClick={handleAddToCart} disabled={isOutOfStock}>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <Button size="lg" className="w-full" variant="outline" onClick={handleAddToCart} disabled={isOutOfStock}>
                 <ShoppingCart className="w-5 h-5 mr-2" />
                 Add to Cart
               </Button>
-              <Button size="lg" variant={isInWishlist(product.id) ? 'default' : 'outline'} onClick={handleWishlistToggle}>
+              <Button size="lg" className="w-full gradient-hero" onClick={handleBuyNow} disabled={isOutOfStock}>
+                <Zap className="w-5 h-5 mr-2" />
+                Buy Now
+              </Button>
+            </div>
+            
+            <div className="flex gap-3">
+              <Button size="lg" variant={isInWishlist(product.id) ? 'default' : 'outline'} onClick={handleWishlistToggle} className="flex-1">
                 <Heart className={`w-5 h-5 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
               </Button>
-              <Button size="lg" variant="outline" onClick={handleShare}>
+              <Button size="lg" variant="outline" onClick={handleShare} className="flex-1">
                 <Share2 className="w-5 h-5" />
               </Button>
             </div>

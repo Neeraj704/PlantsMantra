@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,17 +17,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Filter, X, Heart } from 'lucide-react';
+import { Filter, X, Heart, ShoppingCart, Zap } from 'lucide-react';
 import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
 import pothosImg from '@/assets/pothos.jpg';
 import fiddleLeafImg from '@/assets/fiddle-leaf.jpg';
-import { Product } from '@/types/database';
+import { Product, CartItem } from '@/types/database';
 import { useWishlist } from '@/hooks/useWishlist';
+import { useCart } from '@/hooks/useCart';
+import { useBuyNow } from '@/hooks/useBuyNow';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { isInWishlist, toggleWishlist } = useWishlist();
+  const { addItem } = useCart();
+  const { setItemAndProceed } = useBuyNow();
 
   const { data: categories } = useQuery({
     queryKey: ['categories'],
@@ -38,7 +46,6 @@ const Shop = () => {
     },
   });
 
-  // Initialize state from URL on first render. This will run only once.
   const [selectedCategories, setSelectedCategories] = useState<string[]>(() => {
     const categorySlug = searchParams.get('category');
     if (categorySlug && categories) {
@@ -62,7 +69,6 @@ const Shop = () => {
   const [sortBy, setSortBy] = useState<string>(() => searchParams.get('sortBy') || 'newest');
   const [showFilters, setShowFilters] = useState(false);
 
-  // This effect syncs the component's filter state to the URL's query parameters.
   useEffect(() => {
     const params = new URLSearchParams();
 
@@ -85,8 +91,6 @@ const Shop = () => {
       params.set('sortBy', sortBy);
     }
 
-    // Using `replace: true` updates the URL without adding a new entry to the browser's history,
-    // which is ideal for filter changes.
     setSearchParams(params, { replace: true });
   }, [selectedCategories, priceRange, inStockOnly, onSaleOnly, sortBy, setSearchParams]);
 
@@ -149,6 +153,21 @@ const Shop = () => {
     setSortBy('newest');
   };
 
+  const handleBuyNow = (product: Product, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user) {
+      toast.error("Please log in to proceed with your purchase.");
+      navigate('/auth');
+      return;
+    }
+    
+    const buyNowItem: CartItem = { product, quantity: 1 };
+    setItemAndProceed(buyNowItem);
+    navigate('/checkout');
+  };
+
   return (
     <div className="min-h-screen pt-24 pb-12">
       <div className="container mx-auto px-4">
@@ -160,7 +179,6 @@ const Shop = () => {
         </div>
 
         <div className="flex gap-8">
-          {/* Filters Sidebar */}
           <aside
             className={`
               fixed md:sticky top-20 left-0 z-40 w-64 h-[calc(100vh-5rem)] overflow-y-auto
@@ -180,7 +198,6 @@ const Shop = () => {
               </Button>
             </div>
 
-            {/* Categories */}
             <div className="mb-6">
               <h3 className="font-semibold mb-3">Category</h3>
               <div className="space-y-2">
@@ -199,7 +216,6 @@ const Shop = () => {
               </div>
             </div>
 
-            {/* Price Range */}
             <div className="mb-6">
               <h3 className="font-semibold mb-3">Price Range</h3>
               <div className="px-1">
@@ -218,7 +234,6 @@ const Shop = () => {
               </div>
             </div>
 
-            {/* Availability */}
             <div className="mb-6">
               <h3 className="font-semibold mb-3">Availability</h3>
               <div className="flex items-center justify-between">
@@ -231,7 +246,6 @@ const Shop = () => {
               </div>
             </div>
 
-            {/* Sale */}
             <div className="mb-6">
               <h3 className="font-semibold mb-3">Special Offers</h3>
               <div className="flex items-center justify-between">
@@ -244,7 +258,6 @@ const Shop = () => {
               </div>
             </div>
 
-            {/* Clear Filters */}
             <Button
               variant="outline"
               className="w-full"
@@ -254,7 +267,6 @@ const Shop = () => {
             </Button>
           </aside>
 
-          {/* Products Grid */}
           <main className="flex-1">
             <div className="flex items-center justify-between mb-6">
               <p className="text-sm text-muted-foreground">
@@ -298,7 +310,7 @@ const Shop = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
                   >
-                    <Card className="overflow-hidden group cursor-pointer hover:shadow-hover transition-smooth relative">
+                    <Card className="overflow-hidden group hover:shadow-hover transition-smooth relative flex flex-col">
                       <Button
                         variant={isInWishlist(product.id) ? 'default' : 'outline'}
                         size="icon"
@@ -311,7 +323,7 @@ const Shop = () => {
                       >
                         <Heart className={`w-4 h-4 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
                       </Button>
-                      <Link to={`/product/${product.slug}`}>
+                      <Link to={`/product/${product.slug}`} className="flex flex-col flex-grow">
                         <div className="aspect-square overflow-hidden bg-muted/50 relative">
                           <img
                             src={imgSrc}
@@ -335,29 +347,55 @@ const Shop = () => {
                             </Badge>
                           )}
                         </div>
-                        <CardContent className="p-4">
-                          {hasDiscount && (
-                            <Badge variant="destructive" className="mb-2">
-                              Sale
-                            </Badge>
-                          )}
-                          <h3 className="font-serif font-semibold text-lg mb-1">
-                            {product.name}
-                          </h3>
-                          {product.botanical_name && (
-                            <p className="text-xs text-muted-foreground italic mb-2">
-                              {product.botanical_name}
-                            </p>
-                          )}
-                           <div className="flex items-center gap-2">
-                             <span className="text-lg font-bold">
-                               ₹{displayPrice.toFixed(2)}
-                             </span>
-                             {hasDiscount && (
-                               <span className="text-sm text-muted-foreground line-through">
-                                 ₹{product.base_price.toFixed(2)}
-                              </span>
+                        <CardContent className="p-4 flex flex-col flex-grow">
+                          <div className="flex-grow">
+                            {hasDiscount && (
+                              <Badge variant="destructive" className="mb-2">
+                                Sale
+                              </Badge>
                             )}
+                            <h3 className="font-serif font-semibold text-lg mb-1">
+                              {product.name}
+                            </h3>
+                            {product.botanical_name && (
+                              <p className="text-xs text-muted-foreground italic mb-2">
+                                {product.botanical_name}
+                              </p>
+                            )}
+                             <div className="flex items-center gap-2">
+                               <span className="text-lg font-bold">
+                                 ₹{displayPrice.toFixed(2)}
+                               </span>
+                               {hasDiscount && (
+                                 <span className="text-sm text-muted-foreground line-through">
+                                   ₹{product.base_price.toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 mt-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  addItem(product);
+                              }}
+                              disabled={product.stock_status === 'out_of_stock'}
+                            >
+                              <ShoppingCart className="w-4 h-4 mr-2" />
+                              Add
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="gradient-hero"
+                              onClick={(e) => handleBuyNow(product, e)}
+                              disabled={product.stock_status === 'out_of_stock'}
+                            >
+                              <Zap className="w-4 h-4 mr-2" />
+                              Buy Now
+                            </Button>
                           </div>
                         </CardContent>
                       </Link>
@@ -382,7 +420,6 @@ const Shop = () => {
         </div>
       </div>
 
-      {/* Mobile filter overlay */}
       {showFilters && (
         <div
           className="fixed inset-0 bg-black/50 z-30 md:hidden"

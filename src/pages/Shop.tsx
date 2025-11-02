@@ -27,12 +27,6 @@ import { useWishlist } from '@/hooks/useWishlist';
 
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState([0, 5000]);
-  const [inStockOnly, setInStockOnly] = useState(false);
-  const [onSaleOnly, setOnSaleOnly] = useState(false);
-  const [sortBy, setSortBy] = useState('newest');
-  const [showFilters, setShowFilters] = useState(false);
   const { isInWishlist, toggleWishlist } = useWishlist();
 
   const { data: categories } = useQuery({
@@ -44,16 +38,57 @@ const Shop = () => {
     },
   });
 
-  // Handle category from URL params
-  useEffect(() => {
+  // Initialize state from URL on first render. This will run only once.
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(() => {
     const categorySlug = searchParams.get('category');
     if (categorySlug && categories) {
-      const category = categories.find(cat => cat.slug === categorySlug);
-      if (category && !selectedCategories.includes(category.id)) {
-        setSelectedCategories([category.id]);
-      }
+      const category = categories.find((cat) => cat.slug === categorySlug);
+      if (category) return [category.id];
     }
-  }, [searchParams, categories]);
+    const cats = searchParams.get('categories');
+    return cats ? cats.split(',') : [];
+  });
+
+  const [priceRange, setPriceRange] = useState<[number, number]>(() => {
+    const min = searchParams.get('minPrice');
+    const max = searchParams.get('maxPrice');
+    const minVal = min ? parseInt(min, 10) : 0;
+    const maxVal = max ? parseInt(max, 10) : 5000;
+    return [isNaN(minVal) ? 0 : minVal, isNaN(maxVal) ? 5000 : maxVal];
+  });
+
+  const [inStockOnly, setInStockOnly] = useState<boolean>(() => searchParams.get('inStock') === 'true');
+  const [onSaleOnly, setOnSaleOnly] = useState<boolean>(() => searchParams.get('onSale') === 'true');
+  const [sortBy, setSortBy] = useState<string>(() => searchParams.get('sortBy') || 'newest');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // This effect syncs the component's filter state to the URL's query parameters.
+  useEffect(() => {
+    const params = new URLSearchParams();
+
+    if (selectedCategories.length > 0) {
+      params.set('categories', selectedCategories.join(','));
+    }
+    if (priceRange[0] !== 0) {
+      params.set('minPrice', priceRange[0].toString());
+    }
+    if (priceRange[1] !== 5000) {
+      params.set('maxPrice', priceRange[1].toString());
+    }
+    if (inStockOnly) {
+      params.set('inStock', 'true');
+    }
+    if (onSaleOnly) {
+      params.set('onSale', 'true');
+    }
+    if (sortBy !== 'newest') {
+      params.set('sortBy', sortBy);
+    }
+
+    // Using `replace: true` updates the URL without adding a new entry to the browser's history,
+    // which is ideal for filter changes.
+    setSearchParams(params, { replace: true });
+  }, [selectedCategories, priceRange, inStockOnly, onSaleOnly, sortBy, setSearchParams]);
 
   const { data: products } = useQuery({
     queryKey: ['products', selectedCategories, priceRange, inStockOnly, onSaleOnly, sortBy],
@@ -104,6 +139,14 @@ const Shop = () => {
         ? prev.filter((id) => id !== categoryId)
         : [...prev, categoryId]
     );
+  };
+
+  const clearFilters = () => {
+    setSelectedCategories([]);
+    setPriceRange([0, 5000]);
+    setInStockOnly(false);
+    setOnSaleOnly(false);
+    setSortBy('newest');
   };
 
   return (
@@ -162,10 +205,10 @@ const Shop = () => {
               <div className="px-1">
                 <Slider
                   min={0}
-                  max={5000} 
+                  max={5000}
                   step={10}
                   value={priceRange}
-                  onValueChange={setPriceRange}
+                  onValueChange={(value) => setPriceRange(value as [number, number])}
                   className="mb-3 mt-2"
                 />
               </div>
@@ -205,12 +248,7 @@ const Shop = () => {
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => {
-                setSelectedCategories([]);
-                setPriceRange([0, 5000]);
-                setInStockOnly(false);
-                setOnSaleOnly(false);
-              }}
+              onClick={clearFilters}
             >
               Clear All Filters
             </Button>
@@ -334,12 +372,7 @@ const Shop = () => {
                 <p className="text-muted-foreground">No plants found matching your filters.</p>
                 <Button
                   variant="link"
-                  onClick={() => {
-                    setSelectedCategories([]);
-                    setPriceRange([0, 5000]);
-                    setInStockOnly(false);
-                    setOnSaleOnly(false);
-                  }}
+                  onClick={clearFilters}
                 >
                   Clear all filters
                 </Button>

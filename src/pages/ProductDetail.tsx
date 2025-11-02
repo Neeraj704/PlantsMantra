@@ -21,7 +21,7 @@ import { toast, Toaster } from 'react-hot-toast';
 
 const ProductDetail = () => {
   const { slug } = useParams();
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
@@ -45,7 +45,7 @@ const ProductDetail = () => {
         .from('products')
         .select('*')
         .eq('slug', slug)
-        .maybeSingle(); 
+        .maybeSingle();
 
       if (error) {
         console.error("Error fetching product:", error);
@@ -99,7 +99,7 @@ const ProductDetail = () => {
 
     fetchProduct();
     fetchVariants();
-  }, [slug]);
+  }, [slug, navigate]);
 
   if (!product) {
     return (
@@ -149,7 +149,6 @@ const ProductDetail = () => {
     }
   };
 
-  // --- SHARE BUTTON LOGIC ---
   const handleShare = async () => {
     const shareData = {
       title: product?.name || 'Check this out!',
@@ -180,10 +179,14 @@ const ProductDetail = () => {
       <SEOTags title={seoTitle} description={metaDescription} />
       <Toaster position="top-right" />
       <div className="container mx-auto px-4">
-        <Link to="/shop" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-8 transition-smooth">
+        <Button
+          variant="ghost"
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-8 transition-smooth pl-0 hover:bg-transparent"
+        >
           <ChevronLeft className="w-4 h-4 mr-1" />
           Back to Shop
-        </Link>
+        </Button>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
           {/* Image Gallery */}

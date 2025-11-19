@@ -4,11 +4,22 @@ project_id = "fuhpzltwbiblcxeixtsz"
 verify_jwt = false
 
 [functions.create-payment-intent]
+verify_jwt = true
 
 [functions.verify-payment]
+verify_jwt = true
 
 [functions.create-razorpay-order]
 verify_jwt = true
 
 [functions.verify-razorpay-payment]
+verify_jwt = true
+
+[functions.delhivery-create]
+verify_jwt = true
+
+[functions.delhivery-cancel]
+verify_jwt = true
+
+[functions.delhivery-get-label]
 verify_jwt = true

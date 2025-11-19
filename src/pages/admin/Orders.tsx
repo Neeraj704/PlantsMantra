@@ -1,3 +1,4 @@
+// src/pages/admin/Orders.tsx
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { Order } from '@/types/database';
-import { Search, Eye, ArrowUpDown } from 'lucide-react';
+import { Search, Eye, Download, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Orders = () => {
@@ -18,6 +19,8 @@ const Orders = () => {
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState<'created_at' | 'total' | 'customer_name'>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [processingCancelId, setProcessingCancelId] = useState<string | null>(null);
+  const [downloadingAwb, setDownloadingAwb] = useState<string | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -29,7 +32,7 @@ const Orders = () => {
       .from('orders' as any)
       .select('*')
       .order('created_at', { ascending: false });
-    
+
     if (data) setOrders(data as unknown as Order[]);
     setLoading(false);
   };
@@ -57,13 +60,83 @@ const Orders = () => {
     }
   };
 
+  const handleDownloadLabel = async (awb: string | null) => {
+    if (!awb) {
+      toast.error('AWB missing');
+      return;
+    }
+
+    setDownloadingAwb(awb);
+    try {
+      // Use raw fetch for binary label download as specified.
+      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delhivery-get-label?awb=${encodeURIComponent(awb)}`;
+
+      const res = await fetch(funcUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Failed to fetch label' }));
+        toast.error(err?.message || 'Failed to download label');
+        setDownloadingAwb(null);
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `label_${awb}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Label downloaded');
+    } catch (e: any) {
+      toast.error('Failed to download label');
+    } finally {
+      setDownloadingAwb(null);
+    }
+  };
+
+  const handleCancelShipment = async (order: Order) => {
+    if (!order.awb) {
+      toast.error('No AWB assigned');
+      return;
+    }
+    setProcessingCancelId(order.id);
+    try {
+      // Use Supabase Functions invoke via supabase client (handles URL + auth)
+      const resp = await supabase.functions.invoke('delhivery-cancel', {
+        method: 'POST',
+        body: JSON.stringify({ awb: order.awb }),
+      });
+
+      if (resp.error) {
+        toast.error((resp.error as any).message || 'Failed to cancel shipment');
+      } else {
+        // resp.data contains JSON string or object depending on edge function
+        toast.success('Shipment cancelled');
+        fetchOrders();
+      }
+    } catch (e: any) {
+      toast.error('Failed to cancel shipment');
+    } finally {
+      setProcessingCancelId(null);
+    }
+  };
+
   const filteredOrders = orders
-    .filter(order => {
-      const matchesSearch = order.customer_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.id.toLowerCase().includes(searchTerm.toLowerCase());
+    .filter((order) => {
+      const matchesSearch =
+        (order.customer_email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (order.customer_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (order.id || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-      
+
       return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
@@ -74,8 +147,8 @@ const Orders = () => {
         aValue = new Date(aValue).getTime();
         bValue = new Date(bValue).getTime();
       } else if (sortField === 'customer_name') {
-        aValue = aValue.toLowerCase();
-        bValue = bValue.toLowerCase();
+        aValue = (aValue || '').toLowerCase();
+        bValue = (bValue || '').toLowerCase();
       }
 
       if (sortDirection === 'asc') {
@@ -91,7 +164,7 @@ const Orders = () => {
       processing: 'bg-blue-100 text-blue-800',
       shipped: 'bg-purple-100 text-purple-800',
       delivered: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800'
+      cancelled: 'bg-red-100 text-red-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -100,134 +173,67 @@ const Orders = () => {
     <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-serif font-bold">Orders</h1>
+        <div className="flex items-center gap-2">
+          <Input placeholder="Search by email, name or id" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val)}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Filter status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="processing">Processing</SelectItem>
+              <SelectItem value="shipped">Shipped</SelectItem>
+              <SelectItem value="delivered">Delivered</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
-              <Input
-                placeholder="Search orders by email, name, or ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="processing">Processing</SelectItem>
-                <SelectItem value="shipped">Shipped</SelectItem>
-                <SelectItem value="delivered">Delivered</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {loading ? (
-        <p className="text-center text-muted-foreground">Loading orders...</p>
-      ) : (
-        <div className="bg-background rounded-lg border">
+      <Card>
+        <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b">
-                <tr>
-                  <th className="text-left p-4 font-semibold">Order ID</th>
-                  <th className="text-left p-4 font-semibold">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleSort('customer_name')}
-                      className="flex items-center gap-1 -ml-3"
-                    >
-                      Customer
-                      <ArrowUpDown className="w-4 h-4" />
-                    </Button>
-                  </th>
-                  <th className="text-left p-4 font-semibold">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleSort('created_at')}
-                      className="flex items-center gap-1 -ml-3"
-                    >
-                      Date
-                      <ArrowUpDown className="w-4 h-4" />
-                    </Button>
-                  </th>
-                  <th className="text-left p-4 font-semibold">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleSort('total')}
-                      className="flex items-center gap-1 -ml-3"
-                    >
-                      Total
-                      <ArrowUpDown className="w-4 h-4" />
-                    </Button>
-                  </th>
-                  <th className="text-left p-4 font-semibold">Status</th>
-                  <th className="text-right p-4 font-semibold">Actions</th>
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b">
+                  <th className="p-4">Order</th>
+                  <th className="p-4">Customer</th>
+                  <th className="p-4">Total</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4">AWB</th>
+                  <th className="p-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredOrders.map((order) => (
-                  <tr key={order.id} className="border-b last:border-0 hover:bg-muted/50">
+                  <tr key={order.id} className="border-b hover:bg-muted/50">
+                    <td className="p-4">{order.id}</td>
                     <td className="p-4">
-                      <span className="font-mono text-sm">
-                        #{order.id.slice(0, 8)}
-                      </span>
+                      <div className="font-medium">{order.customer_name}</div>
+                      <div className="text-sm text-muted-foreground">{order.customer_email}</div>
+                    </td>
+                    <td className="p-4">₹{Number(order.total).toFixed(2)}</td>
+                    <td className="p-4">
+                      <Badge className={getStatusColor(order.status || 'pending')}>{order.status}</Badge>
                     </td>
                     <td className="p-4">
-                      <div>
-                        <p className="font-medium">{order.customer_name}</p>
-                        <p className="text-sm text-muted-foreground">{order.customer_email}</p>
-                      </div>
+                      <div className="font-mono">{order.awb || '—'}</div>
                     </td>
-                    <td className="p-4">
-                      <span className="text-sm">
-                        {new Date(order.created_at).toLocaleDateString()}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className="font-semibold">₹{order.total.toFixed(2)}</span>
-                    </td>
-                    <td className="p-4">
-                      <Select
-                        value={order.status}
-                        onValueChange={(value) => handleStatusUpdate(order.id, value)}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue>
-                            <Badge className={getStatusColor(order.status)}>
-                              {order.status}
-                            </Badge>
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent className="bg-background z-50">
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="processing">Processing</SelectItem>
-                          <SelectItem value="shipped">Shipped</SelectItem>
-                          <SelectItem value="delivered">Delivered</SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="p-4">
+                    <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => navigate(`/admin/orders/${order.id}`)}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/admin/orders/${order.id}`)}>
                           <Eye className="w-4 h-4" />
+                        </Button>
+
+                        <Button variant="outline" size="sm" disabled={!order.awb || downloadingAwb === order.awb} onClick={() => handleDownloadLabel(order.awb || null)}>
+                          <Download className="w-4 h-4" />
+                          {downloadingAwb === order.awb ? 'Downloading...' : 'Label'}
+                        </Button>
+
+                        <Button variant="destructive" size="sm" disabled={!order.awb || processingCancelId === order.id} onClick={() => handleCancelShipment(order)}>
+                          <X className="w-4 h-4" />
+                          {processingCancelId === order.id ? 'Cancelling...' : 'Cancel'}
                         </Button>
                       </div>
                     </td>
@@ -236,8 +242,8 @@ const Orders = () => {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

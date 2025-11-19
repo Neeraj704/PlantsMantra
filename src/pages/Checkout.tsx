@@ -1,3 +1,4 @@
+// src/pages/Checkout.tsx
 import { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -12,12 +13,21 @@ import { useBuyNow } from '@/hooks/useBuyNow';
 import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { Address } from '@/types/database';
 import { toast } from 'sonner';
-import { Plus, MapPin, CreditCard, Percent, Lock } from 'lucide-react';
+import { Plus, MapPin, CreditCard, Percent, Lock, X } from 'lucide-react';
 import AddressForm from '@/components/AddressForm';
 import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
 import pothosImg from '@/assets/pothos.jpg';
 import fiddleLeafImg from '@/assets/fiddle-leaf.jpg';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 declare global {
   interface Window {
@@ -25,8 +35,13 @@ declare global {
   }
 }
 
+/**
+ * Helper: dynamically load Razorpay SDK
+ */
 const loadRazorpayScript = (src: string) => {
-  return new Promise((resolve) => {
+  return new Promise<boolean>((resolve) => {
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) return resolve(true);
     const script = document.createElement('script');
     script.src = src;
     script.onload = () => resolve(true);
@@ -42,11 +57,13 @@ const Checkout = () => {
   const { item: buyNowItem, isBuyNowFlow, clearBuyNow } = useBuyNow();
 
   const [addresses, setAddresses] = useState<Address[]>([]);
-  const [selectedAddress, setSelectedAddress] = useState('');
+  const [selectedAddress, setSelectedAddress] = useState<string>('');
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('razorpay');
+  const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'cod'>('razorpay');
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+
+  const [isCODDialogOpen, setIsCODDialogOpen] = useState(false);
 
   const isDirectBuy = isBuyNowFlow && buyNowItem;
   const items = isDirectBuy ? [buyNowItem] : cart.items;
@@ -58,11 +75,13 @@ const Checkout = () => {
     });
 
     return () => {
+      // preserve behavior: clear buy-now state on unmount if it was a buy-now flow
       if (isBuyNowFlow) {
         clearBuyNow();
       }
     };
-  }, [user, isBuyNowFlow, clearBuyNow]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const fetchAddresses = async () => {
     if (!user) return;
@@ -98,20 +117,29 @@ const Checkout = () => {
   const discountAmount = isDirectBuy ? 0 : cart.getDiscountAmount();
   const total = subtotal + shippingCost - discountAmount;
 
+  /**
+   * Initiate Razorpay: opens checkout and verifies payment on success.
+   * NOTE: does NOT clear cart. Cart clearing happens only after verification succeeds.
+   */
   const initiateRazorpayPayment = async (orderId: string, totalAmount: number, address: Address) => {
     try {
       if (!razorpayLoaded) {
         toast.error('Payment gateway not loaded. Please refresh.');
-        return;
+        setProcessing(false);
+        return false;
       }
 
+      // create razorpay order server-side (edge function)
       const createOrderResponse = await fetch(`${SUPABASE_URL}/functions/v1/create-razorpay-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}` },
-        body: JSON.stringify({ amount: totalAmount }),
+        body: JSON.stringify({ amount: Math.round(totalAmount * 100) }), // in paise
       });
 
-      if (!createOrderResponse.ok) throw new Error('Failed to create Razorpay order');
+      if (!createOrderResponse.ok) {
+        const err = await createOrderResponse.json().catch(() => null);
+        throw new Error(err?.error || 'Failed to create Razorpay order');
+      }
       const orderData = await createOrderResponse.json();
 
       const options = {
@@ -119,9 +147,10 @@ const Checkout = () => {
         amount: orderData.amount,
         currency: orderData.currency,
         name: 'PlantsMantra',
-        description: `Order ID: ${orderId.slice(0, 8)}`,
+        description: `Order ID: ${String(orderId).slice(0, 8)}`,
         order_id: orderData.razorpayOrderId,
         handler: async (response: any) => {
+          // Verify on backend
           try {
             const verifyRes = await fetch(`${SUPABASE_URL}/functions/v1/verify-razorpay-payment`, {
               method: 'POST',
@@ -135,37 +164,64 @@ const Checkout = () => {
             });
 
             const verifyData = await verifyRes.json();
-            if (!verifyRes.ok || !verifyData.success) throw new Error('Verification failed');
+            if (!verifyRes.ok || !verifyData.success) {
+              throw new Error(verifyData.error || 'Payment verification failed');
+            }
+
+            // Payment verified successfully: clear cart / buy-now and navigate
+            if (isDirectBuy) {
+              clearBuyNow();
+            } else {
+              cart.clearCart();
+            }
+
+            // Optionally update order's payment_status/status if not already done by edge function
             toast.success('Payment successful! Order confirmed.');
+            setProcessing(false);
             navigate('/account');
           } catch (err: any) {
-            toast.error(`Payment verification failed: ${err.message}`);
+            console.error('Payment verification failed:', err);
+            toast.error(`Payment verification failed: ${err?.message || 'unknown error'}`);
+            setProcessing(false);
           }
         },
         prefill: { name: address.full_name, email: user?.email, contact: address.phone },
         theme: { color: '#4ADE80' },
-        modal: { ondismiss: () => toast.info('Payment cancelled.') },
+        modal: {
+          ondismiss: () => {
+            // user closed the modal without completing payment
+            setProcessing(false);
+            toast.info('Payment was cancelled.');
+          },
+        },
       };
 
       const rzp = new window.Razorpay(options);
+
+      rzp.on('payment.failed', (response: any) => {
+        console.error('Payment failed:', response.error);
+        toast.error(`Payment failed: ${response.error?.description || 'Unknown error'}`);
+        setProcessing(false);
+      });
+
       rzp.open();
+      return true;
     } catch (err: any) {
-      toast.error(err.message || 'Payment initiation failed');
+      console.error('Payment initiation error:', err);
+      toast.error(err?.message || 'Failed to initiate checkout');
+      setProcessing(false);
+      return false;
     }
   };
-  
-  const handlePlaceOrder = async () => {
-    if (!selectedAddress) {
-      toast.error('Please select a shipping address');
-      return;
-    }
-    setProcessing(true);
 
-    try {
-      const address = addresses.find((a) => a.id === selectedAddress);
-      if (!address) throw new Error('Selected address not found');
-
-      const { data: order, error } = await supabase.from('orders').insert({
+  /**
+   * Create order & order items in DB (common function used for both COD (after confirmation) and Razorpay pre-checkout).
+   * Returns the created order record (including id) or throws.
+   */
+  const createOrderRecord = async (address: Address) => {
+    const { data: order, error } = await supabase
+      .from('orders')
+      .insert({
         user_id: user?.id,
         customer_email: user?.email,
         customer_name: address.full_name,
@@ -177,47 +233,108 @@ const Checkout = () => {
         coupon_code: isDirectBuy ? null : cart.appliedCoupon?.code || null,
         payment_method: paymentMethod,
         total,
-        status: paymentMethod === 'cod' ? 'pending' : 'pending',
+        status: 'pending',
         payment_status: paymentMethod === 'cod' ? 'unpaid' : 'pending',
-      }).select().single();
+      })
+      .select()
+      .single();
 
-      if (error || !order) throw error || new Error('Order creation failed');
+    if (error || !order) {
+      throw error || new Error('Order creation failed');
+    }
 
-      const orderItems = items.map((item) => ({
+    const orderItems = items.map((item) => {
+      const unitPrice = (item.product.sale_price || item.product.base_price) + (item.variant?.price_adjustment || 0);
+      return {
         order_id: order.id,
         product_id: item.product.id,
-        variant_id: item.variant?.id,
+        variant_id: item.variant?.id || null,
         product_name: item.product.name,
-        variant_name: item.variant?.name,
+        variant_name: item.variant?.name || null,
         quantity: item.quantity,
-        unit_price: (item.product.sale_price || item.product.base_price) + (item.variant?.price_adjustment || 0),
-        subtotal: ((item.product.sale_price || item.product.base_price) + (item.variant?.price_adjustment || 0)) * item.quantity,
-      }));
+        unit_price: unitPrice,
+        subtotal: unitPrice * item.quantity,
+      };
+    });
 
-      const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
-      if (itemsError) throw itemsError;
+    const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
+    if (itemsError) throw itemsError;
 
+    return order;
+  };
+
+  /**
+   * Handler invoked when user clicks "Place Order" button.
+   * If COD: open confirmation dialog. If online: create order then open Razorpay modal.
+   */
+  const handlePlaceOrderClick = () => {
+    if (!selectedAddress) {
+      toast.error('Please select a shipping address');
+      return;
+    }
+    // If COD, open dialog and do not proceed yet.
+    if (paymentMethod === 'cod') {
+      setIsCODDialogOpen(true);
+      return;
+    }
+
+    // For online payment: proceed with creating order then open Razorpay.
+    handleOnlinePaymentFlow();
+  };
+
+  /**
+   * Handle online payment flow: create order record, items, then call initiateRazorpayPayment.
+   * CART IS NOT CLEARED HERE — it will be cleared after verification success.
+   */
+  const handleOnlinePaymentFlow = async () => {
+    setProcessing(true);
+    try {
+      const address = addresses.find((a) => a.id === selectedAddress);
+      if (!address) throw new Error('Selected address not found');
+
+      const order = await createOrderRecord(address);
+
+      // initiate razorpay
+      await initiateRazorpayPayment(order.id, total, address);
+      // do not clear cart here — the verification handler clears it
+    } catch (err: any) {
+      console.error('Failed to start online payment:', err);
+      toast.error(err?.message || 'Failed to start payment');
+      setProcessing(false);
+    }
+  };
+
+  /**
+   * Called when user confirms in COD dialog. Creates order and clears cart on success.
+   */
+  const handleConfirmCOD = async () => {
+    setProcessing(true);
+    try {
+      const address = addresses.find((a) => a.id === selectedAddress);
+      if (!address) throw new Error('Selected address not found');
+
+      const order = await createOrderRecord(address);
+
+      // For COD, clear cart immediately after successful order creation
       if (isDirectBuy) {
         clearBuyNow();
       } else {
         cart.clearCart();
       }
 
-      if (paymentMethod === 'cod') {
-        toast.success(`Order placed! Pay ₹${total.toFixed(2)} on delivery.`);
-        navigate('/account');
-      } else {
-        await initiateRazorpayPayment(order.id, total, address);
-      }
+      toast.success(`Order placed! Pay ₹${total.toFixed(2)} on delivery.`);
+      setIsCODDialogOpen(false);
+      setProcessing(false);
+      navigate('/account');
     } catch (err: any) {
-      toast.error(err.message || 'Failed to place order');
-    } finally {
+      console.error('Failed to place COD order:', err);
+      toast.error(err?.message || 'Failed to place order');
       setProcessing(false);
     }
   };
 
   if (!user || !profile) return <Navigate to="/auth" replace />;
-  if (items.length === 0) return <Navigate to="/shop" replace />;
+  if (!items || items.length === 0) return <Navigate to="/shop" replace />;
 
   const currentAddress = addresses.find((a) => a.id === selectedAddress);
 
@@ -244,46 +361,46 @@ const Checkout = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {showAddressForm ? (
-                    <AddressForm
-                      onSubmit={handleAddressSubmit}
-                      onCancel={() => setShowAddressForm(false)}
-                    />
-                  ) : (
-                    <>
-                      {addresses.length === 0 ? (
-                        <div className="text-center py-8">
-                          <p className="text-muted-foreground mb-4">No saved addresses</p>
-                          <Button onClick={() => setShowAddressForm(true)}>
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Address
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <RadioGroup value={selectedAddress} onValueChange={setSelectedAddress}>
-                            <div className="space-y-3">
-                              {addresses.map((address) => (
-                                <div key={address.id} className="flex items-start space-x-3 border rounded-lg p-3">
-                                  <RadioGroupItem value={address.id} id={address.id} />
-                                  <Label htmlFor={address.id} className="flex-1 cursor-pointer">
-                                    <p className="font-semibold">{address.full_name}</p>
-                                    <p className="text-sm text-muted-foreground">{address.address_line1}{address.address_line2 && `, ${address.address_line2}`}</p>
-                                    <p className="text-sm text-muted-foreground">{address.city}, {address.state} {address.postal_code}</p>
-                                    <p className="text-sm text-muted-foreground">{address.phone}</p>
-                                  </Label>
-                                </div>
-                              ))}
+                  <div className="space-y-3">
+                    {addresses && addresses.length > 0 ? (
+                      addresses.map((addr) => (
+                        <label
+                          key={addr.id}
+                          className={`block border rounded-lg p-3 cursor-pointer ${selectedAddress === addr.id ? 'ring-2 ring-primary' : ''}`}
+                        >
+                          <input
+                            type="radio"
+                            name="address"
+                            value={addr.id}
+                            checked={selectedAddress === addr.id}
+                            onChange={() => setSelectedAddress(addr.id)}
+                            className="hidden"
+                          />
+                          <div className="flex justify-between">
+                            <div>
+                              <div className="font-medium">{addr.full_name}</div>
+                              <div className="text-sm text-muted-foreground">{addr.address_line1} {addr.address_line2}</div>
+                              <div className="text-sm text-muted-foreground">{addr.city}, {addr.state} - {addr.postal_code}</div>
+                              <div className="text-sm text-muted-foreground">Phone: {addr.phone}</div>
                             </div>
-                          </RadioGroup>
-                          <Button variant="outline" className="mt-4" onClick={() => setShowAddressForm(true)}>
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add New Address
-                          </Button>
-                        </>
+                            <div className="text-sm text-muted-foreground">{addr.is_default ? 'Default' : ''}</div>
+                          </div>
+                        </label>
+                      ))
+                    ) : (
+                      <div className="text-sm text-muted-foreground">No saved addresses yet.</div>
+                    )}
+
+                    <div className="pt-2">
+                      {showAddressForm ? (
+                        <AddressForm onCancel={() => setShowAddressForm(false)} onSubmit={handleAddressSubmit} />
+                      ) : (
+                        <Button variant="outline" onClick={() => setShowAddressForm(true)}>
+                          <Plus className="w-4 h-4 mr-2" /> Add new address
+                        </Button>
                       )}
-                    </>
-                  )}
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -296,7 +413,7 @@ const Checkout = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="mb-4">
+                    <RadioGroup value={paymentMethod} onValueChange={(val) => setPaymentMethod(val as 'razorpay' | 'cod')} className="mb-4">
                       <div className="flex items-center space-x-2 border rounded-lg p-3">
                         <RadioGroupItem value="razorpay" id="razorpay" />
                         <Label htmlFor="razorpay" className="flex-1 cursor-pointer font-medium">Card / UPI / Netbanking (Razorpay)</Label>
@@ -306,9 +423,10 @@ const Checkout = () => {
                         <Label htmlFor="cod" className="flex-1 cursor-pointer font-medium">Cash on Delivery</Label>
                       </div>
                     </RadioGroup>
+
                     <Button
                       className="w-full gradient-hero"
-                      onClick={handlePlaceOrder}
+                      onClick={handlePlaceOrderClick}
                       disabled={processing || !currentAddress}
                     >
                       {processing ? 'Processing...' : paymentMethod === 'cod' ? 'Place Order (COD)' : <><Lock className="w-4 h-4 mr-2" />Continue to Pay ₹{total.toFixed(2)}</>}
@@ -329,7 +447,7 @@ const Checkout = () => {
                       const imgSrc = item.product.main_image_url || productImages[item.product.slug] || monsteraImg;
                       const price = (item.product.sale_price || item.product.base_price) + (item.variant?.price_adjustment || 0);
                       return (
-                        <div key={`${item.product.id}-${item.variant?.id}`} className="flex gap-3">
+                        <div key={`${item.product.id}-${item.variant?.id || 'no-variant'}`} className="flex gap-3">
                           <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted/50 flex-shrink-0">
                             <img src={imgSrc} alt={item.product.name} className="w-full h-full object-cover" />
                           </div>
@@ -342,6 +460,7 @@ const Checkout = () => {
                       );
                     })}
                   </div>
+
                   <Separator className="my-4" />
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
@@ -354,10 +473,11 @@ const Checkout = () => {
                         <span className="font-semibold">-₹{discountAmount.toFixed(2)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between">
                       <span className="text-muted-foreground">Shipping</span>
                       {shippingCost === 0 ? <span className="font-semibold text-green-600">FREE</span> : <span className="font-semibold">₹{shippingCost.toFixed(2)}</span>}
                     </div>
+
                     <Separator className="my-2" />
                     <div className="flex justify-between">
                       <span className="font-semibold">Order Total</span>
@@ -370,6 +490,58 @@ const Checkout = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* COD Confirmation Dialog (Option B fancy) */}
+      <Dialog open={isCODDialogOpen} onOpenChange={(open) => setIsCODDialogOpen(open)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Confirm Cash on Delivery</DialogTitle>
+            <DialogDescription>
+              Please confirm that you want to place this order and pay <strong>₹{total.toFixed(2)}</strong> at the time of delivery.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 border rounded-lg p-3 max-h-64 overflow-y-auto">
+            {items.map((item) => {
+              const price = (item.product.sale_price || item.product.base_price) + (item.variant?.price_adjustment || 0);
+              return (
+                <div key={`${item.product.id}-${item.variant?.id || 'no-variant'}`} className="flex items-center justify-between py-2 border-b last:border-0">
+                  <div>
+                    <div className="font-medium text-sm">{item.product.name}</div>
+                    {item.variant && <div className="text-xs text-muted-foreground">{item.variant.name}</div>}
+                    <div className="text-xs text-muted-foreground">Qty: {item.quantity}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-semibold">₹{(price * item.quantity).toFixed(2)}</div>
+                    <div className="text-xs text-muted-foreground">₹{price.toFixed(2)} each</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 flex justify-between items-center">
+            <div>
+              <div className="text-sm text-muted-foreground">Subtotal</div>
+              <div className="font-semibold">₹{subtotal.toFixed(2)}</div>
+              <div className="text-sm text-muted-foreground">Shipping: {shippingCost === 0 ? 'FREE' : `₹${shippingCost.toFixed(2)}`}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-muted-foreground">Total</div>
+              <div className="text-2xl font-bold">₹{total.toFixed(2)}</div>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-6 flex justify-end gap-24">
+            <Button variant="ghost" onClick={() => setIsCODDialogOpen(false)} disabled={processing}>
+              <X className="w-4 h-4 mr-2" />Cancel
+            </Button>
+            <Button className="gradient-hero" onClick={handleConfirmCOD} disabled={processing}>
+              {processing ? 'Placing...' : `Confirm & Place Order (₹${total.toFixed(2)})`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

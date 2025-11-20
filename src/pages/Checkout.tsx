@@ -311,11 +311,11 @@ const Checkout = () => {
     setProcessing(true);
     try {
       const address = addresses.find((a) => a.id === selectedAddress);
-      if (!address) throw new Error('Selected address not found');
+      if (!address) throw new Error("Selected address not found");
 
       const order = await createOrderRecord(address);
 
-      // ⭐ CREATE DELHIVERY SHIPMENT FOR COD ⭐
+      // ⭐ CREATE DELHIVERY SHIPMENT ⭐
       try {
         await supabase.functions.invoke("delhivery-create", {
           method: "POST",
@@ -323,23 +323,19 @@ const Checkout = () => {
         });
       } catch (err) {
         console.error("Failed to create Delhivery shipment:", err);
-        // Not blocking order — label can still be created later manually
       }
 
-      // For COD, clear cart immediately after successful order creation
-      if (isDirectBuy) {
-        clearBuyNow();
-      } else {
-        cart.clearCart();
-      }
+      // Clear cart AFTER order
+      if (isDirectBuy) clearBuyNow();
+      else cart.clearCart();
 
       toast.success(`Order placed! Pay ₹${total.toFixed(2)} on delivery.`);
       setIsCODDialogOpen(false);
       setProcessing(false);
-      navigate('/account');
+      navigate("/account");
     } catch (err: any) {
-      console.error('Failed to place COD order:', err);
-      toast.error(err?.message || 'Failed to place order');
+      console.error("Failed to place COD order:", err);
+      toast.error(err?.message || "Failed to place order");
       setProcessing(false);
     }
   };

@@ -1,67 +1,59 @@
 // supabase/functions/lib/delhivery.ts
 // Utilities for interacting with Delhivery APIs from Supabase Edge Functions.
 
-export type ShipmentPayload = {
-  order_id: string;
-  customer_name: string;
-  customer_phone: string;
-  address_line1: string;
-  address_line2?: string;
-  city: string;
-  state: string;
-  pin: string;
-  country?: string;
-  items?: { name: string; qty: number; price?: number }[];
-  payment_mode: 'Prepaid' | 'COD';
-  cod_amount?: number;
-};
-
 const API_BASE =
-  Deno.env.get('DELHIVERY_ENV') === 'staging'
-    ? 'https://staging-express.delhivery.com'
-    : 'https://track.delhivery.com';
+  Deno.env.get("DELHIVERY_ENV") === "staging"
+    ? "https://staging-express.delhivery.com"
+    : "https://track.delhivery.com";
 
-const TOKEN = Deno.env.get('DELHIVERY_TOKEN') || '';
+const TOKEN = Deno.env.get("DELHIVERY_TOKEN") || "";
 
-function formUrlEncoded(payload: object) {
+function formUrlEncoded(payload) {
   return `format=json&data=${encodeURIComponent(JSON.stringify(payload))}`;
 }
 
-export async function createShipment(payload: ShipmentPayload) {
+export async function createShipment(payload) {
   if (!TOKEN) {
-    throw new Error('DELHIVERY_TOKEN not set in environment');
+    throw new Error("DELHIVERY_TOKEN not set in environment");
   }
 
   const pickupLocation = {
-    name: Deno.env.get('DELHIVERY_PICKUP_LOCATION') || 'DEFAULT_WAREHOUSE',
-    add: Deno.env.get('DELHIVERY_PICKUP_ADDRESS') || '',
-    country: 'India',
-    pin: Deno.env.get('DELHIVERY_PICKUP_PIN') || '',
-    phone: Deno.env.get('DELHIVERY_PICKUP_PHONE') || '',
-    city: Deno.env.get('DELHIVERY_PICKUP_CITY') || '',
-    state: Deno.env.get('DELHIVERY_PICKUP_STATE') || '',
+    name: Deno.env.get("DELHIVERY_PICKUP_LOCATION") || "DEFAULT_WAREHOUSE",
+    add: Deno.env.get("DELHIVERY_PICKUP_ADDRESS") || "",
+    country: "India",
+    pin: Deno.env.get("DELHIVERY_PICKUP_PIN") || "",
+    phone: Deno.env.get("DELHIVERY_PICKUP_PHONE") || "",
+    city: Deno.env.get("DELHIVERY_PICKUP_CITY") || "",
+    state: Deno.env.get("DELHIVERY_PICKUP_STATE") || "",
   };
 
   const shipment = {
-    country: payload.country || 'India',
+    country: payload.country || "India",
     city: payload.city,
-    seller_add: pickupLocation.add || '',
-    cod_amount: payload.payment_mode === 'COD' ? String(payload.cod_amount || 0) : '0',
-    return_phone: pickupLocation.phone || '',
-    seller_inv_date: '',
-    seller_name: '',
+    seller_add: pickupLocation.add || "",
+    cod_amount:
+      payload.payment_mode === "COD"
+        ? String(payload.cod_amount || 0)
+        : "0",
+    return_phone: pickupLocation.phone || "",
+    seller_inv_date: "",
+    seller_name: "",
     pin: payload.pin,
-    seller_inv: '',
+    seller_inv: "",
     state: payload.state,
-    return_name: pickupLocation.name || '',
+    return_name: pickupLocation.name || "",
     order: payload.order_id,
-    add: `${payload.address_line1}${payload.address_line2 ? ', ' + payload.address_line2 : ''}`,
+    add: `${payload.address_line1}${
+      payload.address_line2 ? ", " + payload.address_line2 : ""
+    }`,
     payment_mode: payload.payment_mode,
-    quantity: String(payload.items?.reduce((s, it) => s + (it.qty || 1), 0) || 1),
+    quantity: String(
+      payload.items?.reduce((s, it) => s + (it.qty || 1), 0) || 1
+    ),
     name: payload.customer_name,
     phone: payload.customer_phone,
-    sku: payload.items?.map((i) => i.name).join(', ') || 'ITEM',
-    actual_weight: '0.5',
+    sku: payload.items?.map((i) => i.name).join(", ") || "ITEM",
+    actual_weight: "0.5",
   };
 
   const createPayload = {
@@ -72,16 +64,18 @@ export async function createShipment(payload: ShipmentPayload) {
   const body = formUrlEncoded(createPayload);
 
   const res = await fetch(`${API_BASE}/api/cmu/create.json`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `token ${TOKEN}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+
+      // ⭐ FIXED — MUST BE UPPERCASE ⭐
+      Authorization: `Token ${TOKEN}`,
     },
     body,
   });
 
   const text = await res.text();
-  let json: any;
+  let json;
   try {
     json = JSON.parse(text);
   } catch (e) {
@@ -95,16 +89,12 @@ export async function createShipment(payload: ShipmentPayload) {
   };
 }
 
-export async function cancelShipment(awb: string) {
+export async function cancelShipment(awb) {
   if (!TOKEN) {
-    throw new Error('DELHIVERY_TOKEN not set in environment');
+    throw new Error("DELHIVERY_TOKEN not set in environment");
   }
 
-  const payload = {
-    waybill: awb,
-    cancellation: 'true',
-  };
-
+  const payload = { waybill: awb, cancellation: "true" };
   const body = formUrlEncoded(payload);
 
   const endpoints = [
@@ -116,84 +106,98 @@ export async function cancelShipment(awb: string) {
   for (const url of endpoints) {
     try {
       const res = await fetch(url, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Authorization: `token ${TOKEN}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Token ${TOKEN}`, // FIXED
         },
         body,
       });
+
       const text = await res.text();
       try {
         const json = JSON.parse(text);
-        if (res.ok) return { status: res.status, ok: true, body: json };
+        if (res.ok)
+          return {
+            status: res.status,
+            ok: true,
+            body: json,
+          };
       } catch (e) {
-        if (res.ok) return { status: res.status, ok: true, body: { raw: text } };
+        if (res.ok)
+          return {
+            status: res.status,
+            ok: true,
+            body: { raw: text },
+          };
       }
-    } catch (_e) {
-      // try next endpoint
-    }
+    } catch {}
   }
 
-  return { status: 500, ok: false, body: { error: 'Failed to cancel via known endpoints' } };
+  return {
+    status: 500,
+    ok: false,
+    body: { error: "Failed to cancel via known endpoints" },
+  };
 }
 
-export async function fetchLabel(awb: string) {
+export async function fetchLabel(awb) {
   if (!TOKEN) {
-    throw new Error('DELHIVERY_TOKEN not set in environment');
+    throw new Error("DELHIVERY_TOKEN not set in environment");
   }
 
-  // 1) Try docket/generate_label_pdf
+  // 1) PDF endpoint
   try {
-    const payload = { lr_numbers: [awb], label_size: 'A4' };
+    const payload = { lr_numbers: [awb], label_size: "A4" };
     const body = formUrlEncoded(payload);
+
     const res = await fetch(`${API_BASE}/api/docket/generate_label_pdf`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization: `token ${TOKEN}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Token ${TOKEN}`, // FIXED
       },
       body,
     });
 
     if (res.ok) {
       const buffer = await res.arrayBuffer();
-      return { ok: true, contentType: res.headers.get('content-type') || 'application/pdf', buffer };
+      return {
+        ok: true,
+        contentType: res.headers.get("content-type") || "application/pdf",
+        buffer,
+      };
     }
-  } catch (e) {
-    // continue
-  }
+  } catch {}
 
-  // 2) Try JSON endpoint that may include a download URL
+  // 2) JSON fallback
   try {
     const jsonRes = await fetch(
-      `${API_BASE}/waybill/api/print/json/?token=${encodeURIComponent(TOKEN)}&waybill=${encodeURIComponent(awb)}`,
-      { method: 'GET' }
+      `${API_BASE}/waybill/api/print/json/?token=${encodeURIComponent(
+        TOKEN
+      )}&waybill=${encodeURIComponent(awb)}`,
+      { method: "GET" }
     );
+
     if (jsonRes.ok) {
       const j = await jsonRes.json().catch(() => null);
-      const possibleUrl = j?.data?.url || j?.url || j?.label_url || j?.print_url;
-      if (possibleUrl) {
-        const pdf = await fetch(possibleUrl);
+      const url =
+        j?.data?.url || j?.url || j?.label_url || j?.print_url;
+
+      if (url) {
+        const pdf = await fetch(url);
         if (pdf.ok) {
           const buffer = await pdf.arrayBuffer();
-          return { ok: true, contentType: pdf.headers.get('content-type') || 'application/pdf', buffer };
+          return {
+            ok: true,
+            contentType:
+              pdf.headers.get("content-type") || "application/pdf",
+            buffer,
+          };
         }
       }
     }
-  } catch (_e) {
-    // ignore
-  }
+  } catch {}
 
-  // 3) fallback bulk endpoint
-  try {
-    const jsonRes = await fetch(`${API_BASE}/waybill/api/bulk/json/?token=${encodeURIComponent(TOKEN)}&count=1`);
-    if (jsonRes.ok) {
-      return { ok: true, contentType: 'application/json', buffer: await jsonRes.arrayBuffer() };
-    }
-  } catch (_e) {
-    // ignore
-  }
-
-  return { ok: false, error: 'Label not available via attempted Delhivery endpoints' };
+  return { ok: false, error: "Label not available" };
 }

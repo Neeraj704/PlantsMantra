@@ -315,6 +315,17 @@ const Checkout = () => {
 
       const order = await createOrderRecord(address);
 
+      // ⭐ CREATE DELHIVERY SHIPMENT FOR COD ⭐
+      try {
+        await supabase.functions.invoke("delhivery-create", {
+          method: "POST",
+          body: JSON.stringify({ orderId: order.id }),
+        });
+      } catch (err) {
+        console.error("Failed to create Delhivery shipment:", err);
+        // Not blocking order — label can still be created later manually
+      }
+
       // For COD, clear cart immediately after successful order creation
       if (isDirectBuy) {
         clearBuyNow();

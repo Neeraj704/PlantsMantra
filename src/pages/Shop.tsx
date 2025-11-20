@@ -26,13 +26,11 @@ import { Product, CartItem } from '@/types/database';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useCart } from '@/hooks/useCart';
 import { useBuyNow } from '@/hooks/useBuyNow';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { addItem } = useCart();
   const { setItemAndProceed } = useBuyNow();
@@ -157,13 +155,11 @@ const Shop = () => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (!user) {
-      toast.error("Please log in to proceed with your purchase.");
-      navigate('/auth');
-      return;
-    }
-    
-    const buyNowItem: CartItem = { product, quantity: 1 };
+    const buyNowItem: CartItem = {
+      product,
+      quantity: 1,
+    };
+
     setItemAndProceed(buyNowItem);
     navigate('/checkout');
   };

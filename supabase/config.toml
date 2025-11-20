@@ -23,3 +23,6 @@ verify_jwt = true
 
 [functions.delhivery-get-label]
 verify_jwt = true
+
+[functions.create-order]
+verify_jwt = false

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/hooks/useCart';
 import { useBuyNow } from '@/hooks/useBuyNow';
@@ -26,13 +27,23 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 
 declare global {
   interface Window {
     Razorpay: any;
   }
+}
+
+interface CheckoutAddress {
+  full_name: string;
+  phone: string;
+  address_line1: string;
+  address_line2?: string | null;
+  city: string;
+  state: string;
+  postal_code: string;
+  country?: string | null;
 }
 
 /**
@@ -51,7 +62,7 @@ const loadRazorpayScript = (src: string) => {
 };
 
 const Checkout = () => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const cart = useCart();
   const { item: buyNowItem, isBuyNowFlow, clearBuyNow } = useBuyNow();
@@ -62,11 +73,24 @@ const Checkout = () => {
   const [processing, setProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'cod'>('razorpay');
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
-
   const [isCODDialogOpen, setIsCODDialogOpen] = useState(false);
+
+  // Guest checkout state
+  const [guestEmail, setGuestEmail] = useState('');
+  const [guestAddress, setGuestAddress] = useState<CheckoutAddress>({
+    full_name: '',
+    phone: '',
+    address_line1: '',
+    address_line2: '',
+    city: '',
+    state: '',
+    postal_code: '',
+    country: 'India',
+  });
 
   const isDirectBuy = isBuyNowFlow && buyNowItem;
   const items = isDirectBuy ? [buyNowItem] : cart.items;
+  const isGuest = !user;
 
   useEffect(() => {
     if (user) fetchAddresses();
@@ -75,7 +99,6 @@ const Checkout = () => {
     });
 
     return () => {
-      // preserve behavior: clear buy-now state on unmount if it was a buy-now flow
       if (isBuyNowFlow) {
         clearBuyNow();
       }
@@ -117,11 +140,53 @@ const Checkout = () => {
   const discountAmount = isDirectBuy ? 0 : cart.getDiscountAmount();
   const total = subtotal + shippingCost - discountAmount;
 
+  const hasValidDetails = isGuest
+    ? Boolean(
+        guestAddress.full_name &&
+          guestAddress.address_line1 &&
+          guestAddress.city &&
+          guestAddress.state &&
+          guestAddress.postal_code &&
+          (guestAddress.phone || guestEmail),
+      )
+    : Boolean(selectedAddress);
+
+  /**
+   * Resolve a normalized checkout address from either:
+   * - logged-in user's selected saved address, or
+   * - guest's inline address form.
+   */
+  const getCheckoutAddress = (): CheckoutAddress => {
+    if (isGuest) {
+      return guestAddress;
+    }
+
+    const addr = addresses.find((a) => a.id === selectedAddress);
+    if (!addr) {
+      throw new Error('Selected address not found');
+    }
+
+    return {
+      full_name: addr.full_name,
+      phone: addr.phone,
+      address_line1: addr.address_line1,
+      address_line2: addr.address_line2,
+      city: addr.city,
+      state: addr.state,
+      postal_code: addr.postal_code,
+      country: addr.country,
+    };
+  };
+
   /**
    * Initiate Razorpay: opens checkout and verifies payment on success.
    * NOTE: does NOT clear cart. Cart clearing happens only after verification succeeds.
    */
-  const initiateRazorpayPayment = async (orderId: string, totalAmount: number, address: Address) => {
+  const initiateRazorpayPayment = async (
+    orderId: string,
+    totalAmount: number,
+    address: CheckoutAddress,
+  ) => {
     try {
       if (!razorpayLoaded) {
         toast.error('Payment gateway not loaded. Please refresh.');
@@ -129,17 +194,23 @@ const Checkout = () => {
         return false;
       }
 
-      // create razorpay order server-side (edge function)
-      const createOrderResponse = await fetch(`${SUPABASE_URL}/functions/v1/create-razorpay-order`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}` },
-        body: JSON.stringify({ amount: Math.round(totalAmount * 100) }), // in paise
-      });
+      const createOrderResponse = await fetch(
+        `${SUPABASE_URL}/functions/v1/create-razorpay-order`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ amount: Math.round(totalAmount * 100) }),
+        },
+      );
 
       if (!createOrderResponse.ok) {
         const err = await createOrderResponse.json().catch(() => null);
         throw new Error(err?.error || 'Failed to create Razorpay order');
       }
+
       const orderData = await createOrderResponse.json();
 
       const options = {
@@ -150,46 +221,54 @@ const Checkout = () => {
         description: `Order ID: ${String(orderId).slice(0, 8)}`,
         order_id: orderData.razorpayOrderId,
         handler: async (response: any) => {
-          // Verify on backend
           try {
-            const verifyRes = await fetch(`${SUPABASE_URL}/functions/v1/verify-razorpay-payment`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}` },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                internal_order_id: orderId,
-              }),
-            });
+            const verifyRes = await fetch(
+              `${SUPABASE_URL}/functions/v1/verify-razorpay-payment`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+                },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  internal_order_id: orderId,
+                }),
+              },
+            );
 
             const verifyData = await verifyRes.json();
             if (!verifyRes.ok || !verifyData.success) {
               throw new Error(verifyData.error || 'Payment verification failed');
             }
 
-            // Payment verified successfully: clear cart / buy-now and navigate
             if (isDirectBuy) {
               clearBuyNow();
             } else {
               cart.clearCart();
             }
 
-            // Optionally update order's payment_status/status if not already done by edge function
             toast.success('Payment successful! Order confirmed.');
             setProcessing(false);
             navigate('/account');
           } catch (err: any) {
             console.error('Payment verification failed:', err);
-            toast.error(`Payment verification failed: ${err?.message || 'unknown error'}`);
+            toast.error(
+              `Payment verification failed: ${err?.message || 'unknown error'}`,
+            );
             setProcessing(false);
           }
         },
-        prefill: { name: address.full_name, email: user?.email, contact: address.phone },
+        prefill: {
+          name: address.full_name,
+          email: user?.email || guestEmail || '',
+          contact: address.phone,
+        },
         theme: { color: '#4ADE80' },
         modal: {
           ondismiss: () => {
-            // user closed the modal without completing payment
             setProcessing(false);
             toast.info('Payment was cancelled.');
           },
@@ -200,7 +279,11 @@ const Checkout = () => {
 
       rzp.on('payment.failed', (response: any) => {
         console.error('Payment failed:', response.error);
-        toast.error(`Payment failed: ${response.error?.description || 'Unknown error'}`);
+        toast.error(
+          `Payment failed: ${
+            response.error?.description || 'Unknown error'
+          }`,
+        );
         setProcessing(false);
       });
 
@@ -215,38 +298,23 @@ const Checkout = () => {
   };
 
   /**
-   * Create order & order items in DB (common function used for both COD (after confirmation) and Razorpay pre-checkout).
-   * Returns the created order record (including id) or throws.
+   * Create order & order items in DB via Edge Function (works for logged-in + guests).
    */
-  const createOrderRecord = async (address: Address) => {
-    const { data: order, error } = await supabase
-      .from('orders')
-      .insert({
-        user_id: user?.id,
-        customer_email: user?.email,
-        customer_name: address.full_name,
-        customer_phone: address.phone,
-        shipping_address: address as any,
-        subtotal,
-        discount_amount: discountAmount,
-        shipping_cost: shippingCost,
-        coupon_code: isDirectBuy ? null : cart.appliedCoupon?.code || null,
-        payment_method: paymentMethod,
-        total,
-        status: 'pending',
-        payment_status: paymentMethod === 'cod' ? 'unpaid' : 'pending',
-      })
-      .select()
-      .single();
+  const createOrderRecord = async (
+    address: CheckoutAddress,
+    customerEmail: string | null,
+  ) => {
+    const shippingAddress = {
+      ...address,
+      pin: address.postal_code, // for Delhivery function compatibility
+    };
 
-    if (error || !order) {
-      throw error || new Error('Order creation failed');
-    }
+    const orderItems = (items || []).map((item) => {
+      const basePrice = item.product.sale_price || item.product.base_price;
+      const variantAdjustment = item.variant?.price_adjustment || 0;
+      const unitPrice = basePrice + variantAdjustment;
 
-    const orderItems = items.map((item) => {
-      const unitPrice = (item.product.sale_price || item.product.base_price) + (item.variant?.price_adjustment || 0);
       return {
-        order_id: order.id,
         product_id: item.product.id,
         variant_id: item.variant?.id || null,
         product_name: item.product.name,
@@ -257,46 +325,83 @@ const Checkout = () => {
       };
     });
 
-    const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
-    if (itemsError) throw itemsError;
+    const payload = {
+      user_id: user?.id ?? null,
+      customer_email: customerEmail,
+      customer_name: address.full_name,
+      customer_phone: address.phone,
+      shipping_address: shippingAddress,
+      subtotal,
+      discount_amount: discountAmount,
+      shipping_cost: shippingCost,
+      total,
+      coupon_code: isDirectBuy ? null : cart.appliedCoupon?.code || null,
+      payment_method: paymentMethod,
+      items: orderItems,
+    };
 
-    return order;
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/create-order`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok || !data?.order) {
+      console.error('Order creation failed:', data?.error);
+      throw new Error(data?.error || 'Order creation failed');
+    }
+
+    return data.order as { id: string };
   };
 
-  /**
-   * Handler invoked when user clicks "Place Order" button.
-   * If COD: open confirmation dialog. If online: create order then open Razorpay modal.
-   */
-  const handlePlaceOrderClick = () => {
-    if (!selectedAddress) {
-      toast.error('Please select a shipping address');
+  const handlePlaceOrderClick = async () => {
+    if (!items || items.length === 0) {
+      toast.error('Your cart is empty.');
       return;
     }
-    // If COD, open dialog and do not proceed yet.
+
+    if (isGuest) {
+      if (
+        !guestAddress.full_name ||
+        !guestAddress.address_line1 ||
+        !guestAddress.city ||
+        !guestAddress.state ||
+        !guestAddress.postal_code
+      ) {
+        toast.error('Please fill your shipping details.');
+        return;
+      }
+
+      if (!guestAddress.phone && !guestEmail) {
+        toast.error('Please provide at least a phone number or an email.');
+        return;
+      }
+    } else {
+      if (!selectedAddress) {
+        toast.error('Please select a shipping address.');
+        return;
+      }
+    }
+
     if (paymentMethod === 'cod') {
       setIsCODDialogOpen(true);
-      return;
+    } else {
+      await handleOnlinePaymentFlow();
     }
-
-    // For online payment: proceed with creating order then open Razorpay.
-    handleOnlinePaymentFlow();
   };
 
-  /**
-   * Handle online payment flow: create order record, items, then call initiateRazorpayPayment.
-   * CART IS NOT CLEARED HERE — it will be cleared after verification success.
-   */
   const handleOnlinePaymentFlow = async () => {
     setProcessing(true);
     try {
-      const address = addresses.find((a) => a.id === selectedAddress);
-      if (!address) throw new Error('Selected address not found');
-
-      const order = await createOrderRecord(address);
-
-      // initiate razorpay
+      const address = getCheckoutAddress();
+      const customerEmail = user?.email ?? (guestEmail || null);
+      const order = await createOrderRecord(address, customerEmail);
       await initiateRazorpayPayment(order.id, total, address);
-      // do not clear cart here — the verification handler clears it
     } catch (err: any) {
       console.error('Failed to start online payment:', err);
       toast.error(err?.message || 'Failed to start payment');
@@ -304,192 +409,468 @@ const Checkout = () => {
     }
   };
 
-  /**
-   * Called when user confirms in COD dialog. Creates order and clears cart on success.
-   */
   const handleConfirmCOD = async () => {
     setProcessing(true);
     try {
-      const address = addresses.find((a) => a.id === selectedAddress);
-      if (!address) throw new Error("Selected address not found");
+      const address = getCheckoutAddress();
+      const customerEmail = user?.email ?? (guestEmail || null);
+      const order = await createOrderRecord(address, customerEmail);
 
-      const order = await createOrderRecord(address);
-
-      // ⭐ CREATE DELHIVERY SHIPMENT ⭐
       try {
-        await supabase.functions.invoke("delhivery-create", {
-          method: "POST",
+        await supabase.functions.invoke('delhivery-create', {
+          method: 'POST',
           body: JSON.stringify({ orderId: order.id }),
         });
-      } catch (err) {
-        console.error("Failed to create Delhivery shipment:", err);
+      } catch (error) {
+        console.error('Failed to create Delhivery shipment:', error);
       }
 
-      // Clear cart AFTER order
-      if (isDirectBuy) clearBuyNow();
-      else cart.clearCart();
+      if (isDirectBuy) {
+        clearBuyNow();
+      } else {
+        cart.clearCart();
+      }
 
-      toast.success(`Order placed! Pay ₹${total.toFixed(2)} on delivery.`);
+      toast.success(
+        `Order placed! ${
+          paymentMethod === 'cod'
+            ? `Pay ₹${total.toFixed(2)} on delivery.`
+            : 'We will notify you with updates.'
+        }`,
+      );
       setIsCODDialogOpen(false);
       setProcessing(false);
-      navigate("/account");
+      navigate('/account');
     } catch (err: any) {
-      console.error("Failed to place COD order:", err);
-      toast.error(err?.message || "Failed to place order");
+      console.error('Failed to place COD order:', err);
+      toast.error(err?.message || 'Failed to place order');
       setProcessing(false);
     }
   };
 
-  if (!user || !profile) return <Navigate to="/auth" replace />;
-  if (!items || items.length === 0) return <Navigate to="/shop" replace />;
+  if (!items || items.length === 0) {
+    return <Navigate to="/cart" replace />;
+  }
 
-  const currentAddress = addresses.find((a) => a.id === selectedAddress);
-
-  const productImages = {
+  const productImages: Record<string, string> = {
     'monstera-deliciosa': monsteraImg,
     'snake-plant': snakePlantImg,
-    'pothos': pothosImg,
+    pothos: pothosImg,
     'fiddle-leaf-fig': fiddleLeafImg,
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-12">
+    <div className="min-h-screen pt-24 pb-12 bg-gradient-to-b from-muted/30 to-background">
       <div className="container mx-auto px-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-6xl mx-auto">
-          <h1 className="text-4xl font-serif font-bold mb-8">Checkout</h1>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MapPin className="w-5 h-5" />
-                    1. Shipping Address
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {addresses && addresses.length > 0 ? (
-                      addresses.map((addr) => (
-                        <label
-                          key={addr.id}
-                          className={`block border rounded-lg p-3 cursor-pointer ${selectedAddress === addr.id ? 'ring-2 ring-primary' : ''}`}
-                        >
-                          <input
-                            type="radio"
-                            name="address"
-                            value={addr.id}
-                            checked={selectedAddress === addr.id}
-                            onChange={() => setSelectedAddress(addr.id)}
-                            className="hidden"
-                          />
-                          <div className="flex justify-between">
-                            <div>
-                              <div className="font-medium">{addr.full_name}</div>
-                              <div className="text-sm text-muted-foreground">{addr.address_line1} {addr.address_line2}</div>
-                              <div className="text-sm text-muted-foreground">{addr.city}, {addr.state} - {addr.postal_code}</div>
-                              <div className="text-sm text-muted-foreground">Phone: {addr.phone}</div>
-                            </div>
-                            <div className="text-sm text-muted-foreground">{addr.is_default ? 'Default' : ''}</div>
-                          </div>
-                        </label>
-                      ))
-                    ) : (
-                      <div className="text-sm text-muted-foreground">No saved addresses yet.</div>
-                    )}
-
-                    <div className="pt-2">
-                      {showAddressForm ? (
-                        <AddressForm onCancel={() => setShowAddressForm(false)} onSubmit={handleAddressSubmit} />
-                      ) : (
-                        <Button variant="outline" onClick={() => setShowAddressForm(true)}>
-                          <Plus className="w-4 h-4 mr-2" /> Add new address
-                        </Button>
-                      )}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-6xl mx-auto"
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-8">
+            {/* Left column: Address + Payment */}
+            <div className="space-y-6">
+              {/* Shipping Address */}
+              <Card className="shadow-card">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <MapPin className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl font-serif">
+                        Shipping Details
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        {isGuest
+                          ? 'Checkout as a guest with your address and contact info.'
+                          : 'Choose where you’d like your plants delivered.'}
+                      </p>
                     </div>
                   </div>
+                </CardHeader>
+                <CardContent>
+                  {isGuest ? (
+                    <div className="space-y-4">
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="guest-full-name">Full Name</Label>
+                          <Input
+                            id="guest-full-name"
+                            value={guestAddress.full_name}
+                            onChange={(e) =>
+                              setGuestAddress((prev) => ({
+                                ...prev,
+                                full_name: e.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="guest-phone">Phone Number</Label>
+                          <Input
+                            id="guest-phone"
+                            type="tel"
+                            value={guestAddress.phone}
+                            onChange={(e) =>
+                              setGuestAddress((prev) => ({
+                                ...prev,
+                                phone: e.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                          <Label htmlFor="guest-email">Email (optional)</Label>
+                          <Input
+                            id="guest-email"
+                            type="email"
+                            placeholder="you@example.com"
+                            value={guestEmail}
+                            onChange={(e) => setGuestEmail(e.target.value)}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Provide at least a phone number or an email so we
+                            can contact you about your order.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2 md:col-span-2">
+                          <Label htmlFor="guest-address-line1">
+                            Address Line 1
+                          </Label>
+                          <Input
+                            id="guest-address-line1"
+                            value={guestAddress.address_line1}
+                            onChange={(e) =>
+                              setGuestAddress((prev) => ({
+                                ...prev,
+                                address_line1: e.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                          <Label htmlFor="guest-address-line2">
+                            Address Line 2 (optional)
+                          </Label>
+                          <Input
+                            id="guest-address-line2"
+                            value={guestAddress.address_line2 || ''}
+                            onChange={(e) =>
+                              setGuestAddress((prev) => ({
+                                ...prev,
+                                address_line2: e.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="guest-city">City</Label>
+                          <Input
+                            id="guest-city"
+                            value={guestAddress.city}
+                            onChange={(e) =>
+                              setGuestAddress((prev) => ({
+                                ...prev,
+                                city: e.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="guest-state">State</Label>
+                          <Input
+                            id="guest-state"
+                            value={guestAddress.state}
+                            onChange={(e) =>
+                              setGuestAddress((prev) => ({
+                                ...prev,
+                                state: e.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="guest-postal-code">PIN Code</Label>
+                          <Input
+                            id="guest-postal-code"
+                            value={guestAddress.postal_code}
+                            onChange={(e) =>
+                              setGuestAddress((prev) => ({
+                                ...prev,
+                                postal_code: e.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {addresses.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          No saved addresses yet. Add one below to continue.
+                        </p>
+                      ) : (
+                        <RadioGroup
+                          value={selectedAddress}
+                          onValueChange={setSelectedAddress}
+                          className="space-y-3"
+                        >
+                          {addresses.map((address) => (
+                            <label
+                              key={address.id}
+                              className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:border-primary transition-smooth"
+                            >
+                              <RadioGroupItem value={address.id} />
+                              <div className="flex-1">
+                                <p className="font-medium">
+                                  {address.full_name}
+                                  {address.is_default && (
+                                    <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                                      Default
+                                    </span>
+                                  )}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {address.address_line1}
+                                  {address.address_line2 &&
+                                    `, ${address.address_line2}`}
+                                  , {address.city}, {address.state} -{' '}
+                                  {address.postal_code}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  Phone: {address.phone}
+                                </p>
+                              </div>
+                            </label>
+                          ))}
+                        </RadioGroup>
+                      )}
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => setShowAddressForm(true)}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add New Address
+                      </Button>
+
+                      {showAddressForm && (
+                        <div className="mt-4 border rounded-lg p-4">
+                          <AddressForm onSubmit={handleAddressSubmit} />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
-              {selectedAddress && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <CreditCard className="w-5 h-5" />
-                      2. Payment Method
-                    </CardTitle>
+              {/* Payment Method */}
+              {(isGuest || selectedAddress) && (
+                <Card className="shadow-card">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <CreditCard className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-xl font-serif">
+                          Payment Method
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          Choose how you’d like to pay.
+                        </p>
+                      </div>
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <RadioGroup value={paymentMethod} onValueChange={(val) => setPaymentMethod(val as 'razorpay' | 'cod')} className="mb-4">
-                      <div className="flex items-center space-x-2 border rounded-lg p-3">
-                        <RadioGroupItem value="razorpay" id="razorpay" />
-                        <Label htmlFor="razorpay" className="flex-1 cursor-pointer font-medium">Card / UPI / Netbanking (Razorpay)</Label>
-                      </div>
-                      <div className="flex items-center space-x-2 border rounded-lg p-3">
-                        <RadioGroupItem value="cod" id="cod" />
-                        <Label htmlFor="cod" className="flex-1 cursor-pointer font-medium">Cash on Delivery</Label>
-                      </div>
+                  <CardContent className="space-y-4">
+                    <RadioGroup
+                      value={paymentMethod}
+                      onValueChange={(value: 'razorpay' | 'cod') =>
+                        setPaymentMethod(value)
+                      }
+                      className="space-y-3"
+                    >
+                      <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:border-primary transition-smooth">
+                        <div className="flex items-center gap-3">
+                          <RadioGroupItem
+                            value="razorpay"
+                            id="razorpay"
+                          />
+                          <div>
+                            <Label
+                              htmlFor="razorpay"
+                              className="flex items-center gap-2"
+                            >
+                              Pay Online (UPI / Card / Netbanking)
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                              Secure payment powered by Razorpay.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Lock className="w-3 h-3" />
+                          100% secure
+                        </div>
+                      </label>
+
+                      <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:border-primary transition-smooth">
+                        <div className="flex items-center gap-3">
+                          <RadioGroupItem value="cod" id="cod" />
+                          <div>
+                            <Label
+                              htmlFor="cod"
+                              className="flex items-center gap-2"
+                            >
+                              Cash on Delivery
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                Popular
+                              </span>
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                              Pay when your plants arrive at your doorstep.
+                            </p>
+                          </div>
+                        </div>
+                      </label>
                     </RadioGroup>
 
+                    <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/40 px-3 py-2 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Percent className="w-3 h-3 text-primary" />
+                        <span>No extra fees for prepaid or COD.</span>
+                      </div>
+                    </div>
+
                     <Button
-                      className="w-full gradient-hero"
+                      className="w-full mt-2"
+                      size="lg"
                       onClick={handlePlaceOrderClick}
-                      disabled={processing || !currentAddress}
+                      disabled={processing || !hasValidDetails}
                     >
-                      {processing ? 'Processing...' : paymentMethod === 'cod' ? 'Place Order (COD)' : <><Lock className="w-4 h-4 mr-2" />Continue to Pay ₹{total.toFixed(2)}</>}
+                      {processing
+                        ? 'Processing...'
+                        : paymentMethod === 'cod'
+                        ? `Place Order (Pay ₹${total.toFixed(2)} on delivery)`
+                        : `Pay Securely ₹${total.toFixed(2)}`}
                     </Button>
+
+                    <p className="text-xs text-muted-foreground text-center">
+                      By clicking {paymentMethod === 'cod' ? 'Place Order' : 'Pay Securely'}, you agree to our{' '}
+                      <span className="underline">Terms &amp; Conditions</span>{' '}
+                      and{' '}
+                      <span className="underline">Privacy Policy</span>.
+                    </p>
                   </CardContent>
                 </Card>
               )}
             </div>
 
-            <div className="lg:col-span-1">
-              <Card className="sticky top-24">
+            {/* Right column: Order Summary */}
+            <div className="space-y-6">
+              <Card className="shadow-card">
                 <CardHeader>
-                  <CardTitle>Order Summary</CardTitle>
+                  <CardTitle className="text-xl font-serif">
+                    Order Summary
+                  </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 mb-4 max-h-64 overflow-y-auto pr-2">
-                    {items.map((item) => {
-                      const imgSrc = item.product.main_image_url || productImages[item.product.slug] || monsteraImg;
-                      const price = (item.product.sale_price || item.product.base_price) + (item.variant?.price_adjustment || 0);
+                <CardContent className="space-y-4">
+                  <div className="space-y-3 max-h-[260px] overflow-y-auto pr-2">
+                    {items.map((item, index) => {
+                      if (!item) return null;
+                      const product = item.product;
+                      const productImg =
+                        product.main_image_url ||
+                        productImages[product.slug] ||
+                        monsteraImg;
+                      const basePrice =
+                        product.sale_price || product.base_price;
+                      const variantAdjustment =
+                        item.variant?.price_adjustment || 0;
+                      const itemPrice = basePrice + variantAdjustment;
+
                       return (
-                        <div key={`${item.product.id}-${item.variant?.id || 'no-variant'}`} className="flex gap-3">
-                          <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted/50 flex-shrink-0">
-                            <img src={imgSrc} alt={item.product.name} className="w-full h-full object-cover" />
+                        <div
+                          key={`${product.id}-${item.variant?.id || 'base'}-${index}`}
+                          className="flex gap-3"
+                        >
+                          <div className="w-16 h-16 rounded-md overflow-hidden bg-muted/40">
+                            <img
+                              src={productImg}
+                              alt={product.main_image_alt || product.name}
+                              className="w-full h-full object-cover"
+                            />
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{item.product.name}</p>
-                            {item.variant && <p className="text-xs text-muted-foreground">{item.variant.name}</p>}
-                            <p className="text-sm"><span className="text-muted-foreground">Qty: {item.quantity}</span> × <span className="font-semibold">₹{price.toFixed(2)}</span></p>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">
+                              {product.name}
+                            </p>
+                            {item.variant && (
+                              <p className="text-xs text-muted-foreground">
+                                {item.variant.name}
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              Qty: {item.quantity}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold">
+                              ₹{(itemPrice * item.quantity).toFixed(2)}
+                            </p>
+                            {product.sale_price && (
+                              <p className="text-xs text-muted-foreground line-through">
+                                ₹{(product.base_price * item.quantity).toFixed(2)}
+                              </p>
+                            )}
                           </div>
                         </div>
                       );
                     })}
                   </div>
 
-                  <Separator className="my-4" />
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Subtotal</span>
-                      <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
+                  <Separator />
+
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Subtotal</span>
+                      <span>₹{subtotal.toFixed(2)}</span>
                     </div>
-                    {!isDirectBuy && discountAmount > 0 && (
-                      <div className="flex justify-between text-sm text-green-600">
-                        <span className="text-muted-foreground flex items-center gap-1"><Percent className="w-3 h-3" />Discount ({cart.appliedCoupon?.code})</span>
-                        <span className="font-semibold">-₹{discountAmount.toFixed(2)}</span>
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-emerald-600">
+                        <span>Discount</span>
+                        <span>-₹{discountAmount.toFixed(2)}</span>
                       </div>
                     )}
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Shipping</span>
-                      {shippingCost === 0 ? <span className="font-semibold text-green-600">FREE</span> : <span className="font-semibold">₹{shippingCost.toFixed(2)}</span>}
+                      <span>Shipping</span>
+                      <span>
+                        {shippingCost > 0 ? (
+                          <>₹{shippingCost.toFixed(2)}</>
+                        ) : (
+                          <span className="text-emerald-600">Free</span>
+                        )}
+                      </span>
                     </div>
+                    <Separator />
+                    <div className="flex justify-between text-base font-semibold">
+                      <span>Total</span>
+                      <span>₹{total.toFixed(2)}</span>
+                    </div>
+                  </div>
 
-                    <Separator className="my-2" />
-                    <div className="flex justify-between">
-                      <span className="font-semibold">Order Total</span>
-                      <span className="font-bold text-lg">₹{total.toFixed(2)}</span>
-                    </div>
+                  <div className="mt-4 p-3 bg-muted/40 rounded-lg text-xs text-muted-foreground">
+                    <p>
+                      ✅ 7-day healthy plant guarantee. If your plant arrives
+                      damaged or unhealthy, we’ll replace it.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -498,53 +879,39 @@ const Checkout = () => {
         </motion.div>
       </div>
 
-      {/* COD Confirmation Dialog (Option B fancy) */}
-      <Dialog open={isCODDialogOpen} onOpenChange={(open) => setIsCODDialogOpen(open)}>
-        <DialogContent className="max-w-lg">
+      {/* COD Confirmation Dialog */}
+      <Dialog open={isCODDialogOpen} onOpenChange={setIsCODDialogOpen}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Cash on Delivery</DialogTitle>
             <DialogDescription>
-              Please confirm that you want to place this order and pay <strong>₹{total.toFixed(2)}</strong> at the time of delivery.
+              You&apos;ll pay ₹{total.toFixed(2)} in cash when your order is delivered.
             </DialogDescription>
           </DialogHeader>
-
-          <div className="mt-4 border rounded-lg p-3 max-h-64 overflow-y-auto">
-            {items.map((item) => {
-              const price = (item.product.sale_price || item.product.base_price) + (item.variant?.price_adjustment || 0);
-              return (
-                <div key={`${item.product.id}-${item.variant?.id || 'no-variant'}`} className="flex items-center justify-between py-2 border-b last:border-0">
-                  <div>
-                    <div className="font-medium text-sm">{item.product.name}</div>
-                    {item.variant && <div className="text-xs text-muted-foreground">{item.variant.name}</div>}
-                    <div className="text-xs text-muted-foreground">Qty: {item.quantity}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold">₹{(price * item.quantity).toFixed(2)}</div>
-                    <div className="text-xs text-muted-foreground">₹{price.toFixed(2)} each</div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="py-4 text-sm text-muted-foreground space-y-2">
+            <p>
+              Please ensure someone is available at the delivery address to
+              receive the order and make the payment.
+            </p>
+            <p>
+              Repeated failed delivery attempts may impact your ability to use
+              COD in the future.
+            </p>
           </div>
-
-          <div className="mt-4 flex justify-between items-center">
-            <div>
-              <div className="text-sm text-muted-foreground">Subtotal</div>
-              <div className="font-semibold">₹{subtotal.toFixed(2)}</div>
-              <div className="text-sm text-muted-foreground">Shipping: {shippingCost === 0 ? 'FREE' : `₹${shippingCost.toFixed(2)}`}</div>
-            </div>
-            <div className="text-right">
-              <div className="text-sm text-muted-foreground">Total</div>
-              <div className="text-2xl font-bold">₹{total.toFixed(2)}</div>
-            </div>
-          </div>
-
-          <DialogFooter className="mt-6 flex justify-end gap-24">
-            <Button variant="ghost" onClick={() => setIsCODDialogOpen(false)} disabled={processing}>
-              <X className="w-4 h-4 mr-2" />Cancel
+          <DialogFooter className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsCODDialogOpen(false)}
+              disabled={processing}
+            >
+              <X className="w-4 h-4 mr-2" />
+              Cancel
             </Button>
-            <Button className="gradient-hero" onClick={handleConfirmCOD} disabled={processing}>
-              {processing ? 'Placing...' : `Confirm & Place Order (₹${total.toFixed(2)})`}
+            <Button
+              onClick={handleConfirmCOD}
+              disabled={processing}
+            >
+              {processing ? 'Placing Order...' : 'Confirm COD Order'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -142,12 +142,14 @@ const ProductDetail = () => {
   };
 
   const handleBuyNow = () => {
-    if (!user) {
-      toast.error("Please log in to proceed with your purchase.");
-      navigate('/auth');
-      return;
-    }
-    const buyNowItem: CartItem = { product, variant: selectedVariant || undefined, quantity };
+    if (!product) return;
+
+    const buyNowItem: CartItem = {
+      product,
+      variant: selectedVariant || undefined,
+      quantity,
+    };
+
     setItemAndProceed(buyNowItem);
     navigate('/checkout');
   };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -32,10 +32,11 @@ const Customers = () => {
 
       if (profilesError) throw profilesError;
 
-      // Get all orders with aggregates
+      // Get all orders with aggregates (EXCLUDING cancelled)
       const { data: orderStats, error: orderError } = await supabase
         .from('orders')
-        .select('user_id, total, created_at, customer_email');
+        .select('user_id, total, created_at, customer_email, status')
+        .neq('status', 'cancelled');
 
       if (orderError) throw orderError;
 
@@ -62,23 +63,30 @@ const Customers = () => {
             customer.order_count += 1;
             customer.total_spent += Number(order.total);
             customer.email = order.customer_email;
-            if (!customer.last_order_date || new Date(order.created_at) > new Date(customer.last_order_date)) {
+            if (
+              !customer.last_order_date ||
+              new Date(order.created_at) >
+                new Date(customer.last_order_date)
+            ) {
               customer.last_order_date = order.created_at;
             }
           }
         }
       });
 
-      return Array.from(customerMap.values()).sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      return Array.from(customerMap.values()).sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() -
+          new Date(a.created_at).getTime()
       );
     },
   });
 
-  const filteredCustomers = customers?.filter((customer) =>
-    customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.phone?.includes(searchTerm)
+  const filteredCustomers = customers?.filter(
+    (customer) =>
+      customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.phone?.includes(searchTerm)
   );
 
   return (
@@ -102,18 +110,23 @@ const Customers = () => {
       </Card>
 
       {isLoading ? (
-        <p className="text-center text-muted-foreground">Loading customers...</p>
+        <p className="text-center text-muted-foreground">Loading customers.</p>
       ) : (
         <div className="grid gap-4">
           {filteredCustomers?.map((customer) => (
-            <Card key={customer.id} className="hover:shadow-lg transition-shadow">
+            <Card
+              key={customer.id}
+              className="hover:shadow-lg transition-shadow"
+            >
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                         <span className="text-lg font-bold text-primary">
-                          {customer.full_name?.charAt(0) || customer.email?.charAt(0) || '?'}
+                          {customer.full_name?.charAt(0) ||
+                            customer.email?.charAt(0) ||
+                            '?'}
                         </span>
                       </div>
                       <div>
@@ -136,7 +149,11 @@ const Customers = () => {
 
                     <div className="flex items-center gap-2 text-sm text-muted-foreground ml-15">
                       <Calendar className="w-4 h-4" />
-                      Joined {format(new Date(customer.created_at), 'MMM dd, yyyy')}
+                      Joined{' '}
+                      {format(
+                        new Date(customer.created_at),
+                        'MMM dd, yyyy'
+                      )}
                     </div>
                   </div>
 
@@ -146,11 +163,15 @@ const Customers = () => {
                         <ShoppingBag className="w-4 h-4" />
                         <span className="text-sm">Orders</span>
                       </div>
-                      <p className="text-2xl font-bold">{customer.order_count}</p>
+                      <p className="text-2xl font-bold">
+                        {customer.order_count}
+                      </p>
                     </div>
 
                     <div className="text-center">
-                      <p className="text-sm text-muted-foreground mb-1">Total Spent</p>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        Total Spent
+                      </p>
                       <p className="text-2xl font-bold text-primary">
                         {formatCurrency(customer.total_spent)}
                       </p>
@@ -158,9 +179,14 @@ const Customers = () => {
 
                     {customer.last_order_date && (
                       <div className="text-center">
-                        <p className="text-sm text-muted-foreground mb-1">Last Order</p>
+                        <p className="text-sm text-muted-foreground mb-1">
+                          Last Order
+                        </p>
                         <p className="text-sm font-medium">
-                          {format(new Date(customer.last_order_date), 'MMM dd, yyyy')}
+                          {format(
+                            new Date(customer.last_order_date),
+                            'MMM dd, yyyy'
+                          )}
                         </p>
                       </div>
                     )}

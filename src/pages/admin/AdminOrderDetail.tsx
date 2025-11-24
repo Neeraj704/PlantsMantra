@@ -1,3 +1,4 @@
+// src/pages/admin/AdminOrderDetail.tsx
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,11 +19,16 @@ import {
 
 interface OrderItem {
   id: string;
+  product_id: string | null;
   product_name: string;
   variant_name: string | null;
   quantity: number;
   unit_price: number;
   subtotal: number;
+  // extra fields we attach after joining with products table
+  product_slug?: string | null;
+  product_image_url?: string | null;
+  product_image_alt?: string | null;
 }
 
 const AdminOrderDetail = () => {
@@ -33,26 +39,93 @@ const AdminOrderDetail = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchOrderDetails();
+    if (id) {
+      fetchOrderDetails();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchOrderDetails = async () => {
+    if (!id) return;
     setLoading(true);
-    
-    const { data: orderData } = await supabase
-      .from('orders' as any)
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    const { data: itemsData } = await supabase
-      .from('order_items' as any)
-      .select('*')
-      .eq('order_id', id);
-    
-    if (orderData) setOrder(orderData as unknown as Order);
-    if (itemsData) setOrderItems(itemsData as unknown as OrderItem[]);
-    setLoading(false);
+
+    try {
+      // Fetch the main order
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders' as any)
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (orderError || !orderData) {
+        toast.error('Failed to load order');
+        setOrder(null);
+        setOrderItems([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch the order items
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('order_items' as any)
+        .select('*')
+        .eq('order_id', id);
+
+      if (itemsError) {
+        toast.error('Failed to load order items');
+      }
+
+      let items: OrderItem[] = (itemsData || []) as unknown as OrderItem[];
+
+      // Collect product_ids for a join to products table
+      const productIds = Array.from(
+        new Set(
+          items
+            .map((item) => item.product_id)
+            .filter((pid): pid is string => Boolean(pid))
+        )
+      );
+
+      if (productIds.length > 0) {
+        // Fetch only the fields we need from products
+        const { data: productsData, error: productsError } = await supabase
+          .from('products' as any)
+          .select('id, slug, main_image_url, main_image_alt, name')
+          .in('id', productIds);
+
+        if (productsError) {
+          toast.error('Failed to load product details for items');
+        }
+
+        if (productsData && Array.isArray(productsData)) {
+          const productMap = new Map<string, any>(
+            productsData.map((p: any) => [p.id, p])
+          );
+
+          items = items.map((item) => {
+            const product = item.product_id
+              ? productMap.get(item.product_id)
+              : null;
+
+            return {
+              ...item,
+              product_slug: product?.slug ?? null,
+              product_image_url: product?.main_image_url ?? null,
+              product_image_alt:
+                product?.main_image_alt ?? product?.name ?? item.product_name,
+            };
+          });
+        }
+      }
+
+      setOrder(orderData as unknown as Order);
+      setOrderItems(items);
+    } catch (error) {
+      console.error('Error fetching order details:', error);
+      toast.error('Something went wrong while loading order');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleStatusUpdate = async (newStatus: string) => {
@@ -77,9 +150,15 @@ const AdminOrderDetail = () => {
       processing: 'bg-blue-100 text-blue-800',
       shipped: 'bg-purple-100 text-purple-800',
       delivered: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800'
+      cancelled: 'bg-red-100 text-red-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const handleOpenProduct = (slug?: string | null) => {
+    if (!slug) return;
+    const url = `/product/${slug}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   if (loading) {
@@ -111,14 +190,17 @@ const AdminOrderDetail = () => {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-serif font-bold">Order #{order.id.slice(0, 8)}</h1>
+          <h1 className="text-3xl font-serif font-bold">
+            Order #{order.id.slice(0, 8)}
+          </h1>
           <p className="text-muted-foreground mt-1">
-            Placed on {new Date(order.created_at).toLocaleDateString('en-IN', {
+            Placed on{' '}
+            {new Date(order.created_at).toLocaleDateString('en-IN', {
               year: 'numeric',
               month: 'long',
               day: 'numeric',
               hour: '2-digit',
-              minute: '2-digit'
+              minute: '2-digit',
             })}
           </p>
         </div>
@@ -167,8 +249,13 @@ const AdminOrderDetail = () => {
               <div className="text-sm space-y-1">
                 <p className="font-medium">{shippingAddress?.full_name}</p>
                 <p>{shippingAddress?.address_line1}</p>
-                {shippingAddress?.address_line2 && <p>{shippingAddress?.address_line2}</p>}
-                <p>{shippingAddress?.city}, {shippingAddress?.state} {shippingAddress?.postal_code}</p>
+                {shippingAddress?.address_line2 && (
+                  <p>{shippingAddress?.address_line2}</p>
+                )}
+                <p>
+                  {shippingAddress?.city}, {shippingAddress?.state}{' '}
+                  {shippingAddress?.postal_code}
+                </p>
                 <p>{shippingAddress?.country}</p>
                 <p className="mt-2">Phone: {shippingAddress?.phone}</p>
               </div>
@@ -186,25 +273,40 @@ const AdminOrderDetail = () => {
           <CardContent className="space-y-4">
             <div>
               <p className="text-sm text-muted-foreground">Payment Status</p>
-              <p className="font-medium capitalize">{order.payment_status || 'Pending'}</p>
+              <p className="font-medium capitalize">
+                {order.payment_status || 'Pending'}
+              </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Payment Intent ID</p>
-              <p className="font-mono text-sm">{order.payment_intent_id || 'N/A'}</p>
+              <p className="font-mono text-sm">
+                {order.payment_intent_id || 'N/A'}
+              </p>
             </div>
             <Separator />
             <div>
               <p className="text-sm text-muted-foreground">Tracking Number</p>
-              <p className="font-medium">{order.tracking_number || 'Not assigned yet'}</p>
+              <p className="font-medium">
+                {order.tracking_number || 'Not assigned yet'}
+              </p>
             </div>
             {order.status === 'cancelled' && (
               <>
                 <Separator />
                 <div>
-                  <p className="text-sm text-muted-foreground">Cancellation Reason</p>
-                  <p className="text-sm">{(order as any).cancellation_reason || 'No reason provided'}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Cancellation Reason
+                  </p>
+                  <p className="text-sm">
+                    {(order as any).cancellation_reason || 'No reason provided'}
+                  </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Cancelled on {(order as any).cancelled_at ? new Date((order as any).cancelled_at).toLocaleDateString('en-IN') : 'N/A'}
+                    Cancelled on{' '}
+                    {(order as any).cancelled_at
+                      ? new Date(
+                          (order as any).cancelled_at
+                        ).toLocaleDateString('en-IN')
+                      : 'N/A'}
                   </p>
                 </div>
               </>
@@ -223,17 +325,47 @@ const AdminOrderDetail = () => {
         <CardContent>
           <div className="space-y-4">
             {orderItems.map((item) => (
-              <div key={item.id} className="flex justify-between items-start py-3 border-b last:border-0">
-                <div className="flex-1">
-                  <p className="font-medium">{item.product_name}</p>
-                  {item.variant_name && (
-                    <p className="text-sm text-muted-foreground">{item.variant_name}</p>
+              <div
+                key={item.id}
+                className={`flex justify-between items-start py-3 border-b last:border-0 ${
+                  item.product_slug ? 'hover:bg-muted/40 cursor-pointer' : ''
+                }`}
+                onClick={() => handleOpenProduct(item.product_slug)}
+              >
+                <div className="flex items-start gap-3 flex-1">
+                  {item.product_image_url && (
+                    <div className="w-16 h-16 rounded-md overflow-hidden bg-muted/40 flex-shrink-0">
+                      <img
+                        src={item.product_image_url}
+                        alt={item.product_image_alt || item.product_name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                   )}
-                  <p className="text-sm text-muted-foreground mt-1">Quantity: {item.quantity}</p>
+                  <div className="flex-1">
+                    <p className="font-medium">{item.product_name}</p>
+                    {item.variant_name && (
+                      <p className="text-sm text-muted-foreground">
+                        {item.variant_name}
+                      </p>
+                    )}
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Quantity: {item.quantity}
+                    </p>
+                    {item.product_slug && (
+                      <p className="text-xs text-primary mt-1 underline">
+                        Open product page in new tab
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-medium">₹{item.subtotal.toFixed(2)}</p>
-                  <p className="text-sm text-muted-foreground">₹{item.unit_price.toFixed(2)} each</p>
+                  <p className="font-medium">
+                    ₹{Number(item.subtotal).toFixed(2)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    ₹{Number(item.unit_price).toFixed(2)} each
+                  </p>
                 </div>
               </div>
             ))}
@@ -243,18 +375,21 @@ const AdminOrderDetail = () => {
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span>₹{order.subtotal.toFixed(2)}</span>
+                <span>₹{Number(order.subtotal).toFixed(2)}</span>
               </div>
               {order.discount_amount > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
-                  <span>Discount {order.coupon_code && `(${order.coupon_code})`}</span>
-                  <span>-₹{order.discount_amount.toFixed(2)}</span>
+                  <span>
+                    Discount{' '}
+                    {order.coupon_code && `(${order.coupon_code})`}
+                  </span>
+                  <span>-₹{Number(order.discount_amount).toFixed(2)}</span>
                 </div>
               )}
               <Separator />
               <div className="flex justify-between text-lg font-bold">
                 <span>Total</span>
-                <span>₹{order.total.toFixed(2)}</span>
+                <span>₹{Number(order.total).toFixed(2)}</span>
               </div>
             </div>
           </div>

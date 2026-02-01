@@ -81,10 +81,12 @@ serve(async (req: Request) => {
       }
     }
 
-    // Validate address
+
+    // Validate address - support both postal_code and pin fields
     const shipping = order.shipping_address;
+    const pinCode = shipping?.postal_code || shipping?.pin;
     if (
-      !shipping?.postal_code ||
+      !pinCode ||
       !shipping?.city ||
       !shipping?.state ||
       !order.customer_name ||
@@ -130,7 +132,7 @@ serve(async (req: Request) => {
       address_line2: shipping.address_line2 || "",
       city: shipping.city,
       state: shipping.state,
-      pin: String(shipping.postal_code),
+      pin: String(pinCode),
       items,
       payment_mode: isCOD ? "COD" : "Prepaid",
       cod_amount: isCOD ? Number(order.total || 0) : 0,

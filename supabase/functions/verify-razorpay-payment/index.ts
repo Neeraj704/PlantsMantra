@@ -38,9 +38,12 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, orderId } = body;
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, orderId, internal_order_id } = body;
 
-    if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !orderId) {
+    // Accept both orderId and internal_order_id (frontend uses internal_order_id)
+    const internalOrderId = orderId || internal_order_id;
+
+    if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !internalOrderId) {
       return new Response(JSON.stringify({ error: "Missing Razorpay fields" }), {
         status: 400,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
@@ -58,7 +61,7 @@ serve(async (req: Request) => {
     const { data: order, error: orderErr } = await supabaseAdmin
       .from("orders")
       .select("*")
-      .eq("id", orderId)
+      .eq("id", internalOrderId)
       .single();
 
     if (orderErr || !order) {
@@ -106,18 +109,20 @@ serve(async (req: Request) => {
     }
 
     const shipping = order.shipping_address;
-    if (!shipping?.pin || !shipping?.city || !shipping?.state || !order.customer_name || !order.customer_phone) {
+    // Check for both pin and postal_code (frontend stores as postal_code)
+    const hasPin = shipping?.pin || shipping?.postal_code;
+    if (!hasPin || !shipping?.city || !shipping?.state || !order.customer_name || !order.customer_phone) {
       await supabaseAdmin
         .from("orders")
         .update({ delhivery_response: { error: "Invalid address" } })
-        .eq("id", orderId);
+        .eq("id", internalOrderId);
       return new Response(JSON.stringify({ error: "Invalid shipping address" }), {
         status: 400,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       });
     }
 
-    const itemsRaw = (await supabaseAdmin.from("order_items").select("*").eq("order_id", orderId)).data || [];
+    const itemsRaw = (await supabaseAdmin.from("order_items").select("*").eq("order_id", internalOrderId)).data || [];
     const items = itemsRaw.map((i: any) => ({
       name: i.product_name,
       qty: i.quantity,
@@ -132,7 +137,7 @@ serve(async (req: Request) => {
       address_line2: shipping.address_line2 || "",
       city: shipping.city,
       state: shipping.state,
-      pin: String(shipping.pin),
+      pin: String(shipping.pin || shipping.postal_code),
       items,
       payment_mode: "Prepaid",
       cod_amount: 0,
@@ -141,7 +146,7 @@ serve(async (req: Request) => {
     const delhiveryRes = await createShipment(shipmentPayload as any);
 
     if (!delhiveryRes.ok) {
-      await supabaseAdmin.from("orders").update({ delhivery_response: delhiveryRes.body }).eq("id", orderId);
+      await supabaseAdmin.from("orders").update({ delhivery_response: delhiveryRes.body }).eq("id", internalOrderId);
       return new Response(JSON.stringify({ error: "Failed to create shipment", details: delhiveryRes.body }), {
         status: 502,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
@@ -156,12 +161,13 @@ serve(async (req: Request) => {
     const updateData: any = {
       courier: "Delhivery",
       shipment_status: "Pending",
+      payment_status: "paid",
       delhivery_response: delhiveryRes.body,
       shipment_created_at: new Date().toISOString(),
     };
     if (awb) updateData.awb = awb;
 
-    await supabaseAdmin.from("orders").update(updateData).eq("id", orderId);
+    await supabaseAdmin.from("orders").update(updateData).eq("id", internalOrderId);
 
     return new Response(JSON.stringify({ ok: true, awb, delhiveryRes }), {
       status: 200,

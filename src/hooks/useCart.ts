@@ -31,7 +31,7 @@ interface CartStore {
   setInitialized: (value: boolean) => void;
 }
 
-const FREE_SHIPPING_THRESHOLD = 399;
+const FREE_SHIPPING_THRESHOLD = 799;
 const DELIVERY_CHARGE = 99;
 
 export const useCart = create<CartStore>()(

@@ -136,19 +136,19 @@ const Checkout = () => {
   };
 
   const subtotal = getSubtotal();
-  const shippingCost = subtotal > 0 && subtotal < 399 ? 99 : 0;
+  const shippingCost = subtotal > 0 && subtotal < 799 ? 99 : 0;
   const discountAmount = isDirectBuy ? 0 : cart.getDiscountAmount();
   const total = subtotal + shippingCost - discountAmount;
 
   const hasValidDetails = isGuest
     ? Boolean(
-        guestAddress.full_name &&
-          guestAddress.address_line1 &&
-          guestAddress.city &&
-          guestAddress.state &&
-          guestAddress.postal_code &&
-          (guestAddress.phone || guestEmail),
-      )
+      guestAddress.full_name &&
+      guestAddress.address_line1 &&
+      guestAddress.city &&
+      guestAddress.state &&
+      guestAddress.postal_code &&
+      (guestAddress.phone || guestEmail),
+    )
     : Boolean(selectedAddress);
 
   /**
@@ -280,8 +280,7 @@ const Checkout = () => {
       rzp.on('payment.failed', (response: any) => {
         console.error('Payment failed:', response.error);
         toast.error(
-          `Payment failed: ${
-            response.error?.description || 'Unknown error'
+          `Payment failed: ${response.error?.description || 'Unknown error'
           }`,
         );
         setProcessing(false);
@@ -432,10 +431,9 @@ const Checkout = () => {
       }
 
       toast.success(
-        `Order placed! ${
-          paymentMethod === 'cod'
-            ? `Pay ₹${total.toFixed(2)} on delivery.`
-            : 'We will notify you with updates.'
+        `Order placed! ${paymentMethod === 'cod'
+          ? `Pay ₹${total.toFixed(2)} on delivery.`
+          : 'We will notify you with updates.'
         }`,
       );
       setIsCODDialogOpen(false);
@@ -758,8 +756,8 @@ const Checkout = () => {
                       {processing
                         ? 'Processing...'
                         : paymentMethod === 'cod'
-                        ? `Place Order (Pay ₹${total.toFixed(2)} on delivery)`
-                        : `Pay Securely ₹${total.toFixed(2)}`}
+                          ? `Place Order (Pay ₹${total.toFixed(2)} on delivery)`
+                          : `Pay Securely ₹${total.toFixed(2)}`}
                     </Button>
 
                     <p className="text-xs text-muted-foreground text-center">

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { Product } from '@/types/database';
-import { Plus, Search, Edit, Archive } from 'lucide-react';
+import { Plus, Search, Edit, Archive, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { ProductModal } from '@/components/admin/ProductModal';
 
@@ -22,6 +22,97 @@ const Products = () => {
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  const exportToCSV = () => {
+    if (products.length === 0) {
+      toast.error('No products to export');
+      return;
+    }
+
+    // Define all CSV headers matching all Product fields
+    const headers = [
+      'ID',
+      'Name',
+      'Slug',
+      'Botanical Name',
+      'Description',
+      'Care Guide',
+      'Category ID',
+      'Main Image URL',
+      'Gallery Images',
+      'Main Image Alt',
+      'Gallery Alt Texts',
+      'SEO Title',
+      'Meta Description',
+      'Base Price',
+      'Sale Price',
+      'Stock Status',
+      'Status',
+      'Is Featured',
+      'Tags',
+      'Created At',
+      'Updated At'
+    ];
+
+    // Helper function to escape CSV values
+    const escapeCSV = (value: any): string => {
+      if (value === null || value === undefined) return '';
+      const stringValue = String(value);
+      // Escape double quotes and wrap in double quotes if contains comma, newline, or double quote
+      if (stringValue.includes(',') || stringValue.includes('\n') || stringValue.includes('"')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    };
+
+    // Convert array fields to semicolon-separated strings
+    const arrayToString = (arr: string[] | null): string => {
+      if (!arr || arr.length === 0) return '';
+      return arr.join('; ');
+    };
+
+    // Build CSV rows
+    const rows = products.map(product => [
+      escapeCSV(product.id),
+      escapeCSV(product.name),
+      escapeCSV(product.slug),
+      escapeCSV(product.botanical_name),
+      escapeCSV(product.description),
+      escapeCSV(product.care_guide),
+      escapeCSV(product.category_id),
+      escapeCSV(product.main_image_url),
+      escapeCSV(arrayToString(product.gallery_images)),
+      escapeCSV(product.main_image_alt),
+      escapeCSV(arrayToString(product.gallery_alt_texts)),
+      escapeCSV(product.seo_title),
+      escapeCSV(product.meta_description),
+      escapeCSV(product.base_price),
+      escapeCSV(product.sale_price),
+      escapeCSV(product.stock_status),
+      escapeCSV(product.status),
+      escapeCSV(product.is_featured ? 'Yes' : 'No'),
+      escapeCSV(arrayToString(product.tags)),
+      escapeCSV(product.created_at),
+      escapeCSV(product.updated_at)
+    ].join(','));
+
+    // Combine headers and rows
+    const csvContent = [headers.join(','), ...rows].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `products_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success(`Exported ${products.length} products to CSV`);
+  };
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -70,10 +161,16 @@ const Products = () => {
     <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-serif font-bold">Products</h1>
-        <Button className="gradient-hero" onClick={() => { setSelectedProduct(null); setModalOpen(true); }}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Product
-        </Button>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={exportToCSV}>
+            <FileDown className="w-4 h-4 mr-2" />
+            Export as Excel
+          </Button>
+          <Button className="gradient-hero" onClick={() => { setSelectedProduct(null); setModalOpen(true); }}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Product
+          </Button>
+        </div>
       </div>
 
       <Card className="mb-6">

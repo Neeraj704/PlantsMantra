@@ -28,6 +28,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { trackPixelEvent } from '@/utils/pixel';
 
 declare global {
   interface Window {
@@ -252,6 +253,17 @@ const Checkout = () => {
 
             toast.success('Payment successful! Order confirmed.');
             setProcessing(false);
+
+            // Facebook Pixel: Purchase
+            trackPixelEvent('Purchase', {
+              content_name: 'Order ' + orderId,
+              content_type: 'product',
+               // If feasible, list product IDs here; for now, we track the total order
+              value: totalAmount,
+              currency: 'INR',
+              order_id: orderId,
+            });
+
             navigate('/account');
           } catch (err: any) {
             console.error('Payment verification failed:', err);
@@ -436,6 +448,16 @@ const Checkout = () => {
           : 'We will notify you with updates.'
         }`,
       );
+
+      // Facebook Pixel: Purchase (COD)
+      trackPixelEvent('Purchase', {
+        content_name: 'Order ' + order.id,
+        content_type: 'product',
+        value: total,
+        currency: 'INR',
+        order_id: order.id,
+      });
+
       setIsCODDialogOpen(false);
       setProcessing(false);
       navigate('/account');

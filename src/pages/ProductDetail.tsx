@@ -20,6 +20,7 @@ import pothosImg from '@/assets/pothos.jpg';
 import fiddleLeafImg from '@/assets/fiddle-leaf.jpg';
 import SEOTags from '@/components/SEOTags';
 import { toast, Toaster } from 'react-hot-toast';
+import { trackPixelEvent } from '@/utils/pixel';
 
 const ProductDetail = () => {
   const { slug } = useParams();
@@ -62,6 +63,16 @@ const ProductDetail = () => {
       setMainImage(imgSrc);
       setMainImageAltText(data.main_image_alt || data.name);
       fetchRelated(data);
+
+      // Facebook Pixel: ViewContent
+      trackPixelEvent('ViewContent', {
+        content_name: data.name,
+        content_category: 'Indoor Plant',
+        content_ids: [data.id],
+        content_type: 'product',
+        value: data.sale_price || data.base_price,
+        currency: 'INR',
+      });
     };
 
     const fetchVariants = async () => {
@@ -139,10 +150,28 @@ const ProductDetail = () => {
 
   const handleAddToCart = () => {
     addItem(product!, selectedVariant || undefined, quantity);
+    
+    // Facebook Pixel: AddToCart
+    trackPixelEvent('AddToCart', {
+      content_name: product!.name,
+      content_ids: [product!.id],
+      content_type: 'product',
+      value: displayPrice * quantity,
+      currency: 'INR',
+    });
   };
 
   const handleBuyNow = () => {
     if (!product) return;
+    
+    // Facebook Pixel: AddToCart (Buy Now effectively acts as Add To Cart + Checkout)
+    trackPixelEvent('AddToCart', {
+      content_name: product.name,
+      content_ids: [product.id],
+      content_type: 'product',
+      value: displayPrice * quantity,
+      currency: 'INR',
+    });
 
     const buyNowItem: CartItem = {
       product,

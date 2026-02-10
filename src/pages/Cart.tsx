@@ -9,6 +9,7 @@ import { useCart } from '@/hooks/useCart';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { trackPixelEvent } from '@/utils/pixel';
 
 const Cart = () => {
   const {
@@ -269,7 +270,16 @@ const Cart = () => {
                 <Button
                   size="lg"
                   className="w-full gradient-hero mb-3"
-                  onClick={() => navigate('/checkout')}
+                  onClick={() => {
+                    trackPixelEvent('InitiateCheckout', {
+                      num_items: items.reduce((acc, item) => acc + item.quantity, 0),
+                      value: total,
+                      currency: 'INR',
+                      content_ids: items.map((item) => item.product.id),
+                      content_type: 'product',
+                    });
+                    navigate('/checkout');
+                  }}
                 >
                   Proceed to Checkout
                 </Button>

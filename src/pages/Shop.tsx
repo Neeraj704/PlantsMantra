@@ -27,6 +27,8 @@ import { useWishlist } from '@/hooks/useWishlist';
 import { useCart } from '@/hooks/useCart';
 import { useBuyNow } from '@/hooks/useBuyNow';
 import { toast } from 'sonner';
+import { trackPixelEvent } from '@/utils/pixel';
+
 
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -377,6 +379,13 @@ const Shop = () => {
                                   e.preventDefault();
                                   e.stopPropagation();
                                   addItem(product);
+                                  trackPixelEvent('AddToCart', {
+                                    content_name: product.name,
+                                    content_ids: [product.id],
+                                    content_type: 'product',
+                                    value: product.sale_price || product.base_price,
+                                    currency: 'INR',
+                                  });
                               }}
                               disabled={product.stock_status === 'out_of_stock'}
                             >
@@ -386,13 +395,23 @@ const Shop = () => {
                             <Button
                               size="sm"
                               className="gradient-hero"
-                              onClick={(e) => handleBuyNow(product, e)}
+                              onClick={(e) => {
+                                handleBuyNow(product, e);
+                                trackPixelEvent('AddToCart', {
+                                    content_name: product.name,
+                                    content_ids: [product.id],
+                                    content_type: 'product',
+                                    value: product.sale_price || product.base_price,
+                                    currency: 'INR',
+                                  });
+                              }}
                               disabled={product.stock_status === 'out_of_stock'}
                             >
                               <Zap className="w-4 h-4 mr-2" />
                               Buy Now
                             </Button>
                           </div>
+
                         </CardContent>
                       </Link>
                     </Card>

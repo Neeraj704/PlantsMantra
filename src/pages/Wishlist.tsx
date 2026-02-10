@@ -8,6 +8,8 @@ import { useWishlist } from '@/hooks/useWishlist';
 import { useCart } from '@/hooks/useCart';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { trackPixelEvent } from '@/utils/pixel';
+
 
 interface Product {
   id: string;
@@ -44,7 +46,15 @@ const Wishlist = () => {
   const handleAddToCart = (product: Product) => {
     addItem(product as any, null, 1);
     toast.success('Added to cart!');
+    trackPixelEvent('AddToCart', {
+      content_name: product.name,
+      content_ids: [product.id],
+      content_type: 'product',
+      value: product.sale_price || product.base_price,
+      currency: 'INR',
+    });
   };
+
 
   if (loading) {
     return (

@@ -192,7 +192,7 @@ const Contact = () => {
                 <CardContent className="p-6">
                   <h3 className="font-semibold mb-2">Do you ship internationally?</h3>
                   <p className="text-sm text-muted-foreground">
-                    Currently, we only ship within India. International shipping is coming soon!
+                    No, currently we only ship within India. International shipping is coming soon!
                   </p>
                 </CardContent>
               </Card>

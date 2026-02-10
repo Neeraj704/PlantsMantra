@@ -270,7 +270,7 @@ const Shop = () => {
               <p className="text-sm text-muted-foreground">
                 {products?.length || 0} plants found
               </p>
-              
+
               <div className="flex items-center gap-4">
                 <Button
                   variant="outline"
@@ -281,7 +281,7 @@ const Shop = () => {
                   <Filter className="w-4 h-4 mr-2" />
                   Filters
                 </Button>
-                
+
                 <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Sort by" />
@@ -317,6 +317,15 @@ const Shop = () => {
                           e.preventDefault();
                           e.stopPropagation();
                           toggleWishlist(product.id);
+                          if (!isInWishlist(product.id)) {
+                            trackPixelEvent('AddToWishlist', {
+                              content_name: product.name,
+                              content_ids: [product.id],
+                              content_type: 'product',
+                              value: product.sale_price || product.base_price,
+                              currency: 'INR',
+                            });
+                          }
                         }}
                       >
                         <Heart className={`w-4 h-4 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
@@ -360,13 +369,13 @@ const Shop = () => {
                                 {product.botanical_name}
                               </p>
                             )}
-                             <div className="flex items-center gap-2">
-                               <span className="text-lg font-bold">
-                                 ₹{displayPrice.toFixed(2)}
-                               </span>
-                               {hasDiscount && (
-                                 <span className="text-sm text-muted-foreground line-through">
-                                   ₹{product.base_price.toFixed(2)}
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg font-bold">
+                                ₹{displayPrice.toFixed(2)}
+                              </span>
+                              {hasDiscount && (
+                                <span className="text-sm text-muted-foreground line-through">
+                                  ₹{product.base_price.toFixed(2)}
                                 </span>
                               )}
                             </div>
@@ -376,16 +385,16 @@ const Shop = () => {
                               variant="outline"
                               size="sm"
                               onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  addItem(product);
-                                  trackPixelEvent('AddToCart', {
-                                    content_name: product.name,
-                                    content_ids: [product.id],
-                                    content_type: 'product',
-                                    value: product.sale_price || product.base_price,
-                                    currency: 'INR',
-                                  });
+                                e.preventDefault();
+                                e.stopPropagation();
+                                addItem(product);
+                                trackPixelEvent('AddToCart', {
+                                  content_name: product.name,
+                                  content_ids: [product.id],
+                                  content_type: 'product',
+                                  value: product.sale_price || product.base_price,
+                                  currency: 'INR',
+                                });
                               }}
                               disabled={product.stock_status === 'out_of_stock'}
                             >
@@ -398,12 +407,12 @@ const Shop = () => {
                               onClick={(e) => {
                                 handleBuyNow(product, e);
                                 trackPixelEvent('AddToCart', {
-                                    content_name: product.name,
-                                    content_ids: [product.id],
-                                    content_type: 'product',
-                                    value: product.sale_price || product.base_price,
-                                    currency: 'INR',
-                                  });
+                                  content_name: product.name,
+                                  content_ids: [product.id],
+                                  content_type: 'product',
+                                  value: product.sale_price || product.base_price,
+                                  currency: 'INR',
+                                });
                               }}
                               disabled={product.stock_status === 'out_of_stock'}
                             >

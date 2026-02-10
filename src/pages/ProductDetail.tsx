@@ -87,7 +87,7 @@ const ProductDetail = () => {
           .from('product_variants')
           .select('*')
           .eq('product_id', productData.id);
-        
+
         if (data && data.length > 0) {
           setVariants(data);
           setSelectedVariant(data[0]);
@@ -102,7 +102,7 @@ const ProductDetail = () => {
         .neq('id', currentProduct.id)
         .eq('status', 'active')
         .limit(8);
-      
+
       if (data) setRelatedProducts(data);
     };
 
@@ -122,7 +122,7 @@ const ProductDetail = () => {
   const defaultMetaDescription = product.description
     ? `Buy the ${product.name} (${product.botanical_name}). ${product.description.substring(0, 100).trim()}... View care guide, price, and customer reviews at PlantsMantra.`
     : `Buy the ${product.name} online at PlantsMantra. Premium quality, easy-care plant delivered to your door.`;
-    
+
   const seoTitle = product.seo_title || defaultSeoTitle;
   const metaDescription = product.meta_description || defaultMetaDescription;
 
@@ -138,7 +138,7 @@ const ProductDetail = () => {
   const displayPrice = getCurrentPrice();
   const hasDiscount = product.sale_price !== null;
 
-  const handleImageClick = (clickedImage: string, altIndex: number) => { 
+  const handleImageClick = (clickedImage: string, altIndex: number) => {
     if (product) {
       setMainImage(clickedImage);
       const altText = altIndex === 0
@@ -150,7 +150,7 @@ const ProductDetail = () => {
 
   const handleAddToCart = () => {
     addItem(product!, selectedVariant || undefined, quantity);
-    
+
     // Facebook Pixel: AddToCart
     trackPixelEvent('AddToCart', {
       content_name: product!.name,
@@ -163,7 +163,7 @@ const ProductDetail = () => {
 
   const handleBuyNow = () => {
     if (!product) return;
-    
+
     // Facebook Pixel: AddToCart (Buy Now effectively acts as Add To Cart + Checkout)
     trackPixelEvent('AddToCart', {
       content_name: product.name,
@@ -182,10 +182,20 @@ const ProductDetail = () => {
     setItemAndProceed(buyNowItem);
     navigate('/checkout');
   };
-  
+
   const handleWishlistToggle = () => {
     if (product) {
       toggleWishlist(product.id);
+      if (!isInWishlist(product.id)) {
+        // Facebook Pixel: AddToWishlist
+        trackPixelEvent('AddToWishlist', {
+          content_name: product.name,
+          content_ids: [product.id],
+          content_type: 'product',
+          value: displayPrice,
+          currency: 'INR',
+        });
+      }
     }
   };
 
@@ -315,7 +325,7 @@ const ProductDetail = () => {
                 Buy Now
               </Button>
             </div>
-            
+
             <div className="flex gap-3">
               <Button size="lg" variant={isInWishlist(product.id) ? 'default' : 'outline'} onClick={handleWishlistToggle} className="flex-1">
                 <Heart className={`w-5 h-5 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
@@ -333,15 +343,15 @@ const ProductDetail = () => {
                 <TabsTrigger value="care">Care Guide</TabsTrigger>
                 <TabsTrigger value="details">Details</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="description" className="mt-4">
                 <p className="text-muted-foreground leading-relaxed">{product.description || 'No description available.'}</p>
               </TabsContent>
-              
+
               <TabsContent value="care" className="mt-4">
                 <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{product.care_guide || 'Care guide coming soon.'}</p>
               </TabsContent>
-              
+
               <TabsContent value="details" className="mt-4">
                 <div className="space-y-2">
                   <div className="flex justify-between">

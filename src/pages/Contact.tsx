@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Mail, Phone, MapPin, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { trackPixelEvent } from '@/utils/pixel';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -37,6 +38,10 @@ const Contact = () => {
     } else {
       toast.success('Message sent! We\'ll get back to you soon.');
       setFormData({ name: '', email: '', subject: '', message: '' });
+      trackPixelEvent('Contact', {
+        content_name: 'Contact Form',
+        status: 'success',
+      });
     }
     setSubmitting(false);
   };

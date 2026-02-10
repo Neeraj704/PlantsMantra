@@ -1,6 +1,6 @@
 
 // Type definitions for Facebook Pixel
-type PixelEvent = 'PageView' | 'ViewContent' | 'AddToCart' | 'Purchase' | 'InitiateCheckout' | 'Search' | 'Contact';
+type PixelEvent = 'PageView' | 'ViewContent' | 'AddToCart' | 'Purchase' | 'InitiateCheckout' | 'Search' | 'Contact' | 'AddPaymentInfo' | 'AddToWishlist' | 'CompleteRegistration' | 'Subscribe';
 
 interface PixelEventData {
     content_name?: string;

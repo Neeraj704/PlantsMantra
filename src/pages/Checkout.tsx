@@ -399,6 +399,17 @@ const Checkout = () => {
       }
     }
 
+    // Facebook Pixel: AddPaymentInfo
+    trackPixelEvent('AddPaymentInfo', {
+      content_name: 'Checkout Payment',
+      content_type: 'product',
+      value: total,
+      currency: 'INR',
+      num_items: items.reduce((acc, item) => acc + item.quantity, 0),
+      content_ids: items.map((item) => item.product.id),
+      payment_method: paymentMethod,
+    });
+
     if (paymentMethod === 'cod') {
       setIsCODDialogOpen(true);
     } else {
@@ -411,6 +422,8 @@ const Checkout = () => {
     try {
       const address = getCheckoutAddress();
       const customerEmail = user?.email ?? (guestEmail || null);
+
+
       const order = await createOrderRecord(address, customerEmail);
       await initiateRazorpayPayment(order.id, total, address);
     } catch (err: any) {

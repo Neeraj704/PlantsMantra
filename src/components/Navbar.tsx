@@ -10,6 +10,7 @@ import { useWishlist } from '@/hooks/useWishlist';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { trackPixelEvent } from '@/utils/pixel';
 import logo from '@/assets/logo.png';
 
 const Navbar = () => {
@@ -65,20 +66,28 @@ const Navbar = () => {
     enabled: searchQuery.length >= 2,
   });
 
+  // Track search when results are shown (debounce could be better, but simple for now)
+  useEffect(() => {
+    if (searchResults && searchResults.length > 0) {
+      trackPixelEvent('Search', {
+        search_string: searchQuery,
+        content_ids: searchResults.map(p => p.id),
+      });
+    }
+  }, [searchResults]);
+
   // Common class for text & icon color transitions
-  const colorTransition = `transition-colors duration-500 ${
-    isDarkModeNavbar ? 'text-white hover:text-white/80' : 'text-foreground hover:text-primary'
-  }`;
+  const colorTransition = `transition-colors duration-500 ${isDarkModeNavbar ? 'text-white hover:text-white/80' : 'text-foreground hover:text-primary'
+    }`;
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        isScrolled || !isHomePage
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${isScrolled || !isHomePage
           ? 'bg-background/70 backdrop-blur-2xl shadow-md border-b border-border/50 text-foreground'
           : searchActive
-          ? 'bg-background/70 backdrop-blur-2xl border-b border-border/50 text-foreground'
-          : 'bg-transparent text-white'
-      }`}
+            ? 'bg-background/70 backdrop-blur-2xl border-b border-border/50 text-foreground'
+            : 'bg-transparent text-white'
+        }`}
     >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20 transition-all duration-500">

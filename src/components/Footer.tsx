@@ -3,8 +3,28 @@ import { Leaf, Instagram, Facebook, Twitter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import logo from '@/assets/logo.png';
+import { trackPixelEvent } from '@/utils/pixel';
+import { toast } from 'sonner';
+import { useState } from 'react';
 
 const Footer = () => {
+  const [email, setEmail] = useState('');
+
+  const handleSubscribe = () => {
+    if (!email) {
+      toast.error('Please enter your email address.');
+      return;
+    }
+
+    // In a real app, you would submit to backend here
+    toast.success('Subscribed successfully!');
+    trackPixelEvent('Subscribe', {
+      content_name: 'Newsletter',
+      status: 'success',
+    });
+    setEmail('');
+  };
+
   return (
     <footer className="bg-card border-t border-border mt-20">
 
@@ -34,9 +54,9 @@ const Footer = () => {
           <div>
             {/* Logo */}
             <Link to="/" className="flex items-center group mb-5">
-              <img 
-                src={logo} 
-                alt="PlantsMantra Logo" 
+              <img
+                src={logo}
+                alt="PlantsMantra Logo"
                 className="h-10 md:h-12 w-auto transition-smooth group-hover:scale-105"
               />
             </Link>
@@ -44,9 +64,9 @@ const Footer = () => {
               Your Urban Jungle, Delivered. Premium plants for every space and every soul.
             </p>
             <div className="flex gap-2">
-              <a 
-                href="https://www.instagram.com/plants_mantra?igsh=b3JzajdxNjdyeHA=" 
-                target="_blank" 
+              <a
+                href="https://www.instagram.com/plants_mantra?igsh=b3JzajdxNjdyeHA="
+                target="_blank"
                 rel="noopener noreferrer"
               >
                 <Button variant="outline" size="icon">
@@ -54,9 +74,9 @@ const Footer = () => {
                 </Button>
               </a>
 
-              <a 
-                href="https://www.facebook.com/" 
-                target="_blank" 
+              <a
+                href="https://www.facebook.com/"
+                target="_blank"
                 rel="noopener noreferrer"
               >
                 <Button variant="outline" size="icon">
@@ -64,9 +84,9 @@ const Footer = () => {
                 </Button>
               </a>
 
-              <a 
-                href="https://twitter.com/" 
-                target="_blank" 
+              <a
+                href="https://twitter.com/"
+                target="_blank"
                 rel="noopener noreferrer"
               >
                 <Button variant="outline" size="icon">
@@ -137,8 +157,13 @@ const Footer = () => {
               Get plant care tips and exclusive offers delivered to your inbox.
             </p>
             <div className="flex gap-2">
-              <Input placeholder="Your email" className="flex-1" />
-              <Button className="gradient-hero">Subscribe</Button>
+              <Input
+                placeholder="Your email"
+                className="flex-1"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <Button className="gradient-hero" onClick={handleSubscribe}>Subscribe</Button>
             </div>
           </div>
         </div>

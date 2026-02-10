@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Leaf } from 'lucide-react';
+import { trackPixelEvent } from '@/utils/pixel';
 
 const Auth = () => {
   const { user, signIn, signUp } = useAuth();
@@ -70,6 +71,10 @@ const Auth = () => {
       toast.error(error.message);
     } else {
       toast.success('Account created! Please check your email to verify.');
+      trackPixelEvent('CompleteRegistration', {
+        content_name: 'Sign Up',
+        status: 'success',
+      });
     }
     
     setLoading(false);

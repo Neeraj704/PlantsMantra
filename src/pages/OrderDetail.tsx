@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Order } from '@/types/database';
 import { toast } from 'sonner';
-import { ChevronLeft, Package, Download } from 'lucide-react';
+import { ChevronLeft, Package } from 'lucide-react';
 
 const OrderDetail = () => {
   const { orderId } = useParams();
@@ -20,7 +20,7 @@ const OrderDetail = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [downloadingLabel, setDownloadingLabel] = useState(false);
+
 
   useEffect(() => {
     if (user && orderId) {
@@ -61,63 +61,7 @@ const OrderDetail = () => {
     }
   };
 
-  const handleDownloadLabel = async () => {
-    if (!order?.awb) {
-      toast.error('No AWB assigned yet');
-      return;
-    }
-    setDownloadingLabel(true);
-    try {
-      // Use raw fetch for binary label download as specified.
-      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delhivery-get-label?awb=${encodeURIComponent(
-        order.awb
-      )}`;
 
-      const res = await fetch(funcUrl, {
-        method: 'GET',
-        headers: {
-          // Use publishable anon key for client-side invoke
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-      });
-
-      if (!res.ok) {
-        let errMsg = 'Failed to fetch label';
-        try {
-          const j = await res.json();
-          errMsg = j?.message || j?.error || errMsg;
-        } catch {
-          // ignore
-        }
-        toast.error(errMsg);
-        setDownloadingLabel(false);
-        return;
-      }
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `label_${order.awb}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      toast.success('Label downloaded');
-    } catch (e: any) {
-      toast.error('Failed to download label');
-    } finally {
-      setDownloadingLabel(false);
-    }
-  };
-
-  const handleTrack = () => {
-    if (!order?.awb) {
-      toast.error('No AWB assigned yet');
-      return;
-    }
-    window.open(`https://track.delhivery.com/?waybill=${encodeURIComponent(order.awb)}`, '_blank');
-  };
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
@@ -189,12 +133,8 @@ const OrderDetail = () => {
                 </div>
 
                 <div className="mt-4 flex justify-end gap-2">
-                  <Button onClick={handleTrack} variant="outline" size="sm">
+                  <Button onClick={() => window.open(`https://www.delhivery.com/track/package/${order.awb}`, '_blank')} variant="outline" size="sm" disabled={!order.awb}>
                     Track Shipment
-                  </Button>
-                  <Button onClick={handleDownloadLabel} size="sm" disabled={!order.awb || downloadingLabel}>
-                    <Download className="w-4 h-4 mr-2" />
-                    {downloadingLabel ? 'Downloading...' : 'Download Label'}
                   </Button>
                 </div>
               </div>

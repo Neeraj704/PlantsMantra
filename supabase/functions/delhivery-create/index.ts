@@ -27,6 +27,7 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}));
+    console.log("Delhivery Create Request Body:", JSON.stringify(body));
     const { orderId } = body;
 
     if (!orderId) {
@@ -139,7 +140,9 @@ serve(async (req: Request) => {
     };
 
     // Call Delhivery API
+    console.log("Creating Delhivery Shipment with payload:", JSON.stringify(shipmentPayload));
     const delhiveryRes = await createShipment(shipmentPayload as any);
+    console.log("Delhivery API Response:", JSON.stringify(delhiveryRes));
 
     if (!delhiveryRes?.ok) {
       await supabaseAdmin
@@ -163,6 +166,7 @@ serve(async (req: Request) => {
 
     // Extract AWB
     const awb =
+      delhiveryRes?.body?.packages?.[0]?.waybill ||
       delhiveryRes?.body?.data?.shipments?.[0]?.waybill ||
       delhiveryRes?.body?.response?.waybill ||
       delhiveryRes?.body?.result?.waybill ||

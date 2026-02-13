@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ChevronLeft, Package, MapPin, CreditCard } from 'lucide-react';
+import { ChevronLeft, Package, MapPin, CreditCard, Edit2, Check, X, Download, Loader2 } from 'lucide-react';
+
 import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -16,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+
 
 interface OrderItem {
   id: string;
@@ -37,6 +40,15 @@ const AdminOrderDetail = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditingAwb, setIsEditingAwb] = useState(false);
+  const [newAwb, setNewAwb] = useState('');
+  const [downloadingLabel, setDownloadingLabel] = useState(false);
+
+  useEffect(() => {
+    if (order) {
+      setNewAwb(order.awb || '');
+    }
+  }, [order]);
 
   useEffect(() => {
     if (id) {
@@ -44,6 +56,68 @@ const AdminOrderDetail = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // ... fetchOrderDetails ...
+
+  const handleUpdateAwb = async () => {
+    if (!order) return;
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ awb: newAwb || null } as any)
+        .eq('id', order.id);
+
+      if (error) throw error;
+
+      toast.success('Tracking number updated');
+      setIsEditingAwb(false);
+      fetchOrderDetails();
+    } catch (error) {
+      console.error('Error updating AWB:', error);
+      toast.error('Failed to update tracking number');
+    }
+  };
+
+  const handleDownloadLabel = async () => {
+    if (!order?.awb) {
+      toast.error('No AWB assigned');
+      return;
+    }
+
+    setDownloadingLabel(true);
+    try {
+      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delhivery-get-label?awb=${encodeURIComponent(order.awb)}`;
+
+      const res = await fetch(funcUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Failed to fetch label' }));
+        toast.error(err?.message || 'Failed to download label');
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `label_${order.awb}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Label downloaded');
+    } catch (e: any) {
+      console.error('Download label error:', e);
+      toast.error('Failed to download label');
+    } finally {
+      setDownloadingLabel(false);
+    }
+  };
 
   const fetchOrderDetails = async () => {
     if (!id) return;
@@ -285,10 +359,64 @@ const AdminOrderDetail = () => {
             </div>
             <Separator />
             <div>
-              <p className="text-sm text-muted-foreground">Tracking Number</p>
-              <p className="font-medium">
-                {order.tracking_number || 'Not assigned yet'}
-              </p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-muted-foreground">Tracking Number</p>
+                {order.awb && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={handleDownloadLabel}
+                    disabled={downloadingLabel}
+                  >
+                    {downloadingLabel ? (
+                      <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                    ) : (
+                      <Download className="w-3 h-3 mr-1" />
+                    )}
+                    Label
+                  </Button>
+                )}
+              </div>
+              
+              {isEditingAwb ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={newAwb}
+                    onChange={(e) => setNewAwb(e.target.value)}
+                    placeholder="Enter AWB"
+                    className="h-8"
+                  />
+                  <Button size="sm" className="h-8 w-8 p-0" onClick={handleUpdateAwb}>
+                    <Check className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    onClick={() => {
+                      setIsEditingAwb(false);
+                      setNewAwb(order.awb || '');
+                    }}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between group">
+                  <p className="font-medium font-mono">
+                    {order.awb || 'Not assigned'}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => setIsEditingAwb(true)}
+                  >
+                    <Edit2 className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
             </div>
             {order.status === 'cancelled' && (
               <>

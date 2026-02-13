@@ -167,8 +167,13 @@ export async function fetchLabel(awb) {
         contentType: res.headers.get("content-type") || "application/pdf",
         buffer,
       };
+    } else {
+      const text = await res.text();
+      console.error("Delhivery PDF Label Error:", res.status, text);
     }
-  } catch {}
+  } catch (e) {
+    console.error("Delhivery PDF Label Exception:", e);
+  }
 
   // 2) JSON fallback
   try {
@@ -196,8 +201,47 @@ export async function fetchLabel(awb) {
           };
         }
       }
+    } else {
+       console.error("Delhivery JSON Label Error:", jsonRes.status, await jsonRes.text());
     }
-  } catch {}
+  } catch (e) {
+    console.error("Delhivery JSON Label Exception:", e);
+  }
+
+  // 3) Packing Slip API (works better for some accounts)
+  try {
+    const res = await fetch(`${API_BASE}/api/p/packing_slip?wbns=${awb}&pdf=true`, {
+      method: "GET",
+      headers: {
+        Authorization: `Token ${TOKEN}`,
+      },
+    });
+
+    if (res.ok) {
+      const buffer = await res.arrayBuffer();
+      // Verify if it's actually a PDF (sometimes they return HTML 404 with status 200)
+      const firstBytes = new Uint8Array(buffer.slice(0, 4));
+      const isPdf =
+        firstBytes[0] === 0x25 && // %
+        firstBytes[1] === 0x50 && // P
+        firstBytes[2] === 0x44 && // D
+        firstBytes[3] === 0x46;   // F
+
+      if (isPdf) {
+        return {
+          ok: true,
+          contentType: "application/pdf",
+          buffer,
+        };
+      } else {
+        console.error("Delhivery Packing Slip returned non-PDF content");
+      }
+    } else {
+      console.error("Delhivery Packing Slip Error:", res.status, await res.text());
+    }
+  } catch (e) {
+    console.error("Delhivery Packing Slip Exception:", e);
+  }
 
   return { ok: false, error: "Label not available" };
 }

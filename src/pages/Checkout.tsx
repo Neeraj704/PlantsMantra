@@ -203,7 +203,7 @@ const Checkout = () => {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ amount: Math.round(totalAmount * 100) }),
+          body: JSON.stringify({ amount: totalAmount }),
         },
       );
 

@@ -30,6 +30,7 @@ import TermsOfService from "./pages/TermsOfService";
 import AdminAuth from "./pages/admin/AdminAuth";
 import Dashboard from "./pages/admin/Dashboard";
 import Analytics from "./pages/admin/Analytics";
+import { Analytics as VercelAnalytics } from "@vercel/analytics/react";
 import Products from "./pages/admin/Products";
 import Orders from "./pages/admin/Orders";
 import AdminOrderDetail from "./pages/admin/AdminOrderDetail";
@@ -48,6 +49,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <VercelAnalytics />
       <BrowserRouter>
         <AuthProvider>
           <ScrollToTop />

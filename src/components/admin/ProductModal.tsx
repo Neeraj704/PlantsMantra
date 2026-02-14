@@ -43,6 +43,7 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
     is_featured: false,
     seo_title: '',
     meta_description: '',
+    priority: '',
   });
 
   useEffect(() => {
@@ -65,6 +66,7 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
         is_featured: product.is_featured,
         seo_title: product.seo_title || '',
         meta_description: product.meta_description || '',
+        priority: product.priority?.toString() || '',
       });
       setMainImage(null);
       setMainImagePreview(product.main_image_url || '');
@@ -73,7 +75,7 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
       setGalleryImages([]);
       setGalleryPreviews(product.gallery_images || []);
     } else {
-      setFormData({ name: '', slug: '', botanical_name: '', description: '', care_guide: '', base_price: '', sale_price: '', category_id: '', stock_status: 'in_stock', status: 'active', is_featured: false, seo_title: '', meta_description: '' });
+      setFormData({ name: '', slug: '', botanical_name: '', description: '', care_guide: '', base_price: '', sale_price: '', category_id: '', stock_status: 'in_stock', status: 'active', is_featured: false, seo_title: '', meta_description: '', priority: '' });
       setMainImage(null);
       setMainImagePreview('');
       setMainImageAlt('');
@@ -190,6 +192,7 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
         gallery_alt_texts: currentGalleryAltTexts.length > 0 ? currentGalleryAltTexts : null,
         base_price: parseFloat(formData.base_price),
         sale_price: formData.sale_price ? parseFloat(formData.sale_price) : null,
+        priority: formData.priority ? parseInt(formData.priority, 10) : null,
         category_id: formData.category_id || null,
         status: formData.status as 'active' | 'draft' | 'archived',
         stock_status: formData.stock_status as 'in_stock' | 'out_of_stock' | 'low_stock',
@@ -456,6 +459,21 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
               />
               <Label htmlFor="is_featured">Featured Product</Label>
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="priority">Display Priority (optional)</Label>
+            <Input
+              id="priority"
+              type="number"
+              min="1"
+              value={formData.priority}
+              onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+              placeholder="e.g. 1 = shown first, 2 = second..."
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Products with lower numbers appear first on the shop page. Leave empty for default ordering.
+            </p>
           </div>
           <hr />
 

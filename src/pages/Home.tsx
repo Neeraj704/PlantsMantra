@@ -31,6 +31,8 @@ const Home = () => {
         .select('*')
         .eq('is_featured', true)
         .eq('status', 'active')
+        .order('priority', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: false })
         .limit(4);
       if (error) throw error;
       return data;

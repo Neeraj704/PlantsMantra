@@ -31,6 +31,7 @@ export interface Product {
   status: ProductStatus;
   is_featured: boolean;
   tags: string[] | null;
+  priority: number | null;
   created_at: string;
   updated_at: string;
 }

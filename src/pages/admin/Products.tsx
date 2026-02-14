@@ -221,6 +221,7 @@ const Products = () => {
                 <tr>
                   <th className="text-left p-4 font-semibold">Product</th>
                   <th className="text-left p-4 font-semibold">Price</th>
+                  <th className="text-left p-4 font-semibold">Priority</th>
                   <th className="text-left p-4 font-semibold">Stock</th>
                   <th className="text-left p-4 font-semibold">Status</th>
                   <th className="text-right p-4 font-semibold">Actions</th>
@@ -252,6 +253,13 @@ const Products = () => {
                           <span className="font-semibold">₹{product.base_price.toFixed(2)}</span>
                         )}
                       </div>
+                    </td>
+                    <td className="p-4">
+                      {product.priority ? (
+                        <Badge variant="outline">{product.priority}</Badge>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="p-4">
                       <Badge variant={product.stock_status === 'in_stock' ? 'default' : 'destructive'}>

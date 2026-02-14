@@ -121,7 +121,9 @@ const Shop = () => {
       } else if (sortBy === 'price-desc') {
         query = query.order('base_price', { ascending: false });
       } else {
-        query = query.order('created_at', { ascending: false });
+        // Default: sort by priority (ascending, nulls last) then by created_at
+        query = query.order('priority', { ascending: true, nullsFirst: false })
+                      .order('created_at', { ascending: false });
       }
 
       const { data, error } = await query;
@@ -295,7 +297,7 @@ const Shop = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
               {products?.map((product: Product, index: number) => {
                 const imgSrc = product.main_image_url || productImages[product.slug] || monsteraImg;
                 const displayPrice = product.sale_price || product.base_price;
@@ -312,7 +314,7 @@ const Shop = () => {
                       <Button
                         variant={isInWishlist(product.id) ? 'default' : 'outline'}
                         size="icon"
-                        className="absolute top-2 left-2 z-10"
+                        className="absolute top-1 left-1 z-10 h-7 w-7 sm:h-9 sm:w-9 sm:top-2 sm:left-2"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -328,7 +330,7 @@ const Shop = () => {
                           }
                         }}
                       >
-                        <Heart className={`w-4 h-4 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
+                        <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
                       </Button>
                       <Link to={`/product/${product.slug}`} className="flex flex-col flex-grow">
                         <div className="aspect-square overflow-hidden bg-muted/50 relative">
@@ -340,7 +342,7 @@ const Shop = () => {
                           {product.stock_status === 'low_stock' && (
                             <Badge
                               variant="secondary"
-                              className="absolute top-2 right-2"
+                              className="absolute top-1 right-1 sm:top-2 sm:right-2 text-[10px] sm:text-xs"
                             >
                               Low Stock
                             </Badge>
@@ -348,42 +350,43 @@ const Shop = () => {
                           {product.stock_status === 'out_of_stock' && (
                             <Badge
                               variant="destructive"
-                              className="absolute top-2 right-2"
+                              className="absolute top-1 right-1 sm:top-2 sm:right-2 text-[10px] sm:text-xs"
                             >
                               Out of Stock
                             </Badge>
                           )}
                         </div>
-                        <CardContent className="p-4 flex flex-col flex-grow">
+                        <CardContent className="p-2.5 sm:p-4 flex flex-col flex-grow">
                           <div className="flex-grow">
                             {hasDiscount && (
-                              <Badge variant="destructive" className="mb-2">
+                              <Badge variant="destructive" className="mb-1 sm:mb-2 text-[10px] sm:text-xs">
                                 Sale
                               </Badge>
                             )}
-                            <h3 className="font-serif font-semibold text-lg mb-1">
+                            <h3 className="font-serif font-semibold text-sm sm:text-lg mb-0.5 sm:mb-1 line-clamp-2">
                               {product.name}
                             </h3>
                             {product.botanical_name && (
-                              <p className="text-xs text-muted-foreground italic mb-2">
+                              <p className="text-[10px] sm:text-xs text-muted-foreground italic mb-1 sm:mb-2 line-clamp-1">
                                 {product.botanical_name}
                               </p>
                             )}
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg font-bold">
+                            <div className="flex items-center gap-1 sm:gap-2">
+                              <span className="text-sm sm:text-lg font-bold">
                                 ₹{displayPrice.toFixed(2)}
                               </span>
                               {hasDiscount && (
-                                <span className="text-sm text-muted-foreground line-through">
+                                <span className="text-[10px] sm:text-sm text-muted-foreground line-through">
                                   ₹{product.base_price.toFixed(2)}
                                 </span>
                               )}
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-2 mt-4">
+                          <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mt-2 sm:mt-4">
                             <Button
                               variant="outline"
                               size="sm"
+                              className="text-[10px] sm:text-sm h-7 sm:h-9 px-1 sm:px-3"
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -398,12 +401,12 @@ const Shop = () => {
                               }}
                               disabled={product.stock_status === 'out_of_stock'}
                             >
-                              <ShoppingCart className="w-4 h-4 mr-2" />
+                              <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-2" />
                               Add
                             </Button>
                             <Button
                               size="sm"
-                              className="gradient-hero"
+                              className="gradient-hero text-[10px] sm:text-sm h-7 sm:h-9 px-1 sm:px-3"
                               onClick={(e) => {
                                 handleBuyNow(product, e);
                                 trackPixelEvent('AddToCart', {
@@ -416,7 +419,7 @@ const Shop = () => {
                               }}
                               disabled={product.stock_status === 'out_of_stock'}
                             >
-                              <Zap className="w-4 h-4 mr-2" />
+                              <Zap className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-2" />
                               Buy Now
                             </Button>
                           </div>

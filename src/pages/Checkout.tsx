@@ -14,7 +14,7 @@ import { useBuyNow } from '@/hooks/useBuyNow';
 import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { Address } from '@/types/database';
 import { toast } from 'sonner';
-import { Plus, MapPin, CreditCard, Percent, Lock, X } from 'lucide-react';
+import { Plus, MapPin, CreditCard, Percent, Lock, X, Eye, EyeOff } from 'lucide-react';
 import AddressForm from '@/components/AddressForm';
 import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
@@ -78,6 +78,8 @@ const Checkout = () => {
 
   // Guest checkout state
   const [guestEmail, setGuestEmail] = useState('');
+  const [guestPassword, setGuestPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [guestAddress, setGuestAddress] = useState<CheckoutAddress>({
     full_name: '',
     phone: '',
@@ -314,6 +316,7 @@ const Checkout = () => {
   const createOrderRecord = async (
     address: CheckoutAddress,
     customerEmail: string | null,
+    newUserId?: string | null,
   ) => {
     const shippingAddress = {
       ...address,
@@ -337,7 +340,7 @@ const Checkout = () => {
     });
 
     const payload = {
-      user_id: user?.id ?? null,
+      user_id: user?.id ?? newUserId ?? null,
       customer_email: customerEmail,
       customer_name: address.full_name,
       customer_phone: address.phone,
@@ -417,14 +420,72 @@ const Checkout = () => {
     }
   };
 
+  /**
+   * Auto-create a Supabase account for guest users who provide email + password.
+   * Returns the new user's ID if signup succeeds, null otherwise.
+   */
+  const autoSignupGuest = async (): Promise<string | null> => {
+    if (!isGuest || !guestEmail || !guestPassword) return null;
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: guestEmail,
+        password: guestPassword,
+        options: {
+          data: {
+            full_name: guestAddress.full_name,
+            phone: guestAddress.phone,
+          },
+        },
+      });
+
+      if (error) {
+        console.error('Auto-signup failed:', error.message);
+        toast.warning('Could not create account: ' + error.message + '. Continuing as guest.');
+        return null;
+      }
+
+      const newUserId = data.user?.id || null;
+
+      if (newUserId) {
+        // Save address for the new user
+        try {
+          await supabase.from('addresses').insert([{
+            user_id: newUserId,
+            full_name: guestAddress.full_name,
+            phone: guestAddress.phone,
+            address_line1: guestAddress.address_line1,
+            address_line2: guestAddress.address_line2 || null,
+            city: guestAddress.city,
+            state: guestAddress.state,
+            postal_code: guestAddress.postal_code,
+            country: guestAddress.country || 'India',
+            is_default: true,
+          }]);
+        } catch (addrErr) {
+          console.error('Failed to save address for new user:', addrErr);
+        }
+
+        toast.success('Account created! You can sign in with your email and password anytime.');
+      }
+
+      return newUserId;
+    } catch (err) {
+      console.error('Auto-signup error:', err);
+      return null;
+    }
+  };
+
   const handleOnlinePaymentFlow = async () => {
     setProcessing(true);
     try {
       const address = getCheckoutAddress();
       const customerEmail = user?.email ?? (guestEmail || null);
 
+      // Auto-signup guest if they provided email + password
+      const newUserId = await autoSignupGuest();
 
-      const order = await createOrderRecord(address, customerEmail);
+      const order = await createOrderRecord(address, customerEmail, newUserId);
       await initiateRazorpayPayment(order.id, total, address);
     } catch (err: any) {
       console.error('Failed to start online payment:', err);
@@ -438,7 +499,11 @@ const Checkout = () => {
     try {
       const address = getCheckoutAddress();
       const customerEmail = user?.email ?? (guestEmail || null);
-      const order = await createOrderRecord(address, customerEmail);
+
+      // Auto-signup guest if they provided email + password
+      const newUserId = await autoSignupGuest();
+
+      const order = await createOrderRecord(address, customerEmail, newUserId);
 
       try {
         const { error: funcError } = await supabase.functions.invoke('delhivery-create', {
@@ -561,7 +626,7 @@ const Checkout = () => {
                           />
                         </div>
                         <div className="space-y-2 md:col-span-2">
-                          <Label htmlFor="guest-email">Email (optional)</Label>
+                          <Label htmlFor="guest-email">Email</Label>
                           <Input
                             id="guest-email"
                             type="email"
@@ -569,12 +634,37 @@ const Checkout = () => {
                             value={guestEmail}
                             onChange={(e) => setGuestEmail(e.target.value)}
                           />
-                          <p className="text-xs text-muted-foreground">
-                            Provide at least a phone number or an email so we
-                            can contact you about your order.
-                          </p>
                         </div>
                       </div>
+
+                      {/* Password field - shown when email is provided */}
+                      {guestEmail && (
+                        <div className="space-y-2">
+                          <Label htmlFor="guest-password">Create Password</Label>
+                          <div className="relative">
+                            <Input
+                              id="guest-password"
+                              type={showPassword ? 'text' : 'password'}
+                              placeholder="Min 6 characters"
+                              value={guestPassword}
+                              onChange={(e) => setGuestPassword(e.target.value)}
+                              minLength={6}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                              onClick={() => setShowPassword(!showPassword)}
+                            >
+                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            We'll create an account so you can track your orders. Min 6 characters.
+                          </p>
+                        </div>
+                      )}
 
                       <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-2 md:col-span-2">

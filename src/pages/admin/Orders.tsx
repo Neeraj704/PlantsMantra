@@ -51,6 +51,20 @@ const Orders = () => {
     }
   };
 
+  const handlePaymentStatusUpdate = async (orderId: string, newStatus: string) => {
+    const { error } = await supabase
+      .from('orders' as any)
+      .update({ payment_status: newStatus } as any)
+      .eq('id', orderId);
+
+    if (error) {
+      toast.error('Failed to update payment status');
+    } else {
+      toast.success('Payment status updated');
+      setOrders(orders.map((o) => (o.id === orderId ? { ...o, payment_status: newStatus } : o)));
+    }
+  };
+
   const handleSort = (field: 'created_at' | 'total' | 'customer_name') => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -200,6 +214,7 @@ const Orders = () => {
                   <th className="p-4">Order</th>
                   <th className="p-4">Customer</th>
                   <th className="p-4">Total</th>
+                  <th className="p-4">Payment Status</th>
                   <th className="p-4">Status</th>
                   <th className="p-4">AWB</th>
                   <th className="p-4 text-right">Actions</th>
@@ -214,6 +229,21 @@ const Orders = () => {
                       <div className="text-sm text-muted-foreground">{order.customer_email}</div>
                     </td>
                     <td className="p-4">₹{Number(order.total).toFixed(2)}</td>
+                    <td className="p-4">
+                      <Select
+                        defaultValue={order.payment_status || 'checking'}
+                        onValueChange={(val) => handlePaymentStatusUpdate(order.id, val)}
+                      >
+                        <SelectTrigger className="w-32 h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="checking">Checking</SelectItem>
+                          <SelectItem value="paid">Paid</SelectItem>
+                          <SelectItem value="unpaid">Unpaid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </td>
                     <td className="p-4">
                       <Badge className={getStatusColor(order.status || 'pending')}>{order.status}</Badge>
                     </td>

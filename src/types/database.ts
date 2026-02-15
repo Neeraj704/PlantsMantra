@@ -22,7 +22,7 @@ export interface Product {
   main_image_url: string | null;
   gallery_images: string[] | null;
   main_image_alt: string | null;
-  gallery_alt_texts: string[] | null; 
+  gallery_alt_texts: string[] | null;
   seo_title: string | null;
   meta_description: string | null;
   base_price: number;
@@ -44,7 +44,7 @@ export interface ProductVariant {
   price_adjustment: number;
   stock_quantity: number;
   image_url: string | null;
-  image_alt: string | null; 
+  image_alt: string | null;
   created_at: string;
 }
 
@@ -85,7 +85,7 @@ export interface Order {
   status: OrderStatus;
   tracking_number: string | null;
   payment_intent_id: string | null;
-  payment_status: string | null;
+  payment_status: 'checking' | 'paid' | 'unpaid' | string | null;
   created_at: string;
   updated_at: string;
 }

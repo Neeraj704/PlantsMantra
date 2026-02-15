@@ -154,14 +154,13 @@ serve(async (req: Request) => {
     }
 
     let awb = delhiveryRes?.body?.data?.shipments?.[0]?.waybill ||
-              delhiveryRes?.body?.response?.waybill ||
-              delhiveryRes?.body?.result?.waybill ||
-              delhiveryRes?.body?.data?.lrn || null;
+      delhiveryRes?.body?.response?.waybill ||
+      delhiveryRes?.body?.result?.waybill ||
+      delhiveryRes?.body?.data?.lrn || null;
 
     const updateData: any = {
       courier: "Delhivery",
       shipment_status: "Pending",
-      payment_status: "paid",
       delhivery_response: delhiveryRes.body,
       shipment_created_at: new Date().toISOString(),
     };

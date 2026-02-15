@@ -218,6 +218,22 @@ const AdminOrderDetail = () => {
     }
   };
 
+  const handlePaymentStatusUpdate = async (newStatus: string) => {
+    if (!order) return;
+
+    const { error } = await supabase
+      .from('orders' as any)
+      .update({ payment_status: newStatus } as any)
+      .eq('id', order.id);
+
+    if (error) {
+      toast.error('Failed to update payment status');
+    } else {
+      toast.success('Payment status updated');
+      setOrder({ ...order, payment_status: newStatus });
+    }
+  };
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800',
@@ -346,10 +362,20 @@ const AdminOrderDetail = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <p className="text-sm text-muted-foreground">Payment Status</p>
-              <p className="font-medium capitalize">
-                {order.payment_status || 'Pending'}
-              </p>
+              <p className="text-sm text-muted-foreground mb-1">Payment Status</p>
+              <Select
+                value={order.payment_status || 'checking'}
+                onValueChange={handlePaymentStatusUpdate}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="checking">Checking</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="unpaid">Unpaid</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Payment Intent ID</p>
@@ -378,7 +404,7 @@ const AdminOrderDetail = () => {
                   </Button>
                 )}
               </div>
-              
+
               {isEditingAwb ? (
                 <div className="flex items-center gap-2">
                   <Input
@@ -432,8 +458,8 @@ const AdminOrderDetail = () => {
                     Cancelled on{' '}
                     {(order as any).cancelled_at
                       ? new Date(
-                          (order as any).cancelled_at
-                        ).toLocaleDateString('en-IN')
+                        (order as any).cancelled_at
+                      ).toLocaleDateString('en-IN')
                       : 'N/A'}
                   </p>
                 </div>
@@ -455,9 +481,8 @@ const AdminOrderDetail = () => {
             {orderItems.map((item) => (
               <div
                 key={item.id}
-                className={`flex justify-between items-start py-3 border-b last:border-0 ${
-                  item.product_slug ? 'hover:bg-muted/40 cursor-pointer' : ''
-                }`}
+                className={`flex justify-between items-start py-3 border-b last:border-0 ${item.product_slug ? 'hover:bg-muted/40 cursor-pointer' : ''
+                  }`}
                 onClick={() => handleOpenProduct(item.product_slug)}
               >
                 <div className="flex items-start gap-3 flex-1">

@@ -292,7 +292,7 @@ const Cart = () => {
                   <p className="text-sm text-center text-muted-foreground">
                     {shipping === 0
                       ? '✅ You qualify for FREE shipping!'
-                      : `⚠️ Shipping is ₹${shipping.toFixed(2)} on orders under ₹799 MRP.`}
+                      : `⚠️ Shipping is ₹${shipping.toFixed(2)} on orders under ₹599 MRP.`}
                   </p>
                 </div>
               </CardContent>

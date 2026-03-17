@@ -41,6 +41,8 @@ const Shop = () => {
   const { addItem } = useCart();
   const { setItemAndProceed } = useBuyNow();
   const isMobile = useIsMobile();
+  const [showSkeletons, setShowSkeletons] = useState(false);
+
 
   const { data: categories } = useQuery({
     queryKey: ['categories'],
@@ -155,7 +157,6 @@ const Shop = () => {
 
 
   const { data, isLoading, isFetching } = useQuery({
-
     queryKey: ['products', selectedCategories, priceRange, inStockOnly, onSaleOnly, sortBy, currentPage, pageSize],
     queryFn: async () => {
       const from = (currentPage - 1) * pageSize;
@@ -206,6 +207,25 @@ const Shop = () => {
       return { products: mappedProducts, count: count || 0 };
     },
   });
+
+  // Handle skeleton timeout
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if (isLoading || isFetching) {
+      setShowSkeletons(true);
+      // Give up after 5 seconds
+      timeoutId = setTimeout(() => {
+        setShowSkeletons(false);
+      }, 5000);
+    } else {
+      setShowSkeletons(false);
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isLoading, isFetching]);
 
   const productList = data?.products || [];
   const totalCount = data?.count || 0;
@@ -402,8 +422,9 @@ const Shop = () => {
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
-              {(isLoading || isFetching) ? (
-                // Show skeletons while loading
+              {showSkeletons ? (
+                // Show skeletons while loading (timed out at 5s)
+
                 Array.from({ length: pageSize }).map((_, i) => (
                   <div key={i} className="flex flex-col space-y-3">
                     <Skeleton className="aspect-square w-full rounded-xl" />
@@ -559,7 +580,8 @@ const Shop = () => {
               })}
             </div>
 
-            {(!isLoading && !isFetching && productList.length === 0) && (
+            {(!showSkeletons && productList.length === 0) && (
+
 
               <div className="text-center py-12">
                 <p className="text-muted-foreground">No plants found matching your filters.</p>

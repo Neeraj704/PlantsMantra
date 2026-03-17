@@ -39,7 +39,10 @@ import Categories from "./pages/admin/Categories";
 import Coupons from "./pages/admin/Coupons";
 import AdminSettings from "./pages/admin/AdminSettings";
 import Banners from "./pages/admin/Banners";
+import Reviews from "./pages/admin/Reviews";
+import AdminProductReviews from "./pages/admin/AdminProductReviews";
 import PlantFinder from "./pages/PlantFinder";
+
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -90,7 +93,10 @@ const App = () => (
               <Route path="/admin/categories" element={<Categories />} />
               <Route path="/admin/coupons" element={<Coupons />} />
               <Route path="/admin/banners" element={<Banners />} />
+              <Route path="/admin/reviews" element={<Reviews />} />
+              <Route path="/admin/reviews/:productId" element={<AdminProductReviews />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
+
             </Route>
 
             {/* 404 */}

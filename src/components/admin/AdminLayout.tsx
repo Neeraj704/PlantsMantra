@@ -14,8 +14,10 @@ import {
   X,
   LogOut,
   Image,
-  TrendingUp
+  TrendingUp,
+  Star
 } from 'lucide-react';
+
 import logo from '@/assets/logo.png';
 
 const AdminLayout = () => {
@@ -28,7 +30,9 @@ const AdminLayout = () => {
     { icon: TrendingUp, label: 'Analytics', path: '/admin/analytics' },
     { icon: Package, label: 'Products', path: '/admin/products' },
     { icon: ShoppingCart, label: 'Orders', path: '/admin/orders' },
+    { icon: Star, label: 'Reviews', path: '/admin/reviews' },
     { icon: Users, label: 'Customers', path: '/admin/customers' },
+
     { icon: Tag, label: 'Categories', path: '/admin/categories' },
     { icon: Ticket, label: 'Coupons', path: '/admin/coupons' },
     { icon: Image, label: 'Banners', path: '/admin/banners' },

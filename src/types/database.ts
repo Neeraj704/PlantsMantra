@@ -31,7 +31,7 @@ export interface Product {
   status: ProductStatus;
   is_featured: boolean;
   tags: string[] | null;
-  priority: number | null;
+  priority?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -116,3 +116,27 @@ export interface Address {
 }
 
 export type AppRole = 'admin' | 'user';
+
+export interface Review {
+  id: string;
+  product_id: string;
+  user_id: string | null;
+  reviewer_name: string;
+  rating: number; // 1–5
+  title: string | null;
+  body: string;
+  is_hidden: boolean;
+  is_admin_created: boolean;
+  verified_purchase: boolean;
+  created_at: string;
+  updated_at: string;
+  review_images?: ReviewImage[];
+}
+
+export interface ReviewImage {
+  id: string;
+  review_id: string;
+  image_url: string;
+  display_order: number;
+}
+

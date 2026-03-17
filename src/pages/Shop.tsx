@@ -17,7 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Filter, X, Heart, ShoppingCart, Zap } from 'lucide-react';
+import { Filter, X, Heart, ShoppingCart, Zap, Star } from 'lucide-react';
+
 import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
 import pothosImg from '@/assets/pothos.jpg';
@@ -99,8 +100,9 @@ const Shop = () => {
     queryFn: async () => {
       let query = supabase
         .from('products')
-        .select('*')
+        .select('*, reviews(rating, is_hidden)')
         .eq('status', 'active')
+
         .gte('base_price', priceRange[0])
         .lte('base_price', priceRange[1]);
 
@@ -128,8 +130,17 @@ const Shop = () => {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data;
+      
+      return (data as any[]).map(product => {
+        const activeReviews = (product.reviews || []).filter((r: any) => !r.is_hidden);
+        const total = activeReviews.length;
+        const avg = total > 0 
+          ? activeReviews.reduce((acc: number, r: any) => acc + r.rating, 0) / total 
+          : 0;
+        return { ...product, avgRating: avg, totalReviews: total };
+      });
     },
+
   });
 
   const productImages: Record<string, string> = {
@@ -371,16 +382,27 @@ const Shop = () => {
                                 {product.botanical_name}
                               </p>
                             )}
-                            <div className="flex items-center gap-1 sm:gap-2">
-                              <span className="text-sm sm:text-lg font-bold">
-                                ₹{displayPrice.toFixed(2)}
-                              </span>
-                              {hasDiscount && (
-                                <span className="text-[10px] sm:text-sm text-muted-foreground line-through">
-                                  ₹{product.base_price.toFixed(2)}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1 sm:gap-2">
+                                <span className="text-sm sm:text-lg font-bold">
+                                  ₹{displayPrice.toFixed(2)}
                                 </span>
+                                {hasDiscount && (
+                                  <span className="text-[10px] sm:text-sm text-muted-foreground line-through">
+                                    ₹{product.base_price.toFixed(2)}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {(product as any).avgRating > 0 && (
+                                <div className="flex items-center gap-1 text-[10px] sm:text-xs font-semibold text-gray-700">
+                                  <Star size={12} className="text-yellow-400 fill-yellow-400" />
+                                  <span>{(product as any).avgRating.toFixed(1)}</span>
+                                  <span className="text-gray-400 font-normal">({(product as any).totalReviews})</span>
+                                </div>
                               )}
                             </div>
+
                           </div>
                           <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mt-2 sm:mt-4">
                             <Button

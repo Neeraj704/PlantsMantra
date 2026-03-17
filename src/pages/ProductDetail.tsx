@@ -8,7 +8,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
-import { ShoppingCart, Heart, Share2, ChevronLeft, Zap } from 'lucide-react';
+import { ShoppingCart, Heart, Share2, ChevronLeft, Zap, Star } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { ReviewsSection } from '@/components/ReviewsSection';
+
 import { useCart } from '@/hooks/useCart';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useBuyNow } from '@/hooks/useBuyNow';
@@ -43,6 +46,26 @@ const ProductDetail = () => {
     'pothos': pothosImg,
     'fiddle-leaf-fig': fiddleLeafImg,
   };
+
+  const { data: reviewSummary } = useQuery({
+    queryKey: ['review-summary', product?.id],
+    enabled: !!product?.id,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('reviews' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('product_id', product!.id)
+        .eq('is_hidden', false);
+
+      if (error) throw error;
+      return { total: count || 0 };
+    },
+  });
+
+  const scrollToReviews = () => {
+    document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -274,6 +297,20 @@ const ProductDetail = () => {
             </div>
 
             <h1 className="text-3xl md:text-4xl font-serif font-bold mb-2">{product.name}</h1>
+            <div className="mb-4">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={scrollToReviews}
+                className="h-8 rounded-full border-gray-200 hover:border-primary hover:bg-primary/5 transition-colors"
+              >
+                <Star size={14} className="mr-1.5 text-yellow-500 fill-yellow-500" />
+                <span className="text-gray-600 font-medium">
+                  {reviewSummary?.total ? `See Reviews (${reviewSummary.total})` : 'Be the first to review'}
+                </span>
+              </Button>
+            </div>
+
             {product.botanical_name && <p className="text-muted-foreground italic mb-4">{product.botanical_name}</p>}
 
             <div className="flex items-baseline gap-3 mb-4">
@@ -398,8 +435,11 @@ const ProductDetail = () => {
             </div>
           </section>
         )}
+
+        <ReviewsSection productId={product.id} productName={product.name} />
       </div>
     </div>
+
   );
 };
 

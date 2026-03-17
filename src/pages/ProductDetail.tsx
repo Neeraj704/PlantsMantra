@@ -71,7 +71,7 @@ const ProductDetail = () => {
     const fetchProduct = async () => {
       const { data, error } = await supabase
         .from('products')
-        .select('*')
+        .select('*, categories(id, name, slug)')
         .eq('slug', slug)
         .maybeSingle();
 
@@ -297,7 +297,7 @@ const ProductDetail = () => {
             </div>
 
             <h1 className="text-3xl md:text-4xl font-serif font-bold mb-2">{product.name}</h1>
-            <div className="mb-4">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -309,6 +309,14 @@ const ProductDetail = () => {
                   {reviewSummary?.total ? `See Reviews (${reviewSummary.total})` : 'Be the first to review'}
                 </span>
               </Button>
+              {product.category_id && (product as any).categories && (
+                <Link 
+                  to={`/shop?categories=${product.category_id}`}
+                  className="h-8 px-3 inline-flex items-center text-xs font-semibold rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all underline-offset-4 hover:underline"
+                >
+                  {(product as any).categories.name}
+                </Link>
+              )}
             </div>
 
             {product.botanical_name && <p className="text-muted-foreground italic mb-4">{product.botanical_name}</p>}

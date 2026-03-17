@@ -17,7 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Filter, X, Heart, ShoppingCart, Zap, Star } from 'lucide-react';
+import { Filter, X, Heart, ShoppingCart, Zap, Star, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
@@ -29,6 +31,7 @@ import { useCart } from '@/hooks/useCart';
 import { useBuyNow } from '@/hooks/useBuyNow';
 import { toast } from 'sonner';
 import { trackPixelEvent } from '@/utils/pixel';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 
 const Shop = () => {
@@ -37,6 +40,7 @@ const Shop = () => {
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { addItem } = useCart();
   const { setItemAndProceed } = useBuyNow();
+  const isMobile = useIsMobile();
 
   const { data: categories } = useQuery({
     queryKey: ['categories'],
@@ -70,6 +74,40 @@ const Shop = () => {
   const [sortBy, setSortBy] = useState<string>(() => searchParams.get('sortBy') || 'newest');
   const [showFilters, setShowFilters] = useState(false);
 
+  const currentPage = parseInt(searchParams.get('page') || '1', 10);
+  const pageSize = isMobile ? 20 : 30; // 10 rows: 10*2 for mobile, 10*3 for desktop
+
+  // Sync state from URL params
+  useEffect(() => {
+    // Categories
+    const categorySlug = searchParams.get('category');
+    if (categorySlug && categories) {
+      const category = categories.find((cat) => cat.slug === categorySlug);
+      if (category) {
+        setSelectedCategories([category.id]);
+        return; // Don't process 'categories' if 'category' slug is present
+      }
+    }
+    const cats = searchParams.get('categories');
+    if (cats !== null) {
+      setSelectedCategories(cats ? cats.split(',') : []);
+    }
+
+    // Price
+    const min = searchParams.get('minPrice');
+    const max = searchParams.get('maxPrice');
+    if (min !== null || max !== null) {
+      const minVal = min ? parseInt(min, 10) : 0;
+      const maxVal = max ? parseInt(max, 10) : 5000;
+      setPriceRange([isNaN(minVal) ? 0 : minVal, isNaN(maxVal) ? 5000 : maxVal]);
+    }
+
+    // Toggles
+    setInStockOnly(searchParams.get('inStock') === 'true');
+    setOnSaleOnly(searchParams.get('onSale') === 'true');
+    setSortBy(searchParams.get('sortBy') || 'newest');
+  }, [searchParams, categories]);
+
   useEffect(() => {
     const params = new URLSearchParams();
 
@@ -91,18 +129,42 @@ const Shop = () => {
     if (sortBy !== 'newest') {
       params.set('sortBy', sortBy);
     }
+    if (currentPage > 1) {
+      params.set('page', currentPage.toString());
+    }
 
-    setSearchParams(params, { replace: true });
-  }, [selectedCategories, priceRange, inStockOnly, onSaleOnly, sortBy, setSearchParams]);
+    // Only update if something meaningful changed or we are on page 1
+    // This effect is mostly for syncing internal state TO the URL for filtering
+    const currentParamsStr = searchParams.toString();
+    const newParamsStr = params.toString();
+    
+    if (currentParamsStr !== newParamsStr) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [selectedCategories, priceRange, inStockOnly, onSaleOnly, sortBy, setSearchParams, currentPage, searchParams]);
 
-  const { data: products } = useQuery({
-    queryKey: ['products', selectedCategories, priceRange, inStockOnly, onSaleOnly, sortBy],
+
+  // Scroll to top when page changes
+  useEffect(() => {
+    // Immediate scroll to top
+    window.scrollTo(0, 0);
+    // Also scroll with a slight delay to ensure content has rendered
+    const timeoutId = setTimeout(() => window.scrollTo(0, 0), 10);
+    return () => clearTimeout(timeoutId);
+  }, [currentPage]);
+
+
+  const { data, isLoading, isFetching } = useQuery({
+
+    queryKey: ['products', selectedCategories, priceRange, inStockOnly, onSaleOnly, sortBy, currentPage, pageSize],
     queryFn: async () => {
+      const from = (currentPage - 1) * pageSize;
+      const to = from + pageSize - 1;
+
       let query = supabase
         .from('products')
-        .select('*, reviews(rating, is_hidden)')
+        .select('*, reviews(rating, is_hidden)', { count: 'exact' })
         .eq('status', 'active')
-
         .gte('base_price', priceRange[0])
         .lte('base_price', priceRange[1]);
 
@@ -123,15 +185,16 @@ const Shop = () => {
       } else if (sortBy === 'price-desc') {
         query = query.order('base_price', { ascending: false });
       } else {
-        // Default: sort by priority (ascending, nulls last) then by created_at
         query = query.order('priority', { ascending: true, nullsFirst: false })
                       .order('created_at', { ascending: false });
       }
 
-      const { data, error } = await query;
+      query = query.range(from, to);
+
+      const { data, count, error } = await query;
       if (error) throw error;
       
-      return (data as any[]).map(product => {
+      const mappedProducts = (data as any[]).map(product => {
         const activeReviews = (product.reviews || []).filter((r: any) => !r.is_hidden);
         const total = activeReviews.length;
         const avg = total > 0 
@@ -139,9 +202,24 @@ const Shop = () => {
           : 0;
         return { ...product, avgRating: avg, totalReviews: total };
       });
-    },
 
+      return { products: mappedProducts, count: count || 0 };
+    },
   });
+
+  const productList = data?.products || [];
+  const totalCount = data?.count || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams);
+    if (newPage === 1) {
+      params.delete('page');
+    } else {
+      params.set('page', newPage.toString());
+    }
+    setSearchParams(params);
+  };
 
   const productImages: Record<string, string> = {
     'monstera-deliciosa': monsteraImg,
@@ -156,6 +234,8 @@ const Shop = () => {
         ? prev.filter((id) => id !== categoryId)
         : [...prev, categoryId]
     );
+    // Reset to page 1 when category changes
+    handlePageChange(1);
   };
 
   const clearFilters = () => {
@@ -164,6 +244,7 @@ const Shop = () => {
     setInStockOnly(false);
     setOnSaleOnly(false);
     setSortBy('newest');
+    handlePageChange(1);
   };
 
   const handleBuyNow = (product: Product, e: React.MouseEvent) => {
@@ -235,7 +316,10 @@ const Shop = () => {
                   max={5000}
                   step={10}
                   value={priceRange}
-                  onValueChange={(value) => setPriceRange(value as [number, number])}
+                  onValueChange={(value) => {
+                    setPriceRange(value as [number, number]);
+                    handlePageChange(1);
+                  }}
                   className="mb-3 mt-2"
                 />
               </div>
@@ -252,7 +336,10 @@ const Shop = () => {
                 <Switch
                   id="in-stock"
                   checked={inStockOnly}
-                  onCheckedChange={setInStockOnly}
+                  onCheckedChange={(checked) => {
+                    setInStockOnly(checked);
+                    handlePageChange(1);
+                  }}
                 />
               </div>
             </div>
@@ -264,7 +351,10 @@ const Shop = () => {
                 <Switch
                   id="on-sale"
                   checked={onSaleOnly}
-                  onCheckedChange={setOnSaleOnly}
+                  onCheckedChange={(checked) => {
+                    setOnSaleOnly(checked);
+                    handlePageChange(1);
+                  }}
                 />
               </div>
             </div>
@@ -281,7 +371,7 @@ const Shop = () => {
           <main className="flex-1">
             <div className="flex items-center justify-between mb-6">
               <p className="text-sm text-muted-foreground">
-                {products?.length || 0} plants found
+                {totalCount} plants found
               </p>
 
               <div className="flex items-center gap-4">
@@ -295,7 +385,10 @@ const Shop = () => {
                   Filters
                 </Button>
 
-                <Select value={sortBy} onValueChange={setSortBy}>
+                <Select value={sortBy} onValueChange={(value) => {
+                  setSortBy(value);
+                  handlePageChange(1);
+                }}>
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
@@ -309,7 +402,19 @@ const Shop = () => {
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
-              {products?.map((product: Product, index: number) => {
+              {(isLoading || isFetching) ? (
+                // Show skeletons while loading
+                Array.from({ length: pageSize }).map((_, i) => (
+                  <div key={i} className="flex flex-col space-y-3">
+                    <Skeleton className="aspect-square w-full rounded-xl" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-4 w-1/2" />
+                    </div>
+                  </div>
+                ))
+              ) : productList.map((product: Product, index: number) => {
+
                 const imgSrc = product.main_image_url || productImages[product.slug] || monsteraImg;
                 const displayPrice = product.sale_price || product.base_price;
                 const hasDiscount = product.sale_price !== null;
@@ -454,7 +559,8 @@ const Shop = () => {
               })}
             </div>
 
-            {products && products.length === 0 && (
+            {(!isLoading && !isFetching && productList.length === 0) && (
+
               <div className="text-center py-12">
                 <p className="text-muted-foreground">No plants found matching your filters.</p>
                 <Button
@@ -462,6 +568,53 @@ const Shop = () => {
                   onClick={clearFilters}
                 >
                   Clear all filters
+                </Button>
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-12 flex justify-center items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  disabled={currentPage <= 1}
+                  onClick={() => handlePageChange(currentPage - 1)}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => {
+                      // Show first, last, and pages around current
+                      return p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1;
+                    })
+                    .map((p, i, arr) => {
+                      const showEllipsis = i > 0 && p - arr[i-1] > 1;
+                      return (
+                        <div key={p} className="flex items-center gap-1">
+                          {showEllipsis && <span className="text-muted-foreground px-1">...</span>}
+                          <Button
+                            variant={currentPage === p ? "default" : "outline"}
+                            size="sm"
+                            className="w-9 h-9"
+                            onClick={() => handlePageChange(p)}
+                          >
+                            {p}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => handlePageChange(currentPage + 1)}
+                >
+                  <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
             )}

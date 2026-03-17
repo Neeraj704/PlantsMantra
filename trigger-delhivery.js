@@ -7,7 +7,7 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 async function createDelhiveryOrder() {
-  const orderId = "4aea082f-fc52-40e8-9b4c-46af198c16b9";
+  const orderId = "01a34051-7bfe-4fc5-aca8-74332f512bc1";
 
   console.log(`\nProcessing Order: ${orderId}`);
 

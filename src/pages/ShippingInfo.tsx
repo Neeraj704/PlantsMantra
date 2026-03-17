@@ -49,11 +49,11 @@ const ShippingInfo = () => {
                 <ul className="space-y-3">
                   <li className="flex items-start gap-3">
                     <span className="text-primary mt-1">✓</span>
-                    <span className="text-muted-foreground"><strong className="text-foreground">Orders above ₹999:</strong> FREE shipping</span>
+                    <span className="text-muted-foreground"><strong className="text-foreground">Orders above ₹599:</strong> FREE shipping</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <span className="text-primary mt-1">✓</span>
-                    <span className="text-muted-foreground"><strong className="text-foreground">Orders below ₹999:</strong> ₹99 shipping fee</span>
+                    <span className="text-muted-foreground"><strong className="text-foreground">Orders below ₹599:</strong> ₹99 shipping fee</span>
                   </li>
                 </ul>
               </div>

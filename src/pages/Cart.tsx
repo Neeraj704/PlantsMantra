@@ -288,13 +288,25 @@ const Cart = () => {
                   <Link to="/shop">Continue Shopping</Link>
                 </Button>
 
-                <div className="mt-6 p-4 bg-muted/30 rounded-lg">
-                  <p className="text-sm text-center text-muted-foreground">
+                <div className="mt-6 p-4 bg-muted/30 rounded-lg space-y-2">
+                  <p className="text-sm text-center text-muted-foreground font-medium">
                     {shipping === 0
                       ? '✅ You qualify for FREE shipping!'
-                      : `⚠️ Shipping is ₹${shipping.toFixed(2)} on orders under ₹599 MRP.`}
+                      : `⚠️ Add ₹${(599 - subtotal).toFixed(2)} more to get FREE shipping!`}
+                  </p>
+                  {shipping !== 0 && (
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                      <div 
+                        className="bg-primary h-full transition-all duration-500" 
+                        style={{ width: `${Math.min((subtotal / 599) * 100, 100)}%` }}
+                      />
+                    </div>
+                  )}
+                  <p className="text-[10px] text-center text-muted-foreground">
+                    Free shipping on orders over ₹599.
                   </p>
                 </div>
+
               </CardContent>
             </Card>
           </div>

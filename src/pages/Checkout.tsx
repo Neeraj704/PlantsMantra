@@ -139,9 +139,13 @@ const Checkout = () => {
   };
 
   const subtotal = getSubtotal();
-  const shippingCost = subtotal > 0 && subtotal < 799 ? 99 : 0;
-  const discountAmount = isDirectBuy ? 0 : cart.getDiscountAmount();
-  const total = subtotal + shippingCost - discountAmount;
+  const shippingCost = subtotal > 0 && subtotal < 599 ? 99 : 0;
+  const couponDiscount = isDirectBuy ? 0 : cart.getDiscountAmount();
+  
+  // Calculate UPI discount: 10% of (subtotal + shipping - coupon) up to 100
+  const tempTotal = Math.max(0, subtotal + shippingCost - couponDiscount);
+  const upiDiscount = paymentMethod === 'razorpay' ? Math.min(tempTotal * 0.1, 100) : 0;
+  const total = tempTotal - upiDiscount;
 
   const hasValidDetails = isGuest
     ? Boolean(
@@ -346,7 +350,7 @@ const Checkout = () => {
       customer_phone: address.phone,
       shipping_address: shippingAddress,
       subtotal,
-      discount_amount: discountAmount,
+      discount_amount: couponDiscount + upiDiscount,
       shipping_cost: shippingCost,
       total,
       coupon_code: isDirectBuy ? null : cart.appliedCoupon?.code || null,
@@ -793,7 +797,10 @@ const Checkout = () => {
 
                       {showAddressForm && (
                         <div className="mt-4 border rounded-lg p-4">
-                          <AddressForm onSubmit={handleAddressSubmit} />
+                          <AddressForm 
+                            onSubmit={handleAddressSubmit} 
+                            onCancel={() => setShowAddressForm(false)}
+                          />
                         </div>
                       )}
                     </div>
@@ -973,10 +980,10 @@ const Checkout = () => {
                       <span>Subtotal</span>
                       <span>₹{subtotal.toFixed(2)}</span>
                     </div>
-                    {discountAmount > 0 && (
+                    {couponDiscount > 0 && (
                       <div className="flex justify-between text-emerald-600">
-                        <span>Discount</span>
-                        <span>-₹{discountAmount.toFixed(2)}</span>
+                        <span>Coupon Discount</span>
+                        <span>-₹{couponDiscount.toFixed(2)}</span>
                       </div>
                     )}
                     <div className="flex justify-between">
@@ -989,6 +996,15 @@ const Checkout = () => {
                         )}
                       </span>
                     </div>
+
+                    {upiDiscount > 0 && (
+                      <div className="flex justify-between text-emerald-600 font-medium bg-emerald-50 p-2 rounded-md">
+                        <span className="flex items-center gap-1">
+                          <Percent className="w-3.5 h-3.5" /> Prepaid (UPI) Discount
+                        </span>
+                        <span>-₹{upiDiscount.toFixed(2)}</span>
+                      </div>
+                    )}
                     <Separator />
                     <div className="flex justify-between text-base font-semibold">
                       <span>Total</span>
@@ -1000,6 +1016,9 @@ const Checkout = () => {
                     <p>
                       ✅ 7-day healthy plant guarantee. If your plant arrives
                       damaged or unhealthy, we’ll replace it.
+                    </p>
+                    <p className="mt-2 text-emerald-600 font-medium">
+                      ✅ EXTRA 10% OFF up to ₹100 on UPI/Online payments!
                     </p>
                   </div>
                 </CardContent>

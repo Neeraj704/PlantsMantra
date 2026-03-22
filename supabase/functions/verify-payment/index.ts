@@ -2,7 +2,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@13.10.0";
-import { createShipment } from "../lib/delhivery.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -109,60 +108,18 @@ serve(async (req: Request) => {
       });
     }
 
-    // Fetch & map items
-    const itemsRaw = (
-      await supabaseAdmin.from("order_items").select("*").eq("order_id", orderId)
-    ).data || [];
+    const { data: shipRes, error: shipErr } = await supabaseAdmin.functions.invoke('shiprocket-create', {
+      body: { orderId }
+    });
 
-    const items = itemsRaw.map((i: any) => ({
-      name: i.product_name,
-      qty: i.quantity,
-      price: i.unit_price,
-    }));
-
-    const shipmentPayload = {
-      order_id: order.id,
-      customer_name: order.customer_name,
-      customer_phone: order.customer_phone,
-      address_line1: shipping.address_line1 || shipping.add || "",
-      address_line2: shipping.address_line2 || "",
-      city: shipping.city,
-      state: shipping.state,
-      pin: String(shipping.pin),
-      items,
-      payment_mode: "Prepaid",
-      cod_amount: 0,
-    };
-
-    const delhiveryRes = await createShipment(shipmentPayload as any);
-
-    if (!delhiveryRes.ok) {
-      await supabaseAdmin.from("orders").update({ delhivery_response: delhiveryRes.body }).eq("id", orderId);
-      return new Response(JSON.stringify({ error: "Failed to create shipment", details: delhiveryRes.body }), {
+    if (shipErr || !shipRes?.ok) {
+      return new Response(JSON.stringify({ error: "Failed to create Shiprocket shipment", details: shipRes || shipErr }), {
         status: 502,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       });
     }
 
-    let awb: string | null = null;
-    try {
-      awb = delhiveryRes?.body?.data?.shipments?.[0]?.waybill ||
-            delhiveryRes?.body?.response?.waybill ||
-            delhiveryRes?.body?.result?.waybill ||
-            delhiveryRes?.body?.data?.lrn || null;
-    } catch (_) { awb = null; }
-
-    const updateData: any = {
-      courier: "Delhivery",
-      delhivery_response: delhiveryRes.body,
-      shipment_created_at: new Date().toISOString(),
-      shipment_status: "Pending",
-    };
-    if (awb) updateData.awb = awb;
-
-    await supabaseAdmin.from("orders").update(updateData).eq("id", orderId);
-
-    return new Response(JSON.stringify({ ok: true, awb, delhiveryRes }), {
+    return new Response(JSON.stringify({ ok: true, awb: shipRes.awb, shipmentRes: shipRes }), {
       status: 200,
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });

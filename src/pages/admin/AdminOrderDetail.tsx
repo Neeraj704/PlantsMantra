@@ -46,7 +46,7 @@ const AdminOrderDetail = () => {
 
   useEffect(() => {
     if (order) {
-      setNewAwb(order.awb || '');
+      setNewAwb(order.shiprocket_awb || order.awb || '');
     }
   }, [order]);
 
@@ -62,9 +62,10 @@ const AdminOrderDetail = () => {
   const handleUpdateAwb = async () => {
     if (!order) return;
     try {
+      const updatePayload = !!order.shiprocket_order_id ? { shiprocket_awb: newAwb || null } : { awb: newAwb || null };
       const { error } = await supabase
         .from('orders')
-        .update({ awb: newAwb || null } as any)
+        .update(updatePayload as any)
         .eq('id', order.id);
 
       if (error) throw error;
@@ -79,14 +80,14 @@ const AdminOrderDetail = () => {
   };
 
   const handleDownloadLabel = async () => {
-    if (!order?.awb) {
-      toast.error('No AWB assigned');
+    const awbToUse = order?.shiprocket_awb || order?.awb;
+    if (!order) {
       return;
     }
 
     setDownloadingLabel(true);
     try {
-      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delhivery-get-label?awb=${encodeURIComponent(order.awb)}`;
+      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/shiprocket-get-label?orderId=${encodeURIComponent(order.id)}`;
 
       const res = await fetch(funcUrl, {
         method: 'GET',
@@ -105,7 +106,7 @@ const AdminOrderDetail = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `label_${order.awb}.pdf`;
+      a.download = `label_${awbToUse || order.id}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -116,6 +117,22 @@ const AdminOrderDetail = () => {
       toast.error('Failed to download label');
     } finally {
       setDownloadingLabel(false);
+    }
+  };
+
+  const handleCreateShiprocketShipment = async () => {
+    if (!order) return;
+    try {
+      toast.info('Initiating Shiprocket shipment...');
+      const { error: funcError } = await supabase.functions.invoke('shiprocket-create', {
+        method: 'POST',
+        body: JSON.stringify({ orderId: order.id }),
+      });
+      if (funcError) throw funcError;
+      toast.success('Shipment created successfully.');
+      fetchOrderDetails();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to create shipment');
     }
   };
 
@@ -384,10 +401,26 @@ const AdminOrderDetail = () => {
               </p>
             </div>
             <Separator />
+            {(!order.shiprocket_order_id && !order.awb) ? (
+              <div className="pt-2">
+                 <p className="text-sm text-muted-foreground mb-4">No shipment created yet.</p>
+                 <Button onClick={handleCreateShiprocketShipment} className="w-full">
+                   Create Shiprocket Shipment
+                 </Button>
+              </div>
+            ) : (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-muted-foreground">Tracking Number</p>
-                {order.awb && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Tracking Number</p>
+                  {(order.courier === 'Delhivery' || (!order.shiprocket_order_id && !!order.awb)) && (
+                    <Badge variant="secondary" className="mt-1">Legacy Delhivery</Badge>
+                  )}
+                  {!!order.shiprocket_order_id && (
+                     <Badge variant="secondary" className="mt-1 bg-blue-100 text-blue-800 hover:bg-blue-100">Shiprocket</Badge>
+                  )}
+                </div>
+                {(order.awb || order.shiprocket_awb) && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -422,28 +455,41 @@ const AdminOrderDetail = () => {
                     className="h-8 w-8 p-0"
                     onClick={() => {
                       setIsEditingAwb(false);
-                      setNewAwb(order.awb || '');
+                      setNewAwb(order.shiprocket_awb || order.awb || '');
                     }}
                   >
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
               ) : (
-                <div className="flex items-center justify-between group">
-                  <p className="font-medium font-mono">
-                    {order.awb || 'Not assigned'}
-                  </p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => setIsEditingAwb(true)}
-                  >
-                    <Edit2 className="w-3 h-3" />
-                  </Button>
+                <div className="flex flex-col gap-1 group">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium font-mono">
+                      {order.shiprocket_awb || order.awb || 'Not assigned'}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => setIsEditingAwb(true)}
+                    >
+                      <Edit2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                  {order.shiprocket_tracking_url && (
+                    <a href={order.shiprocket_tracking_url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">
+                      Track on Shiprocket
+                    </a>
+                  )}
+                  {(!order.shiprocket_tracking_url && order.awb) && (
+                     <a href={`https://www.delhivery.com/track/package/${order.awb}`} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">
+                      Track on Delhivery
+                     </a>
+                  )}
                 </div>
               )}
             </div>
+            )}
             {order.status === 'cancelled' && (
               <>
                 <Separator />

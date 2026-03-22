@@ -86,6 +86,24 @@ export interface Order {
   tracking_number: string | null;
   payment_intent_id: string | null;
   payment_status: 'checking' | 'paid' | 'unpaid' | string | null;
+  awb: string | null;
+  courier: string | null;
+  delhivery_response: Record<string, any> | null;
+  shipment_status: string | null;
+  shipment_created_at: string | null;
+  shipment_cancelled_at: string | null;
+  cancellation_reason?: string | null;
+  cancelled_at?: string | null;
+  shiprocket_order_id: string | null;
+  shiprocket_shipment_id: string | null;
+  shiprocket_channel_id: number | null;
+  shiprocket_awb: string | null;
+  shiprocket_courier_name: string | null;
+  shiprocket_label_url: string | null;
+  shiprocket_tracking_url: string | null;
+  shiprocket_response: Record<string, any> | null;
+  shiprocket_created_at: string | null;
+  shiprocket_cancelled_at: string | null;
   created_at: string;
   updated_at: string;
 }

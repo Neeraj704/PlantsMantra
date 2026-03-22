@@ -510,19 +510,19 @@ const Checkout = () => {
       const order = await createOrderRecord(address, customerEmail, newUserId);
 
       try {
-        const { error: funcError } = await supabase.functions.invoke('delhivery-create', {
+        const { error: funcError } = await supabase.functions.invoke('shiprocket-create', {
           method: 'POST',
           body: JSON.stringify({ orderId: order.id }),
         });
 
         if (funcError) {
-          console.error('Delhivery create function error:', funcError);
+          console.error('Shiprocket create function error:', funcError);
           // We don't block the order placement for this, but we log it.
           // Optionally, we could toast a warning, but the order IS placed locally.
           toast.warning('Order placed, but shipment creation failed. Support will assist.');
         }
       } catch (error) {
-        console.error('Failed to create Delhivery shipment:', error);
+        console.error('Failed to create Shiprocket shipment:', error);
       }
 
       if (isDirectBuy) {

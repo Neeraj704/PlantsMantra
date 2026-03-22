@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
-import { ShoppingCart, Heart, Share2, ChevronLeft, Zap, Star } from 'lucide-react';
+import { ShoppingCart, Heart, Share2, ChevronLeft, Zap, Star, ShieldCheck, BadgeCheck, Lock, Headset } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { ReviewsSection } from '@/components/ReviewsSection';
 
@@ -327,19 +327,19 @@ const ProductDetail = () => {
             </div>
 
             {variants.length > 0 && (
-              <div className="mb-6">
-                <Label className="text-base mb-3 block">Select Size</Label>
+              <div className="mb-4">
+                <Label className="text-sm font-semibold mb-2 block">Select Size</Label>
                 <div className="flex flex-wrap gap-2">
                   {variants.map((variant) => (
                     <Button
                       key={variant.id}
                       variant={selectedVariant?.id === variant.id ? 'default' : 'outline'}
                       onClick={() => setSelectedVariant(variant)}
-                      className={selectedVariant?.id === variant.id ? 'gradient-hero' : ''}
+                      className={selectedVariant?.id === variant.id ? 'gradient-hero h-9 text-xs' : 'h-9 text-xs'}
                     >
                       {variant.name}
                       {variant.price_adjustment !== 0 && (
-                        <span className="ml-1 text-xs">({variant.price_adjustment > 0 ? '+' : ''}₹{variant.price_adjustment.toFixed(2)})</span>
+                        <span className="ml-1 text-[10px]">({variant.price_adjustment > 0 ? '+' : ''}₹{variant.price_adjustment.toFixed(2)})</span>
                       )}
                     </Button>
                   ))}
@@ -347,13 +347,30 @@ const ProductDetail = () => {
               </div>
             )}
 
-            <Separator className="my-6" />
+            <ul className="space-y-3.5 mb-8 text-gray-800 font-medium">
+              <li className="flex items-center gap-3">
+                <span className="text-2xl flex-shrink-0 drop-shadow-sm">🚚</span> 
+                <span className="text-[15px]"><span className="font-bold text-gray-900">Complimentary Shipping</span> on all orders above ₹599</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="text-2xl flex-shrink-0 drop-shadow-sm">💸</span> 
+                <span className="text-[15px]"><span className="font-bold text-gray-900">Cash on Delivery</span> available for your convenience</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="text-2xl flex-shrink-0 drop-shadow-sm">💳</span> 
+                <span className="text-[15px]"><span className="font-bold text-gray-900">Extra 10% Off</span> applied instantly on all prepaid orders</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="text-2xl flex-shrink-0 drop-shadow-sm">📦</span> 
+                <span className="text-[15px]"><span className="font-bold text-gray-900">Hassle-Free Returns</span> with a simple unboxing video</span>
+              </li>
+            </ul>
 
-            <div className="flex items-center gap-4 mb-6">
-              <div className="flex items-center border border-border rounded-lg">
-                <Button variant="ghost" size="sm" onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={isOutOfStock}>-</Button>
-                <span className="px-4 py-2 min-w-[3rem] text-center">{quantity}</span>
-                <Button variant="ghost" size="sm" onClick={() => setQuantity(quantity + 1)} disabled={isOutOfStock}>+</Button>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex items-center border border-border rounded-lg h-10 overflow-hidden">
+                <Button variant="ghost" className="h-full rounded-none px-3 hover:bg-gray-100" onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={isOutOfStock}>-</Button>
+                <span className="px-3 min-w-[2.5rem] text-center text-sm font-semibold">{quantity}</span>
+                <Button variant="ghost" className="h-full rounded-none px-3 hover:bg-gray-100" onClick={() => setQuantity(quantity + 1)} disabled={isOutOfStock}>+</Button>
               </div>
               <Badge variant={isOutOfStock ? 'destructive' : 'default'}>
                 {isOutOfStock ? 'Out of Stock' : 'In Stock'}

@@ -39,6 +39,30 @@ const Home = () => {
     },
   });
 
+  const { data: combos } = useQuery({
+    queryKey: ['combo-products'],
+    queryFn: async () => {
+      const { data: category } = await supabase
+        .from('categories')
+        .select('id')
+        .ilike('name', 'combo')
+        .maybeSingle();
+      
+      if (!category) return [];
+
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('category_id', category.id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(4);
+        
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const productImages: Record<string, string> = {
     'monstera-deliciosa': monsteraImg,
     'snake-plant': snakePlantImg,
@@ -128,6 +152,83 @@ const Home = () => {
           ))}
         </div>
       </section>
+
+      {/* Combos Section */}
+      {combos && combos.length > 0 && (
+        <section className="py-20 bg-background">
+          <div className="container mx-auto px-4">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-12"
+            >
+              <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4">Customer Favourite Combos</h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+                Specially curated plant combinations providing the best value. Perfect for gifting or expanding your indoor jungle effortlessly.
+              </p>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {combos.map((product, index) => {
+                const imgSrc = product.main_image_url || productImages[product.slug] || monsteraImg;
+                const displayPrice = product.sale_price || product.base_price;
+                const hasDiscount = product.sale_price !== null;
+
+                return (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <Link to={`/product/${product.slug}`}>
+                      <Card className="overflow-hidden group cursor-pointer hover:shadow-hover transition-smooth border-primary/20 bg-primary/5">
+                        <div className="aspect-square overflow-hidden bg-muted/50">
+                          <img
+                            src={imgSrc}
+                            alt={product.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-smooth"
+                          />
+                        </div>
+                        <CardContent className="p-4 bg-white">
+                          <div className="flex items-center justify-between mb-2">
+                            {hasDiscount && (
+                              <Badge variant="destructive">Sale</Badge>
+                            )}
+                            <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 hover:text-white">COMBO</Badge>
+                          </div>
+                          <h3 className="font-serif font-semibold text-lg mb-1">{product.name}</h3>
+                          {product.botanical_name && (
+                            <p className="text-xs text-muted-foreground italic mb-2">{product.botanical_name}</p>
+                          )}
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="text-lg font-bold">₹{displayPrice.toFixed(2)}</span>
+                            {hasDiscount && (
+                              <span className="text-sm text-muted-foreground line-through">
+                                ₹{product.base_price.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            <div className="text-center mt-12">
+              <Button size="lg" className="gradient-hero" asChild>
+                <Link to="/shop?category=combo">
+                  View More Combos <ArrowRight className="ml-2 w-5 h-5" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Featured Products */}
       <section className="py-20 bg-muted/30">

@@ -88,6 +88,13 @@ serve(async (req: Request) => {
 
     if (!shiprocketOrderId) {
       createRes = await createOrder(token, payload);
+      if (!createRes.order_id) {
+        // Order creation failed, return the error details directly 
+        return new Response(JSON.stringify({ error: "Shiprocket order creation failed", details: createRes }), { 
+          status: 400, 
+          headers: { ...cors, "Content-Type": "application/json" } 
+        });
+      }
       shiprocketOrderId = createRes.order_id;
       shipmentId = createRes.shipment_id;
     }

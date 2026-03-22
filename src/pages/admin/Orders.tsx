@@ -232,23 +232,30 @@ const Orders = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b">
-                  <th className="p-4">Order</th>
-                  <th className="p-4">Customer</th>
-                  <th className="p-4">Total</th>
-                  <th className="p-4">Payment Status</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4">AWB</th>
-                  <th className="p-4 text-right">Actions</th>
+                <tr className="border-b text-sm">
+                  <th className="p-4 font-semibold text-muted-foreground">Order ID</th>
+                  <th className="p-4 font-semibold text-muted-foreground">Date</th>
+                  <th className="p-4 font-semibold text-muted-foreground">Customer</th>
+                  <th className="p-4 font-semibold text-muted-foreground">Total</th>
+                  <th className="p-4 font-semibold text-muted-foreground">Payment Status</th>
+                  <th className="p-4 font-semibold text-muted-foreground">Status</th>
+                  <th className="p-4 font-semibold text-muted-foreground">AWB</th>
+                  <th className="p-4 text-right font-semibold text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredOrders.map((order) => (
-                  <tr key={order.id} className="border-b hover:bg-muted/50">
-                    <td className="p-4">{order.id}</td>
+                  <tr key={order.id} className="border-b hover:bg-muted/50 transition-colors">
+                    <td className="p-4 text-sm font-mono text-muted-foreground" title={order.id}>
+                      {order.id.slice(0, 8)}...
+                    </td>
+                    <td className="p-4 text-sm whitespace-nowrap">
+                      <div className="font-medium">{new Date(order.created_at).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                      <div className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' })}</div>
+                    </td>
                     <td className="p-4">
-                      <div className="font-medium">{order.customer_name}</div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="font-medium text-sm">{order.customer_name}</div>
+                      <div className="text-xs text-muted-foreground">
                         {order.customer_email}
                       </div>
                     </td>

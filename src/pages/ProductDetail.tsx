@@ -8,8 +8,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
-import { ShoppingCart, Heart, Share2, ChevronLeft, Zap, Star, ShieldCheck, BadgeCheck, Lock, Headset } from 'lucide-react';
+import { ShoppingCart, Heart, Share2, ChevronLeft, Zap, Star, ShieldCheck, BadgeCheck, Lock, Headset, Maximize2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog';
 import { ReviewsSection } from '@/components/ReviewsSection';
 
 import { useCart } from '@/hooks/useCart';
@@ -262,9 +263,24 @@ const ProductDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
           {/* Image Gallery */}
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-            <div className="aspect-square rounded-2xl overflow-hidden shadow-card">
-              <img src={mainImage} alt={mainImageAltText} className="w-full h-full object-cover" />
-            </div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <div className="aspect-square rounded-2xl overflow-hidden shadow-card relative group cursor-pointer border border-muted">
+                  <img src={mainImage} alt={mainImageAltText} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                    <div className="bg-white/90 backdrop-blur-sm p-3 rounded-full shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 pointer-events-auto">
+                      <Maximize2 className="w-5 h-5 text-gray-800" />
+                    </div>
+                  </div>
+                </div>
+              </DialogTrigger>
+              <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[95vh] h-[95vh] p-2 sm:p-4 border-none bg-transparent shadow-none flex flex-col items-center justify-center [&>button]:right-6 [&>button]:top-6 [&>button]:bg-black/50 [&>button]:text-white [&>button]:hover:bg-black/70 [&>button]:rounded-full [&>button]:p-2 [&>button>svg]:w-6 [&>button>svg]:h-6">
+                <DialogTitle className="sr-only">Product Image Zoom</DialogTitle>
+                <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+                  <img src={mainImage} alt={mainImageAltText} className="max-w-full max-h-full object-contain drop-shadow-2xl rounded-sm" />
+                </div>
+              </DialogContent>
+            </Dialog>
             {(product.gallery_images && product.gallery_images.length > 0) && (
               <div className="grid grid-cols-4 gap-4">
                 <div

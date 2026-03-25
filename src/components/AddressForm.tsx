@@ -29,6 +29,32 @@ const AddressForm = ({ onSubmit, onCancel }: AddressFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.full_name?.trim() || formData.full_name.trim().length < 3) {
+      toast.error('Please enter a valid full name (at least 3 characters).');
+      return;
+    }
+    if (!/^[6-9]\d{9}$/.test(formData.phone?.trim() || '')) {
+      toast.error('Please enter a valid 10-digit Indian phone number (without spaces or +91).');
+      return;
+    }
+    if (!formData.address_line1?.trim() || formData.address_line1.trim().length < 5) {
+      toast.error('Please enter a valid address line 1 (at least 5 characters).');
+      return;
+    }
+    if (!formData.city?.trim() || formData.city.trim().length < 2) {
+      toast.error('Please enter a valid city.');
+      return;
+    }
+    if (!formData.state?.trim() || formData.state.trim().length < 2) {
+      toast.error('Please enter a valid state.');
+      return;
+    }
+    if (!/^\d{6}$/.test(formData.postal_code?.trim() || '')) {
+      toast.error('Please enter a valid 6-digit PIN code.');
+      return;
+    }
+
     setLoading(true);
 
     try {

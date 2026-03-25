@@ -78,7 +78,7 @@ serve(async (req: Request) => {
       sub_total: Number(order.subtotal),
       length: 15, breadth: 15, height: 15,
       weight: parseFloat(Deno.env.get("SHIPROCKET_DEFAULT_WEIGHT") || "0.5"),
-      pickup_location: Deno.env.get("SHIPROCKET_PICKUP_LOCATION") || "Primary"
+      pickup_location: Deno.env.get("SHIPROCKET_PICKUP_LOCATION") || "plantsmn"
     };
 
     const token = await getToken(supabaseAdmin);

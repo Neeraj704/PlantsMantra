@@ -14,8 +14,9 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { Order } from "@/types/database";
-import { Search, Eye, Download, X } from "lucide-react";
+import { Search, Eye, Download, X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const Orders = () => {
   const navigate = useNavigate();
@@ -31,6 +32,8 @@ const Orders = () => {
     null,
   );
   const [downloadingAwb, setDownloadingAwb] = useState<string | null>(null);
+  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -153,6 +156,66 @@ const Orders = () => {
     }
   };
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedOrders(filteredOrders.map(order => order.id));
+    } else {
+      setSelectedOrders([]);
+    }
+  };
+
+  const handleSelectOrder = (checked: boolean, orderId: string) => {
+    if (checked) {
+      setSelectedOrders(prev => [...prev, orderId]);
+    } else {
+      setSelectedOrders(prev => prev.filter(id => id !== orderId));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedOrders.length === 0) return;
+    
+    if (!window.confirm(`Are you sure you want to delete ${selectedOrders.length} selected orders?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      // First, delete related order_items to avoid foreign key constraint violations
+      const { error: itemsError } = await supabase
+        .from("order_items" as any)
+        .delete()
+        .in("order_id", selectedOrders);
+
+      if (itemsError) {
+        console.error("Failed to delete order items:", itemsError);
+        toast.error("Failed to delete order items due to constraints");
+        setIsDeleting(false);
+        return;
+      }
+
+      // Then delete the orders
+      const { error } = await supabase
+        .from("orders" as any)
+        .delete()
+        .in("id", selectedOrders);
+
+      if (error) {
+        toast.error("Failed to delete selected orders");
+        console.error("Delete error:", error);
+      } else {
+        toast.success(`Successfully deleted ${selectedOrders.length} orders`);
+        setSelectedOrders([]);
+        fetchOrders();
+      }
+    } catch (e) {
+      toast.error("An error occurred while deleting orders");
+      console.error("Delete exception:", e);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const filteredOrders = orders
     .filter((order) => {
       const matchesSearch =
@@ -201,7 +264,20 @@ const Orders = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-serif font-bold">Orders</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-3xl font-serif font-bold">Orders</h1>
+          {selectedOrders.length > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteSelected}
+              disabled={isDeleting}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Selected ({selectedOrders.length})
+            </Button>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <Input
             placeholder="Search by email, name or id"
@@ -233,6 +309,13 @@ const Orders = () => {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b text-sm">
+                  <th className="p-4 w-12">
+                    <Checkbox 
+                      checked={selectedOrders.length > 0 && selectedOrders.length === filteredOrders.length}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all orders"
+                    />
+                  </th>
                   <th className="p-4 font-semibold text-muted-foreground">Order ID</th>
                   <th className="p-4 font-semibold text-muted-foreground">Date</th>
                   <th className="p-4 font-semibold text-muted-foreground">Customer</th>
@@ -246,6 +329,13 @@ const Orders = () => {
               <tbody>
                 {filteredOrders.map((order) => (
                   <tr key={order.id} className="border-b hover:bg-muted/50 transition-colors">
+                    <td className="p-4">
+                      <Checkbox 
+                        checked={selectedOrders.includes(order.id)}
+                        onCheckedChange={(checked: boolean) => handleSelectOrder(checked, order.id)}
+                        aria-label={`Select order ${order.id}`}
+                      />
+                    </td>
                     <td className="p-4 text-sm font-mono text-muted-foreground" title={order.id}>
                       {order.id.slice(0, 8)}...
                     </td>

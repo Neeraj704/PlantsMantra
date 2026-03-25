@@ -147,16 +147,7 @@ const Checkout = () => {
   const upiDiscount = paymentMethod === 'razorpay' ? Math.min(tempTotal * 0.1, 100) : 0;
   const total = tempTotal - upiDiscount;
 
-  const hasValidDetails = isGuest
-    ? Boolean(
-      guestAddress.full_name &&
-      guestAddress.address_line1 &&
-      guestAddress.city &&
-      guestAddress.state &&
-      guestAddress.postal_code &&
-      (guestAddress.phone || guestEmail),
-    )
-    : Boolean(selectedAddress);
+  const hasValidDetails = true; // Validation handled on click instead of disabling button
 
   /**
    * Resolve a normalized checkout address from either:
@@ -383,25 +374,50 @@ const Checkout = () => {
       return;
     }
 
-    if (isGuest) {
-      if (
-        !guestAddress.full_name ||
-        !guestAddress.address_line1 ||
-        !guestAddress.city ||
-        !guestAddress.state ||
-        !guestAddress.postal_code
-      ) {
-        toast.error('Please fill your shipping details.');
-        return;
-      }
-
-      if (!guestAddress.phone && !guestEmail) {
-        toast.error('Please provide at least a phone number or an email.');
-        return;
-      }
-    } else {
-      if (!selectedAddress) {
+    let address: CheckoutAddress;
+    try {
+      if (!isGuest && !selectedAddress) {
         toast.error('Please select a shipping address.');
+        return;
+      }
+      address = getCheckoutAddress();
+    } catch (e: any) {
+      toast.error(e.message);
+      return;
+    }
+
+    if (!address.full_name?.trim() || address.full_name.trim().length < 3) {
+      toast.error('Please enter a valid full name (at least 3 characters).');
+      return;
+    }
+    if (!/^[6-9]\d{9}$/.test(address.phone?.trim() || '')) {
+      toast.error('Please enter a valid 10-digit Indian phone number (without spaces or +91).');
+      return;
+    }
+    if (!address.address_line1?.trim() || address.address_line1.trim().length < 5) {
+      toast.error('Please enter a valid address line 1 (at least 5 characters).');
+      return;
+    }
+    if (!address.city?.trim() || address.city.trim().length < 2) {
+      toast.error('Please enter a valid city.');
+      return;
+    }
+    if (!address.state?.trim() || address.state.trim().length < 2) {
+      toast.error('Please enter a valid state.');
+      return;
+    }
+    if (!/^\d{6}$/.test(address.postal_code?.trim() || '')) {
+      toast.error('Please enter a valid 6-digit PIN code.');
+      return;
+    }
+
+    if (isGuest) {
+      if (!guestEmail?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail.trim())) {
+        toast.error('Please enter a valid email address.');
+        return;
+      }
+      if (guestPassword && guestPassword.length < 6) {
+        toast.error('Account password must be at least 6 characters.');
         return;
       }
     }

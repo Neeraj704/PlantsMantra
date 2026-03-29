@@ -46,7 +46,7 @@ const AdminOrderDetail = () => {
 
   useEffect(() => {
     if (order) {
-      setNewAwb(order.shiprocket_awb || order.awb || '');
+      setNewAwb(order.awb || '');
     }
   }, [order]);
 
@@ -62,10 +62,9 @@ const AdminOrderDetail = () => {
   const handleUpdateAwb = async () => {
     if (!order) return;
     try {
-      const updatePayload = !!order.shiprocket_order_id ? { shiprocket_awb: newAwb || null } : { awb: newAwb || null };
       const { error } = await supabase
         .from('orders')
-        .update(updatePayload as any)
+        .update({ awb: newAwb || null } as any)
         .eq('id', order.id);
 
       if (error) throw error;
@@ -80,14 +79,11 @@ const AdminOrderDetail = () => {
   };
 
   const handleDownloadLabel = async () => {
-    const awbToUse = order?.shiprocket_awb || order?.awb;
-    if (!order) {
-      return;
-    }
+    if (!order) return;
 
     setDownloadingLabel(true);
     try {
-      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/shiprocket-get-label?orderId=${encodeURIComponent(order.id)}`;
+      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delhivery-get-label?orderId=${encodeURIComponent(order.id)}`;
 
       const res = await fetch(funcUrl, {
         method: 'GET',
@@ -106,7 +102,7 @@ const AdminOrderDetail = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `label_${awbToUse || order.id}.pdf`;
+      a.download = `label_${order.awb || order.id}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -120,11 +116,11 @@ const AdminOrderDetail = () => {
     }
   };
 
-  const handleCreateShiprocketShipment = async () => {
+  const handleCreateDelhiveryShipment = async () => {
     if (!order) return;
     try {
-      toast.info('Initiating Shiprocket shipment...');
-      const { error: funcError } = await supabase.functions.invoke('shiprocket-create', {
+      toast.info('Initiating Delhivery shipment...');
+      const { error: funcError } = await supabase.functions.invoke('delhivery-create', {
         method: 'POST',
         body: JSON.stringify({ orderId: order.id }),
       });
@@ -401,26 +397,50 @@ const AdminOrderDetail = () => {
               </p>
             </div>
             <Separator />
-            {(!order.shiprocket_order_id && !order.awb) ? (
-              <div className="pt-2">
-                 <p className="text-sm text-muted-foreground mb-4">No shipment created yet.</p>
-                 <Button onClick={handleCreateShiprocketShipment} className="w-full">
-                   Create Shiprocket Shipment
-                 </Button>
+            {!order.awb ? (
+              <div className="pt-2 space-y-4">
+                <p className="text-sm text-muted-foreground">No shipment created yet.</p>
+                <Button onClick={handleCreateDelhiveryShipment} className="w-full">
+                  Create Delhivery Shipment
+                </Button>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">or enter manually</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Paste AWB from Delhivery dashboard
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={newAwb}
+                      onChange={(e) => setNewAwb(e.target.value)}
+                      placeholder="e.g. 1234567890123"
+                      className="h-9 font-mono"
+                    />
+                    <Button
+                      size="sm"
+                      className="h-9 px-3 shrink-0"
+                      disabled={!newAwb.trim()}
+                      onClick={handleUpdateAwb}
+                    >
+                      <Check className="w-4 h-4 mr-1" /> Save AWB
+                    </Button>
+                  </div>
+                </div>
               </div>
             ) : (
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <p className="text-sm text-muted-foreground">Tracking Number</p>
-                  {(order.courier === 'Delhivery' || (!order.shiprocket_order_id && !!order.awb)) && (
-                    <Badge variant="secondary" className="mt-1">Legacy Delhivery</Badge>
-                  )}
-                  {!!order.shiprocket_order_id && (
-                     <Badge variant="secondary" className="mt-1 bg-blue-100 text-blue-800 hover:bg-blue-100">Shiprocket</Badge>
-                  )}
+                  <Badge variant="secondary" className="mt-1">Delhivery</Badge>
                 </div>
-                {(order.awb || order.shiprocket_awb) && (
+                {order.awb && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -455,7 +475,7 @@ const AdminOrderDetail = () => {
                     className="h-8 w-8 p-0"
                     onClick={() => {
                       setIsEditingAwb(false);
-                      setNewAwb(order.shiprocket_awb || order.awb || '');
+                      setNewAwb(order.awb || '');
                     }}
                   >
                     <X className="w-4 h-4" />
@@ -465,7 +485,7 @@ const AdminOrderDetail = () => {
                 <div className="flex flex-col gap-1 group">
                   <div className="flex items-center justify-between">
                     <p className="font-medium font-mono">
-                      {order.shiprocket_awb || order.awb || 'Not assigned'}
+                      {order.awb || 'Not assigned'}
                     </p>
                     <Button
                       variant="ghost"
@@ -476,15 +496,10 @@ const AdminOrderDetail = () => {
                       <Edit2 className="w-3 h-3" />
                     </Button>
                   </div>
-                  {order.shiprocket_tracking_url && (
-                    <a href={order.shiprocket_tracking_url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">
-                      Track on Shiprocket
-                    </a>
-                  )}
-                  {(!order.shiprocket_tracking_url && order.awb) && (
-                     <a href={`https://www.delhivery.com/track/package/${order.awb}`} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">
+                  {order.awb && (
+                    <a href={`https://www.delhivery.com/track/package/${order.awb}`} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">
                       Track on Delhivery
-                     </a>
+                    </a>
                   )}
                 </div>
               )}

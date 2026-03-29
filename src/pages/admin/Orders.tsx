@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { Order } from "@/types/database";
-import { Search, Eye, Download, X, Trash2 } from "lucide-react";
+import { Eye, Download, X, Trash2, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -34,6 +34,7 @@ const Orders = () => {
   const [downloadingAwb, setDownloadingAwb] = useState<string | null>(null);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showCancelled, setShowCancelled] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -97,8 +98,7 @@ const Orders = () => {
   const handleDownloadLabel = async (orderId: string, awb: string | null) => {
     setDownloadingAwb(orderId);
     try {
-      // Use raw fetch for binary label download as specified.
-      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/shiprocket-get-label?orderId=${encodeURIComponent(orderId)}`;
+      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delhivery-get-label?orderId=${encodeURIComponent(orderId)}`;
 
       const res = await fetch(funcUrl, {
         method: "GET",
@@ -136,8 +136,7 @@ const Orders = () => {
   const handleCancelShipment = async (order: Order) => {
     setProcessingCancelId(order.id);
     try {
-      // Use Supabase Functions invoke via supabase client (handles URL + auth)
-      const resp = await supabase.functions.invoke("shiprocket-cancel", {
+      const resp = await supabase.functions.invoke("delhivery-cancel", {
         method: "POST",
         body: JSON.stringify({ orderId: order.id }),
       });
@@ -145,7 +144,6 @@ const Orders = () => {
       if (resp.error) {
         toast.error((resp.error as any).message || "Failed to cancel shipment");
       } else {
-        // resp.data contains JSON string or object depending on edge function
         toast.success("Shipment cancelled");
         fetchOrders();
       }
@@ -228,8 +226,10 @@ const Orders = () => {
         (order.id || "").toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus =
         statusFilter === "all" || order.status === statusFilter;
+      const matchesCancelledFilter =
+        showCancelled || order.status !== "cancelled";
 
-      return matchesSearch && matchesStatus;
+      return matchesSearch && matchesStatus && matchesCancelledFilter;
     })
     .sort((a, b) => {
       let aValue: any = a[sortField];
@@ -264,8 +264,20 @@ const Orders = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <h1 className="text-3xl font-serif font-bold">Orders</h1>
+          <Button
+            variant={showCancelled ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setShowCancelled((prev) => !prev)}
+            className="flex items-center gap-1.5 text-xs"
+          >
+            {showCancelled ? (
+              <><EyeOff className="w-3.5 h-3.5" /> Hide Cancelled</>
+            ) : (
+              <><Eye className="w-3.5 h-3.5" /> Show Cancelled</>
+            )}
+          </Button>
           {selectedOrders.length > 0 && (
             <Button
               variant="destructive"
@@ -376,7 +388,7 @@ const Orders = () => {
                     </td>
                     <td className="p-4">
                       <div className="font-mono">
-                        {order.shiprocket_awb || order.awb || "—"}
+                        {order.awb || "—"}
                       </div>
                     </td>
                     <td className="p-4 text-right">
@@ -393,13 +405,13 @@ const Orders = () => {
                           variant="outline"
                           size="sm"
                           disabled={
-                            !(order.shiprocket_awb || order.awb) ||
+                            !order.awb ||
                             downloadingAwb === order.id
                           }
                           onClick={() =>
                             handleDownloadLabel(
                               order.id,
-                              order.shiprocket_awb || order.awb,
+                              order.awb,
                             )
                           }
                         >
@@ -409,11 +421,11 @@ const Orders = () => {
                             : "Label"}
                         </Button>
 
-                        <Button
+                        {/* <Button
                           variant="destructive"
                           size="sm"
                           disabled={
-                            !(order.shiprocket_awb || order.awb) ||
+                            !order.awb ||
                             processingCancelId === order.id
                           }
                           onClick={() => handleCancelShipment(order)}
@@ -422,7 +434,7 @@ const Orders = () => {
                           {processingCancelId === order.id
                             ? "Cancelling..."
                             : "Cancel"}
-                        </Button>
+                        </Button> */}
                       </div>
                     </td>
                   </tr>

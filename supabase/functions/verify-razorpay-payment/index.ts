@@ -121,12 +121,12 @@ serve(async (req: Request) => {
       });
     }
 
-    const { data: shipRes, error: shipErr } = await supabaseAdmin.functions.invoke('shiprocket-create', {
+    const { data: shipRes, error: shipErr } = await supabaseAdmin.functions.invoke('delhivery-create', {
       body: { orderId: internalOrderId }
     });
 
     if (shipErr || !shipRes?.ok) {
-      return new Response(JSON.stringify({ error: "Failed to create Shiprocket shipment", details: shipRes || shipErr }), {
+      return new Response(JSON.stringify({ error: "Failed to create Delhivery shipment", details: shipRes || shipErr }), {
         status: 502,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       });

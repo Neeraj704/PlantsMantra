@@ -380,6 +380,10 @@ const ProductDetail = () => {
                 <span className="text-2xl flex-shrink-0 drop-shadow-sm">📦</span> 
                 <span className="text-[15px]"><span className="font-bold text-gray-900">Hassle-Free Returns</span> with a simple unboxing video</span>
               </li>
+              <li className="flex items-center gap-3">
+                <span className="text-2xl flex-shrink-0 drop-shadow-sm">🚚</span> 
+                <span className="text-[15px]"><span className="font-bold text-gray-900">72 Hour delivery</span> on every prepaid order placed before 2 P.M.</span>
+              </li>
             </ul>
 
             <div className="flex items-center gap-4 mb-4">

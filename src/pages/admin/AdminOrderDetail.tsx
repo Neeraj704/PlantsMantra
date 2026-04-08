@@ -132,6 +132,35 @@ const AdminOrderDetail = () => {
     }
   };
 
+  const handleResetDelhiveryData = async () => {
+    if (!order) return;
+
+    const confirmReset = window.confirm(
+      "Are you sure you want to reset Delhivery data? This will clear the AWB, shipment timestamp, and API response, allowing you to create a new shipment."
+    );
+    if (!confirmReset) return;
+
+    try {
+      const { error } = await supabase
+        .from('orders' as any)
+        .update({
+          awb: null,
+          shipment_created_at: null,
+          delhivery_response: null,
+          shipment_status: 'Pending'
+        } as any)
+        .eq('id', order.id);
+
+      if (error) throw error;
+
+      toast.success('Delhivery data reset successfully');
+      fetchOrderDetails();
+    } catch (error) {
+      console.error('Error resetting Delhivery data:', error);
+      toast.error('Failed to reset Delhivery data');
+    }
+  };
+
   const fetchOrderDetails = async () => {
     if (!id) return;
     setLoading(true);
@@ -400,9 +429,20 @@ const AdminOrderDetail = () => {
             {!order.awb ? (
               <div className="pt-2 space-y-4">
                 <p className="text-sm text-muted-foreground">No shipment created yet.</p>
-                <Button onClick={handleCreateDelhiveryShipment} className="w-full">
-                  Create Delhivery Shipment
-                </Button>
+                <div className="flex flex-col gap-2">
+                  <Button onClick={handleCreateDelhiveryShipment} className="w-full">
+                    Create Delhivery Shipment
+                  </Button>
+                  {(order.shipment_created_at || order.delhivery_response) && (
+                    <Button
+                      variant="outline"
+                      onClick={handleResetDelhiveryData}
+                      className="w-full text-destructive border-destructive hover:bg-destructive/10"
+                    >
+                      Reset Delhivery Data
+                    </Button>
+                  )}
+                </div>
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t" />
@@ -501,6 +541,18 @@ const AdminOrderDetail = () => {
                       Track on Delhivery
                     </a>
                   )}
+                </div>
+              )}
+              {(order.shipment_created_at || order.delhivery_response) && (
+                <div className="mt-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleResetDelhiveryData}
+                    className="w-full text-destructive text-xs h-8 hover:bg-destructive/10"
+                  >
+                    Reset Delhivery Data
+                  </Button>
                 </div>
               )}
             </div>

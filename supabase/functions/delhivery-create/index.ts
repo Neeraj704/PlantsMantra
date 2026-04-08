@@ -144,7 +144,7 @@ serve(async (req: Request) => {
     const delhiveryRes = await createShipment(shipmentPayload as any);
     console.log("Delhivery API Response:", JSON.stringify(delhiveryRes));
 
-    if (!delhiveryRes?.ok) {
+    if (!delhiveryRes?.ok || delhiveryRes.body?.success === false) {
       await supabaseAdmin
         .from("orders")
         .update({
@@ -152,9 +152,11 @@ serve(async (req: Request) => {
         })
         .eq("id", orderId);
 
+      const errorMsg = delhiveryRes.body?.rmk || delhiveryRes.body?.error || "Failed to create shipment";
+      
       return new Response(
         JSON.stringify({
-          error: "Failed to create shipment",
+          error: errorMsg,
           details: delhiveryRes.body,
         }),
         {

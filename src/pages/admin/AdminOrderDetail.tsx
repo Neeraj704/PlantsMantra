@@ -276,6 +276,40 @@ const AdminOrderDetail = () => {
     }
   };
 
+  const handleCallConfirmationStatusUpdate = async (newStatus: string) => {
+    if (!order) return;
+
+    try {
+      const updateData: any = { call_confirmation_status: newStatus };
+
+      // Automatically update order status based on call confirmation
+      if (newStatus === 'confirmed') {
+        updateData.status = 'processing';
+      } else if (newStatus === 'cancelled') {
+        updateData.status = 'cancelled';
+      }
+
+      const { error } = await supabase
+        .from('orders' as any)
+        .update(updateData)
+        .eq('id', order.id);
+
+      if (error) throw error;
+
+      toast.success(`Call status updated to ${newStatus}`);
+
+      // Automatically trigger Delhivery shipment creation if confirmed
+      if (newStatus === 'confirmed') {
+        await handleCreateDelhiveryShipment();
+      } else {
+        fetchOrderDetails();
+      }
+    } catch (e: any) {
+      console.error('Failed to update call status:', e);
+      toast.error('Failed to update call status');
+    }
+  };
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800',
@@ -419,6 +453,27 @@ const AdminOrderDetail = () => {
                 </SelectContent>
               </Select>
             </div>
+            {order.payment_method === 'cod' && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                  <Phone className="w-4 h-4" /> COD Call Confirmation
+                </p>
+                <Select
+                  value={order.call_confirmation_status || 'pending'}
+                  onValueChange={handleCallConfirmationStatusUpdate}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">🟡 Pending Call</SelectItem>
+                    <SelectItem value="confirmed">🟢 Confirmed (Send to Delhivery)</SelectItem>
+                    <SelectItem value="no_answer">🟠 No Answer / Busy</SelectItem>
+                    <SelectItem value="cancelled">🔴 Customer Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <p className="text-sm text-muted-foreground">Payment Intent ID</p>
               <p className="font-mono text-sm">

@@ -525,20 +525,7 @@ const Checkout = () => {
 
       const order = await createOrderRecord(address, customerEmail, newUserId);
 
-      try {
-        const { error: funcError } = await supabase.functions.invoke('delhivery-create', {
-          method: 'POST',
-          body: JSON.stringify({ orderId: order.id }),
-        });
-
-        if (funcError) {
-          console.error('Delhivery create function error:', funcError);
-          // We don't block the order placement for this, but we log it.
-          toast.warning('Order placed, but shipment creation failed. Support will assist.');
-        }
-      } catch (error) {
-        console.error('Failed to create Delhivery shipment:', error);
-      }
+      // Note: Delhivery shipment creation is now delayed until the admin manually confirms the COD order in the admin panel.
 
       if (isDirectBuy) {
         clearBuyNow();

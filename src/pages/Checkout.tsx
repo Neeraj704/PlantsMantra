@@ -1,5 +1,5 @@
 // src/pages/Checkout.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { useBuyNow } from '@/hooks/useBuyNow';
 import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { Address } from '@/types/database';
 import { toast } from 'sonner';
-import { Plus, MapPin, CreditCard, Percent, Lock, X, Eye, EyeOff } from 'lucide-react';
+import { Plus, MapPin, CreditCard, Percent, Lock, X, Eye, EyeOff, Phone, PhoneOff, Check } from 'lucide-react';
 import AddressForm from '@/components/AddressForm';
 import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
@@ -525,20 +525,7 @@ const Checkout = () => {
 
       const order = await createOrderRecord(address, customerEmail, newUserId);
 
-      try {
-        const { error: funcError } = await supabase.functions.invoke('delhivery-create', {
-          method: 'POST',
-          body: JSON.stringify({ orderId: order.id }),
-        });
-
-        if (funcError) {
-          console.error('Delhivery create function error:', funcError);
-          // We don't block the order placement for this, but we log it.
-          toast.warning('Order placed, but shipment creation failed. Support will assist.');
-        }
-      } catch (error) {
-        console.error('Failed to create Delhivery shipment:', error);
-      }
+      // Note: Delhivery shipment creation is now delayed until the admin manually confirms the COD order in the admin panel.
 
       if (isDirectBuy) {
         clearBuyNow();
@@ -561,6 +548,16 @@ const Checkout = () => {
         currency: 'INR',
         order_id: order.id,
       });
+
+      // Trigger the voice confirmation call in the background (non-blocking)
+      fetch(`${SUPABASE_URL}/functions/v1/phone-confirmation?action=trigger`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ orderId: order.id }),
+      }).catch((e) => console.error('Failed to trigger background call confirmation:', e));
 
       setIsCODDialogOpen(false);
       setProcessing(false);

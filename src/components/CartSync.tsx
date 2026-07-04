@@ -4,7 +4,7 @@ import { useCart } from '@/hooks/useCart';
 
 export const CartSync = () => {
   const { user, loading } = useAuth();
-  const { syncWithDatabase, loadFromDatabase, isInitialized, setInitialized } = useCart();
+  const { syncWithDatabase, isInitialized, setInitialized } = useCart();
 
   useEffect(() => {
     if (loading) return;
@@ -14,9 +14,6 @@ export const CartSync = () => {
         // User just logged in, sync local cart with database
         await syncWithDatabase(user.id);
         setInitialized(true);
-      } else if (user && isInitialized) {
-        // User is already logged in, load from database
-        await loadFromDatabase(user.id);
       } else if (!user) {
         // User logged out, reset initialization
         setInitialized(false);
@@ -24,7 +21,7 @@ export const CartSync = () => {
     };
 
     handleCartSync();
-  }, [user, loading, isInitialized, syncWithDatabase, loadFromDatabase, setInitialized]);
+  }, [user, loading, isInitialized, syncWithDatabase, setInitialized]);
 
   return null;
 };

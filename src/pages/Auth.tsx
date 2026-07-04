@@ -25,14 +25,13 @@ const Auth = () => {
     password: '',
     confirmPassword: ''
   });
+  const [useOtp, setUseOtp] = useState(true);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
 
   if (user) {
     return <Navigate to="/" replace />;
   }
-
-  const [useOtp, setUseOtp] = useState(true);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
 
   const handleSendOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();

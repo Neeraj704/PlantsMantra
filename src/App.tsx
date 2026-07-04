@@ -38,6 +38,7 @@ import Customers from "./pages/admin/Customers";
 import Categories from "./pages/admin/Categories";
 import Coupons from "./pages/admin/Coupons";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminFarmerPayouts from "./pages/admin/AdminFarmerPayouts";
 import Banners from "./pages/admin/Banners";
 import Reviews from "./pages/admin/Reviews";
 import AdminProductReviews from "./pages/admin/AdminProductReviews";
@@ -89,6 +90,7 @@ const App = () => (
               <Route path="/admin/products" element={<Products />} />
               <Route path="/admin/orders" element={<Orders />} />
               <Route path="/admin/orders/:id" element={<AdminOrderDetail />} />
+              <Route path="/admin/payouts" element={<AdminFarmerPayouts />} />
               <Route path="/admin/customers" element={<Customers />} />
               <Route path="/admin/categories" element={<Categories />} />
               <Route path="/admin/coupons" element={<Coupons />} />

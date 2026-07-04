@@ -317,6 +317,7 @@ const AdminOrderDetail = () => {
       shipped: 'bg-purple-100 text-purple-800',
       delivered: 'bg-green-100 text-green-800',
       cancelled: 'bg-red-100 text-red-800',
+      returned: 'bg-slate-100 text-slate-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -384,6 +385,7 @@ const AdminOrderDetail = () => {
             <SelectItem value="shipped">Shipped</SelectItem>
             <SelectItem value="delivered">Delivered</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="returned">Returned</SelectItem>
           </SelectContent>
         </Select>
       </div>

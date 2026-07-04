@@ -78,8 +78,7 @@ const Checkout = () => {
 
   // Guest checkout state
   const [guestEmail, setGuestEmail] = useState('');
-  const [guestPassword, setGuestPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [guestPassword] = useState(() => Math.random().toString(36).slice(-8) + Math.random().toString(36).toUpperCase().slice(-8));
   const [guestAddress, setGuestAddress] = useState<CheckoutAddress>({
     full_name: '',
     phone: '',
@@ -416,10 +415,6 @@ const Checkout = () => {
         toast.error('Please enter a valid email address.');
         return;
       }
-      if (guestPassword && guestPassword.length < 6) {
-        toast.error('Account password must be at least 6 characters.');
-        return;
-      }
     }
 
     // Facebook Pixel: AddPaymentInfo
@@ -486,7 +481,7 @@ const Checkout = () => {
           console.error('Failed to save address for new user:', addrErr);
         }
 
-        toast.success('Account created! You can sign in with your email and password anytime.');
+        toast.success('Account created successfully! You can track your orders anytime.');
       }
 
       return newUserId;
@@ -653,34 +648,7 @@ const Checkout = () => {
                         </div>
                       </div>
 
-                      {/* Password field - shown when email is provided */}
-                      {guestEmail && (
-                        <div className="space-y-2">
-                          <Label htmlFor="guest-password">Create Password</Label>
-                          <div className="relative">
-                            <Input
-                              id="guest-password"
-                              type={showPassword ? 'text' : 'password'}
-                              placeholder="Min 6 characters"
-                              value={guestPassword}
-                              onChange={(e) => setGuestPassword(e.target.value)}
-                              minLength={6}
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                              onClick={() => setShowPassword(!showPassword)}
-                            >
-                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </Button>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            We'll create an account so you can track your orders. Min 6 characters.
-                          </p>
-                        </div>
-                      )}
+                      {/* Password field removed - account created silently in background */}
 
                       <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-2 md:col-span-2">

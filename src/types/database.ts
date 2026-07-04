@@ -1,5 +1,5 @@
 export type ProductStatus = 'active' | 'archived' | 'draft';
-export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
 
 export interface Category {

@@ -627,11 +627,12 @@ const Checkout = () => {
                           <Input
                             id="guest-phone"
                             type="tel"
+                            maxLength={10}
                             value={guestAddress.phone}
                             onChange={(e) =>
                               setGuestAddress((prev) => ({
                                 ...prev,
-                                phone: e.target.value,
+                                phone: e.target.value.replace(/\D/g, ''),
                               }))
                             }
                           />
@@ -711,11 +712,12 @@ const Checkout = () => {
                           <Label htmlFor="guest-postal-code">PIN Code</Label>
                           <Input
                             id="guest-postal-code"
+                            maxLength={6}
                             value={guestAddress.postal_code}
                             onChange={(e) =>
                               setGuestAddress((prev) => ({
                                 ...prev,
-                                postal_code: e.target.value,
+                                postal_code: e.target.value.replace(/\D/g, ''),
                               }))
                             }
                           />

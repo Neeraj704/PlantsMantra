@@ -366,7 +366,7 @@ const AdminCombos = () => {
               ) : (
                 <div className="w-full max-w-xl">
                   {/* Flow SVG */}
-                  <svg viewBox="0 0 500 280" className="w-full h-auto drop-shadow-sm font-sans">
+                  <svg viewBox="0 0 500 300" className="w-full h-auto drop-shadow-sm font-sans">
                     {/* Definitions for arrow markers */}
                     <defs>
                       <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -383,46 +383,46 @@ const AdminCombos = () => {
                     {/* Nodes */}
                     
                     {/* 1. Retail Value Node */}
-                    <rect x="20" y="20" width="130" height="45" rx="6" className="fill-background stroke-muted-foreground stroke-1" />
-                    <text x="85" y="38" textAnchor="middle" className="text-[10px] font-medium fill-muted-foreground">Individual Retail Value</text>
-                    <text x="85" y="56" textAnchor="middle" className="text-xs font-bold font-serif fill-emerald-800">₹{individualRetailSum.toFixed(2)}</text>
+                    <rect x="15" y="15" width="145" height="55" rx="6" className="fill-background stroke-muted-foreground stroke-1" />
+                    <text x="87.5" y="36" textAnchor="middle" className="text-[10px] font-medium fill-muted-foreground">Individual Retail Value</text>
+                    <text x="87.5" y="56" textAnchor="middle" className="text-xs font-bold fill-emerald-800">₹{individualRetailSum.toFixed(2)}</text>
 
                     {/* 2. Customer Savings Node (Offset) */}
-                    <rect x="190" y="20" width="120" height="45" rx="6" className="fill-orange-50/50 stroke-orange-200 stroke-1" />
-                    <text x="250" y="38" textAnchor="middle" className="text-[10px] font-medium fill-orange-700">Customer Discount</text>
-                    <text x="250" y="56" textAnchor="middle" className="text-xs font-bold font-serif fill-orange-800">₹{customerSavings.toFixed(2)}</text>
-                    <text x="250" y="62" textAnchor="middle" className="text-[8px] fill-orange-600">({customerDiscountPercent.toFixed(0)}% Off)</text>
+                    <rect x="195" y="15" width="145" height="55" rx="6" className="fill-orange-50/50 stroke-orange-200 stroke-1" />
+                    <text x="267.5" y="33" textAnchor="middle" className="text-[10px] font-medium fill-orange-700">Customer Discount</text>
+                    <text x="267.5" y="49" textAnchor="middle" className="text-xs font-bold fill-orange-800">₹{customerSavings.toFixed(2)}</text>
+                    <text x="267.5" y="60" textAnchor="middle" className="text-[9px] fill-orange-600 font-semibold">({customerDiscountPercent.toFixed(0)}% Off)</text>
 
                     {/* 3. Selling Price Node (Main Hub) */}
-                    <rect x="180" y="95" width="140" height="50" rx="8" className="fill-background stroke-primary stroke-2" />
-                    <text x="250" y="114" textAnchor="middle" className="text-[11px] font-semibold fill-primary">Combo Retail Price</text>
-                    <text x="250" y="134" textAnchor="middle" className="text-sm font-bold font-serif fill-emerald-900">₹{sellingPrice.toFixed(2)}</text>
+                    <rect x="180" y="105" width="145" height="55" rx="8" className="fill-background stroke-primary stroke-2" />
+                    <text x="252.5" y="125" textAnchor="middle" className="text-[11px] font-semibold fill-primary">Combo Retail Price</text>
+                    <text x="252.5" y="147" textAnchor="middle" className="text-sm font-bold fill-emerald-900">₹{sellingPrice.toFixed(2)}</text>
 
                     {/* 4. Farmer Cost Node (Left branch) */}
-                    <rect x="50" y="195" width="130" height="50" rx="6" className="fill-amber-50 stroke-amber-200 stroke-1" />
-                    <text x="115" y="214" textAnchor="middle" className="text-[10px] font-medium fill-amber-700">Farmer Payout</text>
-                    <text x="115" y="234" textAnchor="middle" className="text-sm font-bold font-serif fill-amber-900">₹{individualCostSum.toFixed(2)}</text>
+                    <rect x="45" y="215" width="145" height="55" rx="6" className="fill-amber-50 stroke-amber-200 stroke-1" />
+                    <text x="117.5" y="235" textAnchor="middle" className="text-[10px] font-medium fill-amber-700">Farmer Payout</text>
+                    <text x="117.5" y="257" textAnchor="middle" className="text-sm font-bold fill-amber-900">₹{individualCostSum.toFixed(2)}</text>
 
                     {/* 5. Client Profit Node (Right branch) */}
-                    <rect x="320" y="195" width="130" height="50" rx="6" className={profitMarginPercent >= 15 ? "fill-green-50 stroke-green-200 stroke-1" : "fill-red-50 stroke-red-200 stroke-1"} />
-                    <text x="385" y="214" textAnchor="middle" className={profitMarginPercent >= 15 ? "text-[10px] font-medium fill-green-700" : "text-[10px] font-medium fill-red-700"}>Your Profit Share</text>
-                    <text x="385" y="234" textAnchor="middle" className={profitMarginPercent >= 15 ? "text-sm font-bold font-serif fill-green-900" : "text-sm font-bold font-serif fill-red-900"}>₹{clientProfit.toFixed(2)}</text>
+                    <rect x="310" y="215" width="145" height="55" rx="6" className={profitMarginPercent >= 15 ? "fill-green-50 stroke-green-200 stroke-1" : "fill-red-50 stroke-red-200 stroke-1"} />
+                    <text x="382.5" y="235" textAnchor="middle" className={profitMarginPercent >= 15 ? "text-[10px] font-medium fill-green-700" : "text-[10px] font-medium fill-red-700"}>Your Profit Share</text>
+                    <text x="382.5" y="257" textAnchor="middle" className={profitMarginPercent >= 15 ? "text-sm font-bold fill-green-900" : "text-sm font-bold fill-red-900"}>₹{clientProfit.toFixed(2)}</text>
 
                     {/* Connectors (Paths) */}
                     
                     {/* Retail -> Combo Price */}
-                    <path d="M 85 65 L 85 120 L 175 120" fill="none" className="stroke-muted-foreground stroke-1 stroke-dasharray-[3,3]" markerEnd="url(#arrow)" />
+                    <path d="M 87.5 70 L 87.5 132.5 L 180 132.5" fill="none" className="stroke-muted-foreground stroke-1 stroke-dasharray-[3,3]" markerEnd="url(#arrow)" />
                     
                     {/* Retail -> Customer Savings */}
-                    <path d="M 150 42.5 L 184 42.5" fill="none" className="stroke-orange-200 stroke-1" markerEnd="url(#arrow)" />
+                    <path d="M 160 42.5 L 195 42.5" fill="none" className="stroke-orange-200 stroke-1" markerEnd="url(#arrow)" />
 
                     {/* Combo Price -> Farmer Payout (Left Branch Split) */}
-                    <path d="M 210 145 C 210 170, 115 170, 115 190" fill="none" className="stroke-amber-400 stroke-1.5" markerEnd="url(#arrow)" />
-                    <text x="145" y="172" className="text-[9px] fill-amber-600 font-semibold font-serif">₹{individualCostSum.toFixed(0)}</text>
+                    <path d="M 205 160 C 205 190, 117.5 190, 117.5 215" fill="none" className="stroke-amber-400 stroke-1.5" markerEnd="url(#arrow)" />
+                    <text x="142" y="190" className="text-[9px] fill-amber-600 font-semibold font-serif">₹{individualCostSum.toFixed(0)}</text>
 
                     {/* Combo Price -> Client Profit (Right Branch Split) */}
-                    <path d="M 290 145 C 290 170, 385 170, 385 190" fill="none" className={profitMarginPercent >= 15 ? "stroke-green-500 stroke-1.5" : "stroke-red-500 stroke-1.5"} markerEnd={profitMarginPercent >= 15 ? "url(#arrow-green)" : "url(#arrow)"} />
-                    <text x="320" y="172" className={profitMarginPercent >= 15 ? "text-[9px] fill-green-700 font-semibold font-serif" : "text-[9px] fill-red-700 font-semibold font-serif"}>₹{clientProfit.toFixed(0)}</text>
+                    <path d="M 300 160 C 300 190, 382.5 190, 382.5 215" fill="none" className={profitMarginPercent >= 15 ? "stroke-green-500 stroke-1.5" : "stroke-red-500 stroke-1.5"} markerEnd={profitMarginPercent >= 15 ? "url(#arrow-green)" : "url(#arrow)"} />
+                    <text x="328" y="190" className={profitMarginPercent >= 15 ? "text-[9px] fill-green-700 font-semibold font-serif" : "text-[9px] fill-red-700 font-semibold font-serif"}>₹{clientProfit.toFixed(0)}</text>
                   </svg>
                   
                   {/* Warning label if unprofitable */}

@@ -122,16 +122,35 @@ serve(async (req: Request) => {
       );
     }
 
-    const orderItems = (items as any[]).map((item) => ({
-      order_id: order.id,
-      product_id: item.product_id,
-      variant_id: item.variant_id ?? null,
-      product_name: item.product_name,
-      variant_name: item.variant_name ?? null,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      subtotal: item.subtotal,
-    }));
+    // Fetch actual_price from products
+    const productIds = (items as any[]).map((item) => item.product_id).filter(Boolean);
+    const { data: dbProducts, error: dbProductsError } = await supabaseAdmin
+      .from("products")
+      .select("id, actual_price")
+      .in("id", productIds);
+
+    if (dbProductsError) {
+      console.error("Error fetching actual_prices:", dbProductsError);
+    }
+
+    const priceMap = new Map((dbProducts ?? []).map(p => [p.id, Number(p.actual_price || 0)]));
+
+    let farmerPayoutTotal = 0;
+    const orderItems = (items as any[]).map((item) => {
+      const actualPrice = priceMap.get(item.product_id) ?? 0;
+      farmerPayoutTotal += actualPrice * item.quantity;
+      return {
+        order_id: order.id,
+        product_id: item.product_id,
+        variant_id: item.variant_id ?? null,
+        product_name: item.product_name,
+        variant_name: item.variant_name ?? null,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        subtotal: item.subtotal,
+        actual_price: actualPrice,
+      };
+    });
 
     const { error: itemsError } = await supabaseAdmin
       .from("order_items")
@@ -145,6 +164,16 @@ serve(async (req: Request) => {
         JSON.stringify({ error: "Failed to create order items" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    // Update the order with total farmer payout
+    const { error: updateOrderError } = await supabaseAdmin
+      .from("orders")
+      .update({ farmer_payout_total: farmerPayoutTotal } as any)
+      .eq("id", order.id);
+
+    if (updateOrderError) {
+      console.error("Error updating order farmer_payout_total:", updateOrderError);
     }
 
     return new Response(

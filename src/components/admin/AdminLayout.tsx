@@ -15,7 +15,8 @@ import {
   LogOut,
   Image,
   TrendingUp,
-  Star
+  Star,
+  Coins
 } from 'lucide-react';
 
 import logo from '@/assets/logo.png';
@@ -31,6 +32,7 @@ const AdminLayout = () => {
     { icon: Package, label: 'Products', path: '/admin/products' },
     { icon: ShoppingCart, label: 'Orders', path: '/admin/orders' },
     { icon: Star, label: 'Reviews', path: '/admin/reviews' },
+    { icon: Coins, label: 'Farmer Payouts', path: '/admin/payouts' },
     { icon: Users, label: 'Customers', path: '/admin/customers' },
 
     { icon: Tag, label: 'Categories', path: '/admin/categories' },

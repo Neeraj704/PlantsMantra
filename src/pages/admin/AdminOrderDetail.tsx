@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ChevronLeft, Package, MapPin, CreditCard, Edit2, Check, X, Download, Loader2, Phone } from 'lucide-react';
+import { ChevronLeft, Package, MapPin, CreditCard, Edit2, Check, X, Download, Loader2, Phone, Coins } from 'lucide-react';
 
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -711,6 +711,47 @@ const AdminOrderDetail = () => {
               <div className="flex justify-between text-lg font-bold">
                 <span>Total</span>
                 <span>₹{Number(order.total).toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Farmer Payout Details Card */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Coins className="w-5 h-5 text-amber-600" />
+            Farmer Payout & Profit Splits
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center bg-muted/30 p-3 rounded-lg">
+              <div>
+                <p className="text-sm font-medium">Payout Status</p>
+                <p className="text-xs text-muted-foreground">Status of settlement with the farmer</p>
+              </div>
+              <Badge className={order.farmer_payout_status === 'paid' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-amber-100 text-amber-800 border-amber-200'}>
+                {order.farmer_payout_status === 'paid' ? 'Paid / Settled' : 'Unpaid / Owed'}
+              </Badge>
+            </div>
+            
+            <Separator />
+            
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Total Customer Payment</span>
+                <span className="font-medium">₹{Number(order.total).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Total Farmer Payout (Cost Price)</span>
+                <span className="font-semibold text-amber-700">-₹{Number(order.farmer_payout_total || 0).toFixed(2)}</span>
+              </div>
+              <Separator />
+              <div className="flex justify-between text-base font-bold text-primary">
+                <span>Net Share (Your Profit)</span>
+                <span>₹{(Number(order.total) - Number(order.farmer_payout_total || 0)).toFixed(2)}</span>
               </div>
             </div>
           </div>

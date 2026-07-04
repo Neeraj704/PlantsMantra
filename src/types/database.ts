@@ -32,6 +32,7 @@ export interface Product {
   is_featured: boolean;
   tags: string[] | null;
   priority?: number | null;
+  actual_price?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -94,6 +95,8 @@ export interface Order {
   shipment_cancelled_at: string | null;
   cancellation_reason?: string | null;
   call_confirmation_status?: string | null;
+  farmer_payout_total?: number | null;
+  farmer_payout_status?: string | null;
   cancelled_at?: string | null;
   shiprocket_order_id: string | null;
   shiprocket_shipment_id: string | null;

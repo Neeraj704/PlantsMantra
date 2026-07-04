@@ -37,6 +37,7 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
     care_guide: '',
     base_price: '',
     sale_price: '',
+    actual_price: '',
     category_id: '',
     stock_status: 'in_stock',
     status: 'active',
@@ -60,6 +61,7 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
         care_guide: product.care_guide || '',
         base_price: product.base_price.toString(),
         sale_price: product.sale_price?.toString() || '',
+        actual_price: product.actual_price?.toString() || '',
         category_id: product.category_id || '',
         stock_status: product.stock_status,
         status: product.status,
@@ -75,7 +77,7 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
       setGalleryImages([]);
       setGalleryPreviews(product.gallery_images || []);
     } else {
-      setFormData({ name: '', slug: '', botanical_name: '', description: '', care_guide: '', base_price: '', sale_price: '', category_id: '', stock_status: 'in_stock', status: 'active', is_featured: false, seo_title: '', meta_description: '', priority: '' });
+      setFormData({ name: '', slug: '', botanical_name: '', description: '', care_guide: '', base_price: '', sale_price: '', actual_price: '', category_id: '', stock_status: 'in_stock', status: 'active', is_featured: false, seo_title: '', meta_description: '', priority: '' });
       setMainImage(null);
       setMainImagePreview('');
       setMainImageAlt('');
@@ -192,6 +194,7 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
         gallery_alt_texts: currentGalleryAltTexts.length > 0 ? currentGalleryAltTexts : null,
         base_price: parseFloat(formData.base_price),
         sale_price: formData.sale_price ? parseFloat(formData.sale_price) : null,
+        actual_price: formData.actual_price ? parseFloat(formData.actual_price) : 0,
         priority: formData.priority ? parseInt(formData.priority, 10) : null,
         category_id: formData.category_id || null,
         status: formData.status as 'active' | 'draft' | 'archived',
@@ -384,7 +387,7 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <Label htmlFor="base_price">Base Price *</Label>
               <Input
@@ -404,6 +407,17 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
                 step="0.01"
                 value={formData.sale_price}
                 onChange={(e) => setFormData({ ...formData, sale_price: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="actual_price">Farmer Payout *</Label>
+              <Input
+                id="actual_price"
+                type="number"
+                step="0.01"
+                value={formData.actual_price}
+                onChange={(e) => setFormData({ ...formData, actual_price: e.target.value })}
+                required
               />
             </div>
           </div>

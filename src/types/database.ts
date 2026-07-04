@@ -33,6 +33,7 @@ export interface Product {
   tags: string[] | null;
   priority?: number | null;
   actual_price?: number | null;
+  combo_product_ids?: string[] | null;
   created_at: string;
   updated_at: string;
 }

@@ -60,7 +60,7 @@ const App = () => (
           <ScrollToTop />
           <CartSync />
           <Routes>
-            {/* Public Routes */}
+            {/*  Public Routes  */}
             <Route element={<Layout />}>
               <Route path="/" element={<Home />} />
               <Route path="/shop" element={<Shop />} />

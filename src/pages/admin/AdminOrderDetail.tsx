@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ChevronLeft, Package, MapPin, CreditCard, Edit2, Check, X, Download, Loader2 } from 'lucide-react';
+import { ChevronLeft, Package, MapPin, CreditCard, Edit2, Check, X, Download, Loader2, Phone, Coins } from 'lucide-react';
 
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -276,6 +276,40 @@ const AdminOrderDetail = () => {
     }
   };
 
+  const handleCallConfirmationStatusUpdate = async (newStatus: string) => {
+    if (!order) return;
+
+    try {
+      const updateData: any = { call_confirmation_status: newStatus };
+
+      // Automatically update order status based on call confirmation
+      if (newStatus === 'confirmed') {
+        updateData.status = 'processing';
+      } else if (newStatus === 'cancelled') {
+        updateData.status = 'cancelled';
+      }
+
+      const { error } = await supabase
+        .from('orders' as any)
+        .update(updateData)
+        .eq('id', order.id);
+
+      if (error) throw error;
+
+      toast.success(`Call status updated to ${newStatus}`);
+
+      // Automatically trigger Delhivery shipment creation if confirmed
+      if (newStatus === 'confirmed') {
+        await handleCreateDelhiveryShipment();
+      } else {
+        fetchOrderDetails();
+      }
+    } catch (e: any) {
+      console.error('Failed to update call status:', e);
+      toast.error('Failed to update call status');
+    }
+  };
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800',
@@ -283,6 +317,7 @@ const AdminOrderDetail = () => {
       shipped: 'bg-purple-100 text-purple-800',
       delivered: 'bg-green-100 text-green-800',
       cancelled: 'bg-red-100 text-red-800',
+      returned: 'bg-slate-100 text-slate-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -350,6 +385,7 @@ const AdminOrderDetail = () => {
             <SelectItem value="shipped">Shipped</SelectItem>
             <SelectItem value="delivered">Delivered</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="returned">Returned</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -419,6 +455,27 @@ const AdminOrderDetail = () => {
                 </SelectContent>
               </Select>
             </div>
+            {order.payment_method === 'cod' && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                  <Phone className="w-4 h-4" /> COD Call Confirmation
+                </p>
+                <Select
+                  value={order.call_confirmation_status || 'pending'}
+                  onValueChange={handleCallConfirmationStatusUpdate}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">🟡 Pending Call</SelectItem>
+                    <SelectItem value="confirmed">🟢 Confirmed (Send to Delhivery)</SelectItem>
+                    <SelectItem value="no_answer">🟠 No Answer / Busy</SelectItem>
+                    <SelectItem value="cancelled">🔴 Customer Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <p className="text-sm text-muted-foreground">Payment Intent ID</p>
               <p className="font-mono text-sm">
@@ -656,6 +713,47 @@ const AdminOrderDetail = () => {
               <div className="flex justify-between text-lg font-bold">
                 <span>Total</span>
                 <span>₹{Number(order.total).toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Farmer Payout Details Card */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Coins className="w-5 h-5 text-amber-600" />
+            Farmer Payout & Profit Splits
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center bg-muted/30 p-3 rounded-lg">
+              <div>
+                <p className="text-sm font-medium">Payout Status</p>
+                <p className="text-xs text-muted-foreground">Status of settlement with the farmer</p>
+              </div>
+              <Badge className={order.farmer_payout_status === 'paid' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-amber-100 text-amber-800 border-amber-200'}>
+                {order.farmer_payout_status === 'paid' ? 'Paid / Settled' : 'Unpaid / Owed'}
+              </Badge>
+            </div>
+            
+            <Separator />
+            
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Total Customer Payment</span>
+                <span className="font-medium">₹{Number(order.total).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Total Farmer Payout (Cost Price)</span>
+                <span className="font-semibold text-amber-700">-₹{Number(order.farmer_payout_total || 0).toFixed(2)}</span>
+              </div>
+              <Separator />
+              <div className="flex justify-between text-base font-bold text-primary">
+                <span>Net Share (Your Profit)</span>
+                <span>₹{(Number(order.total) - Number(order.farmer_payout_total || 0)).toFixed(2)}</span>
               </div>
             </div>
           </div>

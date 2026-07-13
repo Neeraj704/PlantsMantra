@@ -1,5 +1,5 @@
 export type ProductStatus = 'active' | 'archived' | 'draft';
-export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
 
 export interface Category {
@@ -32,6 +32,8 @@ export interface Product {
   is_featured: boolean;
   tags: string[] | null;
   priority?: number | null;
+  actual_price?: number | null;
+  combo_product_ids?: string[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -93,6 +95,9 @@ export interface Order {
   shipment_created_at: string | null;
   shipment_cancelled_at: string | null;
   cancellation_reason?: string | null;
+  call_confirmation_status?: string | null;
+  farmer_payout_total?: number | null;
+  farmer_payout_status?: string | null;
   cancelled_at?: string | null;
   shiprocket_order_id: string | null;
   shiprocket_shipment_id: string | null;

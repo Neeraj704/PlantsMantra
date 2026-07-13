@@ -93,8 +93,9 @@ const AddressForm = ({ onSubmit, onCancel }: AddressFormProps) => {
           <Input
             id="phone"
             type="tel"
+            maxLength={10}
             value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
             required
           />
         </div>
@@ -142,8 +143,9 @@ const AddressForm = ({ onSubmit, onCancel }: AddressFormProps) => {
           <Label htmlFor="postal_code">Postal Code</Label>
           <Input
             id="postal_code"
+            maxLength={6}
             value={formData.postal_code}
-            onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+            onChange={(e) => setFormData({ ...formData, postal_code: e.target.value.replace(/\D/g, '') })}
             required
           />
         </div>

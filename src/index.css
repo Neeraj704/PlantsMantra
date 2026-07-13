@@ -101,6 +101,16 @@ All colors MUST be HSL.
   }
 }
 
+html {
+  font-size: 16.5px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 17.5px;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;
@@ -111,17 +121,17 @@ All colors MUST be HSL.
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-serif;
+    @apply font-serif tracking-tight font-bold;
   }
 }
 
 @layer utilities {
   .font-sans {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
   }
   
   .font-serif {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
   }
 
   .gradient-hero {

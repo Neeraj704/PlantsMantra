@@ -1,5 +1,5 @@
 // src/pages/Checkout.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { useBuyNow } from '@/hooks/useBuyNow';
 import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { Address } from '@/types/database';
 import { toast } from 'sonner';
-import { Plus, MapPin, CreditCard, Percent, Lock, X, Eye, EyeOff } from 'lucide-react';
+import { Plus, MapPin, CreditCard, Percent, Lock, X, Eye, EyeOff, Phone, PhoneOff, Check } from 'lucide-react';
 import AddressForm from '@/components/AddressForm';
 import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
@@ -78,8 +78,7 @@ const Checkout = () => {
 
   // Guest checkout state
   const [guestEmail, setGuestEmail] = useState('');
-  const [guestPassword, setGuestPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [guestPassword] = useState(() => Math.random().toString(36).slice(-8) + Math.random().toString(36).toUpperCase().slice(-8));
   const [guestAddress, setGuestAddress] = useState<CheckoutAddress>({
     full_name: '',
     phone: '',
@@ -416,10 +415,6 @@ const Checkout = () => {
         toast.error('Please enter a valid email address.');
         return;
       }
-      if (guestPassword && guestPassword.length < 6) {
-        toast.error('Account password must be at least 6 characters.');
-        return;
-      }
     }
 
     // Facebook Pixel: AddPaymentInfo
@@ -486,7 +481,7 @@ const Checkout = () => {
           console.error('Failed to save address for new user:', addrErr);
         }
 
-        toast.success('Account created! You can sign in with your email and password anytime.');
+        toast.success('Account created successfully! You can track your orders anytime.');
       }
 
       return newUserId;
@@ -525,20 +520,7 @@ const Checkout = () => {
 
       const order = await createOrderRecord(address, customerEmail, newUserId);
 
-      try {
-        const { error: funcError } = await supabase.functions.invoke('delhivery-create', {
-          method: 'POST',
-          body: JSON.stringify({ orderId: order.id }),
-        });
-
-        if (funcError) {
-          console.error('Delhivery create function error:', funcError);
-          // We don't block the order placement for this, but we log it.
-          toast.warning('Order placed, but shipment creation failed. Support will assist.');
-        }
-      } catch (error) {
-        console.error('Failed to create Delhivery shipment:', error);
-      }
+      // Note: Delhivery shipment creation is now delayed until the admin manually confirms the COD order in the admin panel.
 
       if (isDirectBuy) {
         clearBuyNow();
@@ -561,6 +543,16 @@ const Checkout = () => {
         currency: 'INR',
         order_id: order.id,
       });
+
+      // Trigger the voice confirmation call in the background (non-blocking)
+      fetch(`${SUPABASE_URL}/functions/v1/phone-confirmation?action=trigger`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ orderId: order.id }),
+      }).catch((e) => console.error('Failed to trigger background call confirmation:', e));
 
       setIsCODDialogOpen(false);
       setProcessing(false);
@@ -635,11 +627,12 @@ const Checkout = () => {
                           <Input
                             id="guest-phone"
                             type="tel"
+                            maxLength={10}
                             value={guestAddress.phone}
                             onChange={(e) =>
                               setGuestAddress((prev) => ({
                                 ...prev,
-                                phone: e.target.value,
+                                phone: e.target.value.replace(/\D/g, ''),
                               }))
                             }
                           />
@@ -656,34 +649,7 @@ const Checkout = () => {
                         </div>
                       </div>
 
-                      {/* Password field - shown when email is provided */}
-                      {guestEmail && (
-                        <div className="space-y-2">
-                          <Label htmlFor="guest-password">Create Password</Label>
-                          <div className="relative">
-                            <Input
-                              id="guest-password"
-                              type={showPassword ? 'text' : 'password'}
-                              placeholder="Min 6 characters"
-                              value={guestPassword}
-                              onChange={(e) => setGuestPassword(e.target.value)}
-                              minLength={6}
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                              onClick={() => setShowPassword(!showPassword)}
-                            >
-                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </Button>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            We'll create an account so you can track your orders. Min 6 characters.
-                          </p>
-                        </div>
-                      )}
+                      {/* Password field removed - account created silently in background */}
 
                       <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-2 md:col-span-2">
@@ -746,11 +712,12 @@ const Checkout = () => {
                           <Label htmlFor="guest-postal-code">PIN Code</Label>
                           <Input
                             id="guest-postal-code"
+                            maxLength={6}
                             value={guestAddress.postal_code}
                             onChange={(e) =>
                               setGuestAddress((prev) => ({
                                 ...prev,
-                                postal_code: e.target.value,
+                                postal_code: e.target.value.replace(/\D/g, ''),
                               }))
                             }
                           />

@@ -1,5 +1,5 @@
 // src/pages/OrderDetail.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -18,10 +18,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "@/integrations/supabase/client";
 import { Order } from "@/types/database";
 import { toast } from "sonner";
-import { ChevronLeft, Package } from "lucide-react";
+import { ChevronLeft, Package, Phone, PhoneCall, Check, AlertCircle, XCircle, Loader2 } from "lucide-react";
 
 const OrderDetail = () => {
   const { orderId } = useParams();

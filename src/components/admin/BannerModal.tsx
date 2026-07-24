@@ -119,7 +119,17 @@ const BannerModal = ({ open, onClose, banner }: BannerModalProps) => {
               id="image"
               type="file"
               accept="image/*"
-              onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null;
+                if (file && file.size > 1024 * 1024) {
+                  toast({
+                    title: 'Large File Warning',
+                    description: 'Warning: This banner is larger than 1MB. It will be compressed automatically to keep bandwidth low.',
+                    variant: 'destructive',
+                  });
+                }
+                setImageFile(file);
+              }}
               required={!banner}
             />
             {banner?.image_url && (

@@ -99,6 +99,9 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
         toast.error('Please upload an image file');
         return;
       }
+      if (file.size > 1024 * 1024) {
+        toast.warning('Warning: This image is larger than 1MB. PlantsMantra will automatically compress it to save bandwidth!');
+      }
       setMainImage(file);
       setMainImagePreview(URL.createObjectURL(file));
     }
@@ -110,6 +113,11 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
     
     if (validImages.length !== files.length) {
       toast.error('Some files were skipped (only images allowed)');
+    }
+
+    const largeFiles = validImages.filter(file => file.size > 1024 * 1024);
+    if (largeFiles.length > 0) {
+      toast.warning('Warning: One or more gallery images are larger than 1MB. They will be compressed automatically to keep bandwidth low!');
     }
 
     if (galleryImages.length + validImages.length > 5) {

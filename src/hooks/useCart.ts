@@ -1,8 +1,34 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { CartItem, Product, ProductVariant } from '@/types/database';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+
+// Safe LocalStorage wrapper for browsers with restricted storage access (Samsung/MI default browsers)
+const safeLocalStorage = {
+  getItem: (name: string): string | null => {
+    try {
+      return localStorage.getItem(name);
+    } catch (e) {
+      console.warn("Storage access denied:", e);
+      return null;
+    }
+  },
+  setItem: (name: string, value: string): void => {
+    try {
+      localStorage.setItem(name, value);
+    } catch (e) {
+      console.warn("Storage access denied:", e);
+    }
+  },
+  removeItem: (name: string): void => {
+    try {
+      localStorage.removeItem(name);
+    } catch (e) {
+      console.warn("Storage access denied:", e);
+    }
+  }
+};
 
 // Define the structure for applied coupon
 interface AppliedCoupon {
@@ -317,6 +343,7 @@ export const useCart = create<CartStore>()(
     }),
     {
       name: 'plantsmantra-cart',
+      storage: createJSONStorage(() => safeLocalStorage),
     }
   )
 );

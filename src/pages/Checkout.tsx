@@ -96,9 +96,13 @@ const Checkout = () => {
 
   useEffect(() => {
     if (user) fetchAddresses();
-    loadRazorpayScript('https://checkout.razorpay.com/v1/checkout.js').then((loaded) => {
-      setRazorpayLoaded(!!loaded);
-    });
+    if (window.Razorpay) {
+      setRazorpayLoaded(true);
+    } else {
+      loadRazorpayScript('https://checkout.razorpay.com/v1/checkout.js').then((loaded) => {
+        setRazorpayLoaded(!!loaded);
+      });
+    }
 
     return () => {
       if (isBuyNowFlow) {
@@ -185,8 +189,8 @@ const Checkout = () => {
     address: CheckoutAddress,
   ) => {
     try {
-      if (!razorpayLoaded) {
-        toast.error('Payment gateway not loaded. Please refresh.');
+      if (!razorpayLoaded && !window.Razorpay) {
+        toast.error('Payment gateway failed to load. Please disable adblockers/tracking blockers or refresh the page.');
         setProcessing(false);
         return false;
       }

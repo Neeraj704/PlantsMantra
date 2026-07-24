@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Product, Category } from '@/types/database';
 import { toast } from 'sonner';
 import { Upload, X } from 'lucide-react';
+import { compressImage } from '@/utils/image';
 
 interface ProductModalProps {
   open: boolean;
@@ -135,9 +136,21 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
   };
 
   const uploadImage = async (file: File, path: string): Promise<string> => {
+    let uploadFile = file;
+    try {
+      const compressedBlob = await compressImage(file);
+      const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
+      uploadFile = new File([compressedBlob], newFileName, {
+        type: 'image/jpeg',
+        lastModified: Date.now()
+      });
+    } catch (err) {
+      console.warn("Failed to compress image, uploading original:", err);
+    }
+
     const { data, error } = await supabase.storage
       .from('product-images')
-      .upload(path, file, { upsert: true });
+      .upload(path, uploadFile, { upsert: true });
 
     if (error) throw error;
 

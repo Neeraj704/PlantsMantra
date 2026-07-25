@@ -1,3 +1,4 @@
+// src/pages/Auth.tsx
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,19 +14,17 @@ import { Leaf } from 'lucide-react';
 import { trackPixelEvent } from '@/utils/pixel';
 
 const Auth = () => {
-  const { user, signIn, signUp } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
 
-  const [signInData, setSignInData] = useState({ email: '', password: '' });
-  const [signUpData, setSignUpData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: ''
-  });
-  const [useOtp, setUseOtp] = useState(true);
+  // Form states
+  const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  
+  // Verification states
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
 
@@ -33,20 +32,49 @@ const Auth = () => {
     return <Navigate to="/" replace />;
   }
 
-  const handleSendOtp = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!signInData.email) {
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
       toast.error('Please enter your email address');
       return;
     }
+
+    // Phone validation for sign up
+    if (activeTab === 'signup') {
+      if (!fullName.trim()) {
+        toast.error('Please enter your full name');
+        return;
+      }
+      if (!phone.trim()) {
+        toast.error('Please enter your phone number');
+        return;
+      }
+      // Simple Indian phone number format validation
+      const cleanPhone = phone.replace(/\D/g, '');
+      if (cleanPhone.length < 10) {
+        toast.error('Please enter a valid 10-digit phone number');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
+      const options: any = {
+        shouldCreateUser: activeTab === 'signup',
+      };
+
+      // Add user metadata if signing up
+      if (activeTab === 'signup') {
+        options.data = {
+          full_name: fullName.trim(),
+          phone: phone.trim(),
+        };
+      }
+
       const { error } = await supabase.auth.signInWithOtp({
-        email: signInData.email.trim(),
-        options: {
-          shouldCreateUser: true,
-        }
+        email: email.trim(),
+        options,
       });
 
       if (error) throw error;
@@ -71,7 +99,7 @@ const Auth = () => {
 
     try {
       const { error } = await supabase.auth.verifyOtp({
-        email: signInData.email.trim(),
+        email: email.trim(),
         token: otpCode.trim(),
         type: 'email',
       });
@@ -79,6 +107,12 @@ const Auth = () => {
       if (error) throw error;
 
       toast.success('Signed in successfully!');
+      if (activeTab === 'signup') {
+        trackPixelEvent('CompleteRegistration', {
+          content_name: 'Sign Up',
+          status: 'success',
+        });
+      }
       navigate('/');
     } catch (error: any) {
       console.error('Error verifying OTP:', error);
@@ -86,57 +120,6 @@ const Auth = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    const { error } = await signIn(signInData.email, signInData.password);
-    
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success('Signed in successfully!');
-      navigate('/');
-    }
-    
-    setLoading(false);
-  };
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (signUpData.password !== signUpData.confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
-
-    if (signUpData.password.length < 6) {
-      toast.error('Password must be at least 6 characters');
-      return;
-    }
-
-    setLoading(true);
-
-    const { error } = await signUp(
-      signUpData.email,
-      signUpData.password,
-      signUpData.fullName,
-      signUpData.phone
-    );
-    
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success('Account created! Please check your email to verify.');
-      trackPixelEvent('CompleteRegistration', {
-        content_name: 'Sign Up',
-        status: 'success',
-      });
-    }
-    
-    setLoading(false);
   };
 
   return (
@@ -156,198 +139,132 @@ const Auth = () => {
           <Card className="shadow-card">
             <CardHeader>
               <CardTitle>Account Access</CardTitle>
-              <CardDescription>Sign in or create a new account</CardDescription>
+              <CardDescription>
+                {otpSent ? 'Verify your email code' : 'Sign in or create a passwordless account'}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="signin" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="signin">Sign In</TabsTrigger>
-                  <TabsTrigger value="signup">Sign Up</TabsTrigger>
-                </TabsList>
+              {otpSent ? (
+                /* Verification Code Entry Form */
+                <form onSubmit={handleVerifyOtp} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="otp-email-display">Verification Email</Label>
+                    <Input
+                      id="otp-email-display"
+                      type="email"
+                      value={email}
+                      disabled
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="otp-code">Verification Code</Label>
+                    <Input
+                      id="otp-code"
+                      type="text"
+                      maxLength={6}
+                      placeholder="Enter 6-digit code"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full gradient-hero" disabled={loading}>
+                    {loading ? 'Verifying...' : 'Verify & Continue'}
+                  </Button>
+                  <div className="flex justify-between items-center text-xs">
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="text-muted-foreground p-0 h-auto"
+                      onClick={() => {
+                        setOtpSent(false);
+                        setOtpCode('');
+                      }}
+                    >
+                      Change Email / Info
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="text-muted-foreground p-0 h-auto"
+                      onClick={handleSendOtp}
+                      disabled={loading}
+                    >
+                      Resend Code
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                /* Tabs for Sign In vs Sign Up */
+                <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="signin">Sign In</TabsTrigger>
+                    <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                  </TabsList>
 
-                <TabsContent value="signin">
-                  {useOtp ? (
-                    !otpSent ? (
-                      <form onSubmit={handleSendOtp} className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="otp-email">Email</Label>
-                          <Input
-                            id="otp-email"
-                            type="email"
-                            placeholder="you@example.com"
-                            value={signInData.email}
-                            onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
-                            required
-                          />
-                        </div>
-                        <Button type="submit" className="w-full gradient-hero" disabled={loading}>
-                          {loading ? 'Sending code...' : 'Send Verification Code'}
-                        </Button>
-                        <div className="text-center">
-                          <Button
-                            type="button"
-                            variant="link"
-                            className="text-xs text-muted-foreground"
-                            onClick={() => setUseOtp(false)}
-                          >
-                            Sign in with password instead
-                          </Button>
-                        </div>
-                      </form>
-                    ) : (
-                      <form onSubmit={handleVerifyOtp} className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="otp-email-display">Email</Label>
-                          <Input
-                            id="otp-email-display"
-                            type="email"
-                            value={signInData.email}
-                            disabled
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="otp-code">Verification Code</Label>
-                          <Input
-                            id="otp-code"
-                            type="text"
-                            maxLength={6}
-                            placeholder="Enter 6-digit code"
-                            value={otpCode}
-                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                            required
-                          />
-                        </div>
-                        <Button type="submit" className="w-full gradient-hero" disabled={loading}>
-                          {loading ? 'Verifying...' : 'Verify & Sign In'}
-                        </Button>
-                        <div className="flex justify-between items-center text-xs">
-                          <Button
-                            type="button"
-                            variant="link"
-                            className="text-muted-foreground p-0 h-auto"
-                            onClick={() => {
-                              setOtpSent(false);
-                              setOtpCode('');
-                            }}
-                          >
-                            Change Email
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="link"
-                            className="text-muted-foreground p-0 h-auto"
-                            onClick={() => handleSendOtp()}
-                            disabled={loading}
-                          >
-                            Resend Code
-                          </Button>
-                        </div>
-                      </form>
-                    )
-                  ) : (
-                    <form onSubmit={handleSignIn} className="space-y-4">
+                  {/* Sign In Form */}
+                  <TabsContent value="signin">
+                    <form onSubmit={handleSendOtp} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="signin-email">Email</Label>
+                        <Label htmlFor="signin-email">Email Address</Label>
                         <Input
                           id="signin-email"
                           type="email"
                           placeholder="you@example.com"
-                          value={signInData.email}
-                          onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="signin-password">Password</Label>
-                        <Input
-                          id="signin-password"
-                          type="password"
-                          placeholder="••••••••"
-                          value={signInData.password}
-                          onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
                           required
                         />
                       </div>
                       <Button type="submit" className="w-full gradient-hero" disabled={loading}>
-                        {loading ? 'Signing in...' : 'Sign In'}
+                        {loading ? 'Sending code...' : 'Send Login Code'}
                       </Button>
-                      <div className="text-center">
-                        <Button
-                          type="button"
-                          variant="link"
-                          className="text-xs text-muted-foreground"
-                          onClick={() => setUseOtp(true)}
-                        >
-                          Sign in with email verification code instead
-                        </Button>
-                      </div>
                     </form>
-                  )}
-                </TabsContent>
+                  </TabsContent>
 
-                <TabsContent value="signup">
-                  <form onSubmit={handleSignUp} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-name">Full Name</Label>
-                      <Input
-                        id="signup-name"
-                        type="text"
-                        placeholder="John Doe"
-                        value={signUpData.fullName}
-                        onChange={(e) => setSignUpData({ ...signUpData, fullName: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-email">Email</Label>
-                      <Input
-                        id="signup-email"
-                        type="email"
-                        placeholder="you@example.com"
-                        value={signUpData.email}
-                        onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-phone">Phone</Label>
-                      <Input
-                        id="signup-phone"
-                        type="tel"
-                        placeholder="+91 98765 43210"
-                        value={signUpData.phone}
-                        onChange={(e) => setSignUpData({ ...signUpData, phone: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-password">Password</Label>
-                      <Input
-                        id="signup-password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={signUpData.password}
-                        onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-confirm">Confirm Password</Label>
-                      <Input
-                        id="signup-confirm"
-                        type="password"
-                        placeholder="••••••••"
-                        value={signUpData.confirmPassword}
-                        onChange={(e) => setSignUpData({ ...signUpData, confirmPassword: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <Button type="submit" className="w-full gradient-hero" disabled={loading}>
-                      {loading ? 'Creating account...' : 'Create Account'}
-                    </Button>
-                  </form>
-                </TabsContent>
-              </Tabs>
+                  {/* Sign Up Form */}
+                  <TabsContent value="signup">
+                    <form onSubmit={handleSendOtp} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-name">Full Name</Label>
+                        <Input
+                          id="signup-name"
+                          type="text"
+                          placeholder="John Doe"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-email">Email Address</Label>
+                        <Input
+                          id="signup-email"
+                          type="email"
+                          placeholder="you@example.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-phone">Phone Number</Label>
+                        <Input
+                          id="signup-phone"
+                          type="tel"
+                          placeholder="9876543210"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <Button type="submit" className="w-full gradient-hero" disabled={loading}>
+                        {loading ? 'Creating account...' : 'Send Registration Code'}
+                      </Button>
+                    </form>
+                  </TabsContent>
+                </Tabs>
+              )}
             </CardContent>
           </Card>
         </motion.div>

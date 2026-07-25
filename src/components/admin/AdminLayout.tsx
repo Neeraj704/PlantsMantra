@@ -86,8 +86,8 @@ const AdminLayout = () => {
         {/* Sidebar */}
         <aside
           className={`fixed left-0 top-16 bottom-0 bg-background border-r transition-all duration-300 z-40 ${
-            sidebarOpen ? 'w-64' : 'w-0'
-          } overflow-hidden`}
+            sidebarOpen ? 'w-64 overflow-y-auto' : 'w-0 overflow-hidden'
+          } overflow-x-hidden`}
         >
           <nav className="p-4 space-y-2">
             {menuItems.map((item) => (

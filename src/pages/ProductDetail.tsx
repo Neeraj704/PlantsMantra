@@ -151,7 +151,7 @@ const ProductDetail = () => {
   const metaDescription = product.meta_description || defaultMetaDescription;
 
   const imgSrc = product.main_image_url || productImages[product.slug] || monsteraImg;
-  const isOutOfStock = product.stock_status === 'out_of_stock';
+  const isOutOfStock = product.stock_status === 'out_of_stock' || product.scarcity_status === 'sold_out';
 
   const getCurrentPrice = () => {
     const basePrice = product.sale_price || product.base_price;
@@ -307,9 +307,19 @@ const ProductDetail = () => {
 
           {/* Product Info */}
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-            <div className="mb-4">
+            <div className="mb-4 flex flex-wrap gap-2">
               {hasDiscount && <Badge variant="destructive" className="mb-2">On Sale</Badge>}
-              {product.stock_status === 'low_stock' && <Badge variant="secondary" className="mb-2 ml-2">Low Stock</Badge>}
+              {product.scarcity_status === 'sold_out' ? (
+                <Badge variant="destructive" className="mb-2">Sold Out</Badge>
+              ) : product.scarcity_status === 'limited_stock' && product.scarcity_value && product.scarcity_value > 0 ? (
+                <Badge className="mb-2 bg-gradient-to-r from-orange-600 to-red-600 text-white border-none shadow-md animate-pulse">🔥 Only {product.scarcity_value} left!</Badge>
+              ) : (
+                <>
+                  {product.stock_status === 'low_stock' && <Badge variant="secondary" className="mb-2">Low Stock</Badge>}
+                  {product.stock_status === 'out_of_stock' && <Badge variant="destructive" className="mb-2">Out of Stock</Badge>}
+                </>
+              )}
+              {product.is_b1g1 && <Badge className="mb-2 bg-emerald-600 text-white border-none shadow-md">Buy 1 Get 1 Free (B1G1)</Badge>}
             </div>
 
             <h1 className="text-3xl md:text-4xl font-serif font-bold mb-2">{product.name}</h1>

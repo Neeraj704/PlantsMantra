@@ -261,12 +261,52 @@ const Home = () => {
                 >
                   <Link to={`/product/${product.slug}`}>
                     <Card className="overflow-hidden group cursor-pointer hover:shadow-hover transition-smooth">
-                      <div className="aspect-square overflow-hidden bg-muted/50">
+                      <div className="aspect-square overflow-hidden bg-muted/50 relative">
                         <img
                           src={imgSrc}
                           alt={product.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-smooth"
                         />
+                        {product.scarcity_status === 'sold_out' ? (
+                          <Badge
+                            variant="destructive"
+                            className="absolute top-2 right-2 text-xs"
+                          >
+                            Sold Out
+                          </Badge>
+                        ) : product.scarcity_status === 'limited_stock' && product.scarcity_value && product.scarcity_value > 0 ? (
+                          <Badge
+                            className="absolute top-2 right-2 text-xs bg-gradient-to-r from-orange-600 to-red-600 text-white border-none shadow-md animate-pulse"
+                          >
+                            🔥 Only {product.scarcity_value} left!
+                          </Badge>
+                        ) : (
+                          <>
+                            {product.stock_status === 'low_stock' && (
+                              <Badge
+                                variant="secondary"
+                                className="absolute top-2 right-2 text-xs"
+                              >
+                                Low Stock
+                              </Badge>
+                            )}
+                            {product.stock_status === 'out_of_stock' && (
+                              <Badge
+                                variant="destructive"
+                                className="absolute top-2 right-2 text-xs"
+                              >
+                                Out of Stock
+                              </Badge>
+                            )}
+                          </>
+                        )}
+                        {product.is_b1g1 && (
+                          <Badge
+                            className="absolute bottom-2 left-2 text-xs bg-emerald-600 text-white border-none shadow-md"
+                          >
+                            B1G1
+                          </Badge>
+                        )}
                       </div>
                       <CardContent className="p-4">
                         {hasDiscount && (

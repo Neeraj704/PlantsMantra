@@ -17,7 +17,8 @@ import {
   TrendingUp,
   Star,
   Coins,
-  Layers
+  Layers,
+  Megaphone
 } from 'lucide-react';
 
 import logo from '@/assets/logo.png';
@@ -35,6 +36,7 @@ const AdminLayout = () => {
     { icon: Star, label: 'Reviews', path: '/admin/reviews' },
     { icon: Coins, label: 'Farmer Payouts', path: '/admin/payouts' },
     { icon: Layers, label: 'Combo Builder', path: '/admin/combos' },
+    { icon: Megaphone, label: 'Sales & Hype', path: '/admin/sales' },
     { icon: Users, label: 'Customers', path: '/admin/customers' },
 
     { icon: Tag, label: 'Categories', path: '/admin/categories' },

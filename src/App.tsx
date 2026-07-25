@@ -40,6 +40,7 @@ import Coupons from "./pages/admin/Coupons";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminFarmerPayouts from "./pages/admin/AdminFarmerPayouts";
 import AdminCombos from "./pages/admin/AdminCombos";
+import AdminSales from "./pages/admin/AdminSales";
 import Banners from "./pages/admin/Banners";
 import Reviews from "./pages/admin/Reviews";
 import AdminProductReviews from "./pages/admin/AdminProductReviews";
@@ -93,6 +94,7 @@ const App = () => (
               <Route path="/admin/orders/:id" element={<AdminOrderDetail />} />
               <Route path="/admin/payouts" element={<AdminFarmerPayouts />} />
               <Route path="/admin/combos" element={<AdminCombos />} />
+              <Route path="/admin/sales" element={<AdminSales />} />
               <Route path="/admin/customers" element={<Customers />} />
               <Route path="/admin/categories" element={<Categories />} />
               <Route path="/admin/coupons" element={<Coupons />} />

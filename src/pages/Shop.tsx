@@ -476,20 +476,44 @@ const Shop = () => {
                             alt={product.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-smooth"
                           />
-                          {product.stock_status === 'low_stock' && (
-                            <Badge
-                              variant="secondary"
-                              className="absolute top-1 right-1 sm:top-2 sm:right-2 text-[10px] sm:text-xs"
-                            >
-                              Low Stock
-                            </Badge>
-                          )}
-                          {product.stock_status === 'out_of_stock' && (
+                          {product.scarcity_status === 'sold_out' ? (
                             <Badge
                               variant="destructive"
                               className="absolute top-1 right-1 sm:top-2 sm:right-2 text-[10px] sm:text-xs"
                             >
-                              Out of Stock
+                              Sold Out
+                            </Badge>
+                          ) : product.scarcity_status === 'limited_stock' && product.scarcity_value && product.scarcity_value > 0 ? (
+                            <Badge
+                              className="absolute top-1 right-1 sm:top-2 sm:right-2 text-[10px] sm:text-xs bg-gradient-to-r from-orange-600 to-red-600 text-white border-none shadow-md animate-pulse"
+                            >
+                              🔥 Only {product.scarcity_value} left!
+                            </Badge>
+                          ) : (
+                            <>
+                              {product.stock_status === 'low_stock' && (
+                                <Badge
+                                  variant="secondary"
+                                  className="absolute top-1 right-1 sm:top-2 sm:right-2 text-[10px] sm:text-xs"
+                                >
+                                  Low Stock
+                                </Badge>
+                              )}
+                              {product.stock_status === 'out_of_stock' && (
+                                <Badge
+                                  variant="destructive"
+                                  className="absolute top-1 right-1 sm:top-2 sm:right-2 text-[10px] sm:text-xs"
+                                >
+                                  Out of Stock
+                                </Badge>
+                              )}
+                            </>
+                          )}
+                          {product.is_b1g1 && (
+                            <Badge
+                              className="absolute bottom-1 left-1 sm:bottom-2 sm:left-2 text-[10px] sm:text-xs bg-emerald-600 text-white border-none shadow-md"
+                            >
+                              B1G1
                             </Badge>
                           )}
                         </div>
@@ -547,7 +571,7 @@ const Shop = () => {
                                   currency: 'INR',
                                 });
                               }}
-                              disabled={product.stock_status === 'out_of_stock'}
+                              disabled={product.stock_status === 'out_of_stock' || product.scarcity_status === 'sold_out'}
                             >
                               <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-2" />
                               Add
@@ -565,7 +589,7 @@ const Shop = () => {
                                   currency: 'INR',
                                 });
                               }}
-                              disabled={product.stock_status === 'out_of_stock'}
+                              disabled={product.stock_status === 'out_of_stock' || product.scarcity_status === 'sold_out'}
                             >
                               <Zap className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-2" />
                               Buy Now

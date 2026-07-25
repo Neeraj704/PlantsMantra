@@ -34,6 +34,9 @@ export interface Product {
   priority?: number | null;
   actual_price?: number | null;
   combo_product_ids?: string[] | null;
+  scarcity_status?: 'none' | 'limited_stock' | 'sold_out' | null;
+  scarcity_value?: number | null;
+  is_b1g1?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -161,5 +164,15 @@ export interface ReviewImage {
   review_id: string;
   image_url: string;
   display_order: number;
+}
+
+export interface CampaignSettings {
+  id: string;
+  campaign_name: string;
+  banner_text: string;
+  is_active: boolean;
+  end_type: 'manual' | 'timer';
+  end_date: string | null;
+  created_at: string;
 }
 

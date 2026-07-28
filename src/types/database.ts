@@ -101,6 +101,7 @@ export interface Order {
   call_confirmation_status?: string | null;
   farmer_payout_total?: number | null;
   farmer_payout_status?: string | null;
+  farmer_payout_cancel_reason?: string | null;
   cancelled_at?: string | null;
   shiprocket_order_id: string | null;
   shiprocket_shipment_id: string | null;

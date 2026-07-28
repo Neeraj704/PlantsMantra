@@ -18,15 +18,32 @@ import {
   X, 
   Plus, 
   Check, 
-  RefreshCw 
+  RefreshCw,
+  XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const AdminFarmerPayouts = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'unpaid' | 'paid'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'unpaid' | 'paid' | 'cancelled'>('all');
+  
+  // Status Update Dialog States
+  const [selectedOrderForStatus, setSelectedOrderForStatus] = useState<Order | null>(null);
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
+  const [newPayoutStatus, setNewPayoutStatus] = useState<'paid' | 'unpaid' | 'cancelled'>('unpaid');
+  const [cancelReasonPreset, setCancelReasonPreset] = useState<string>('Order Cancelled');
+  const [customCancelReason, setCustomCancelReason] = useState<string>('');
+  const [statusUpdating, setStatusUpdating] = useState(false);
   
   // Date filter (Year and Month)
   const currentYear = new Date().getFullYear();
@@ -140,23 +157,63 @@ const AdminFarmerPayouts = () => {
     }
   };
 
-  const handleTogglePayoutStatus = async (orderId: string, currentStatus: string) => {
-    const nextStatus = currentStatus === 'paid' ? 'unpaid' : 'paid';
+  const handleOpenStatusDialog = (order: Order) => {
+    setSelectedOrderForStatus(order);
+    setNewPayoutStatus((order.farmer_payout_status as any) || 'unpaid');
+    const reason = order.farmer_payout_cancel_reason;
+    if (reason === 'Order Cancelled' || reason === 'Customer Returned' || reason === 'Test Order') {
+      setCancelReasonPreset(reason);
+      setCustomCancelReason('');
+    } else if (reason) {
+      setCancelReasonPreset('Custom');
+      setCustomCancelReason(reason);
+    } else {
+      setCancelReasonPreset('Order Cancelled');
+      setCustomCancelReason('');
+    }
+    setIsStatusDialogOpen(true);
+  };
+
+  const handleSavePayoutStatusDetail = async () => {
+    if (!selectedOrderForStatus) return;
+    setStatusUpdating(true);
+
+    let reason: string | null = null;
+    if (newPayoutStatus === 'cancelled') {
+      reason = cancelReasonPreset === 'Custom' ? customCancelReason.trim() : cancelReasonPreset;
+      if (!reason) {
+        toast.error('Please specify an exclusion/cancellation reason');
+        setStatusUpdating(false);
+        return;
+      }
+    }
+
     try {
       const { error } = await supabase
         .from('orders' as any)
-        .update({ farmer_payout_status: nextStatus } as any)
-        .eq('id', orderId);
+        .update({ 
+          farmer_payout_status: newPayoutStatus,
+          farmer_payout_cancel_reason: reason
+        } as any)
+        .eq('id', selectedOrderForStatus.id);
 
       if (error) throw error;
 
-      toast.success(`Payout marked as ${nextStatus}`);
+      toast.success('Payout status updated successfully');
       
       // Update state locally
-      setOrders(orders.map(o => o.id === orderId ? { ...o, farmer_payout_status: nextStatus } : o));
+      setOrders(orders.map(o => o.id === selectedOrderForStatus.id ? { 
+        ...o, 
+        farmer_payout_status: newPayoutStatus, 
+        farmer_payout_cancel_reason: reason 
+      } : o));
+      
+      setIsStatusDialogOpen(false);
     } catch (e: any) {
-      console.error('Failed to update payout status:', e);
-      toast.error('Failed to update status');
+      console.error('Failed to update payout status details:', e);
+      toast.error(e.message || 'Failed to update status');
+    } finally {
+      setStatusUpdating(false);
     }
   };
 
@@ -256,20 +313,23 @@ const AdminFarmerPayouts = () => {
     const matchesStatus = 
       statusFilter === 'all' || 
       order.farmer_payout_status === statusFilter ||
-      (statusFilter === 'unpaid' && !order.farmer_payout_status); // default is unpaid if blank
+      (statusFilter === 'unpaid' && (!order.farmer_payout_status || order.farmer_payout_status === 'unpaid'));
 
     return matchesSearch && matchesStatus;
   });
 
-  const totalSales = filteredOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-  const totalPayoutOwed = filteredOrders
+  // Exclude cancelled payouts from financial calculations
+  const nonCancelledOrders = filteredOrders.filter(o => o.farmer_payout_status !== 'cancelled');
+
+  const totalSales = nonCancelledOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  const totalPayoutOwed = nonCancelledOrders
     .filter(o => o.farmer_payout_status !== 'paid')
     .reduce((sum, o) => sum + Number(o.farmer_payout_total || 0), 0);
-  const totalPayoutPaid = filteredOrders
+  const totalPayoutPaid = nonCancelledOrders
     .filter(o => o.farmer_payout_status === 'paid')
     .reduce((sum, o) => sum + Number(o.farmer_payout_total || 0), 0);
   
-  const totalPayoutAll = filteredOrders.reduce((sum, o) => sum + Number(o.farmer_payout_total || 0), 0);
+  const totalPayoutAll = nonCancelledOrders.reduce((sum, o) => sum + Number(o.farmer_payout_total || 0), 0);
   const netProfit = totalSales - totalPayoutAll;
 
   return (
@@ -392,6 +452,7 @@ const AdminFarmerPayouts = () => {
                 <option value="all">All Payout Statuses</option>
                 <option value="unpaid">Unpaid Owed</option>
                 <option value="paid">Paid Settled</option>
+                <option value="cancelled">Excluded / Cancelled</option>
               </select>
             </div>
 
@@ -443,8 +504,15 @@ const AdminFarmerPayouts = () => {
                       const share = (order.total || 0) - payout;
                       const isPaid = order.farmer_payout_status === 'paid';
 
+                      const isCancelled = order.farmer_payout_status === 'cancelled';
+
                       return (
-                        <tr key={order.id} className="hover:bg-muted/10 transition-colors">
+                        <tr 
+                          key={order.id} 
+                          className={`hover:bg-muted/10 transition-colors ${
+                            isCancelled ? 'opacity-60 bg-muted/5' : ''
+                          }`}
+                        >
                           <td className="px-6 py-4 font-mono text-xs">
                             #{order.id.slice(0, 8)}
                           </td>
@@ -461,28 +529,41 @@ const AdminFarmerPayouts = () => {
                           <td className="px-6 py-4 uppercase text-xs whitespace-nowrap">
                             <Badge variant="secondary">{order.payment_method}</Badge>
                           </td>
-                          <td className="px-6 py-4 text-right font-serif whitespace-nowrap font-medium text-emerald-800">
+                          <td className={`px-6 py-4 text-right font-serif whitespace-nowrap font-medium text-emerald-800 ${isCancelled ? 'line-through' : ''}`}>
                             ₹{(order.total || 0).toFixed(2)}
                           </td>
-                          <td className="px-6 py-4 text-right font-serif whitespace-nowrap font-semibold text-amber-700">
+                          <td className={`px-6 py-4 text-right font-serif whitespace-nowrap font-semibold text-amber-700 ${isCancelled ? 'line-through text-muted-foreground' : ''}`}>
                             ₹{payout.toFixed(2)}
                           </td>
-                          <td className="px-6 py-4 text-right font-serif whitespace-nowrap font-semibold text-primary">
+                          <td className={`px-6 py-4 text-right font-serif whitespace-nowrap font-semibold text-primary ${isCancelled ? 'line-through text-muted-foreground' : ''}`}>
                             ₹{share.toFixed(2)}
                           </td>
                           <td className="px-6 py-4 text-center whitespace-nowrap">
-                            <Badge className={isPaid ? 'bg-green-100 text-green-800 border-green-200' : 'bg-amber-100 text-amber-800 border-amber-200'}>
-                              {isPaid ? 'Paid' : 'Unpaid'}
-                            </Badge>
+                            <div className="flex flex-col items-center">
+                              <Badge className={
+                                isPaid 
+                                  ? 'bg-green-100 text-green-800 border-green-200' 
+                                  : isCancelled
+                                  ? 'bg-red-100 text-red-800 border-red-200'
+                                  : 'bg-amber-100 text-amber-800 border-amber-200'
+                              }>
+                                {isPaid ? 'Paid' : isCancelled ? 'Excluded' : 'Unpaid'}
+                              </Badge>
+                              {isCancelled && order.farmer_payout_cancel_reason && (
+                                <span className="text-[10px] text-muted-foreground mt-1 max-w-[120px] truncate" title={order.farmer_payout_cancel_reason}>
+                                  {order.farmer_payout_cancel_reason}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-6 py-4 text-center whitespace-nowrap">
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleTogglePayoutStatus(order.id, order.farmer_payout_status || 'unpaid')}
-                              className={isPaid ? 'text-amber-700 border-amber-600 hover:bg-amber-50' : 'text-emerald-700 border-emerald-600 hover:bg-emerald-50'}
+                              onClick={() => handleOpenStatusDialog(order)}
+                              className="text-primary border-primary hover:bg-primary/5 h-8"
                             >
-                              {isPaid ? 'Mark Unpaid' : 'Mark Paid'}
+                              Update Status
                             </Button>
                           </td>
                         </tr>
@@ -673,6 +754,106 @@ const AdminFarmerPayouts = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Payout Status Dialog */}
+      <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
+        <DialogContent className="max-w-md bg-background">
+          <DialogHeader>
+            <DialogTitle>Update Payout Status</DialogTitle>
+            <DialogDescription>
+              Adjust payment settlement or exclude this order from farmer calculations.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedOrderForStatus && (
+            <div className="space-y-4 py-4">
+              <div className="bg-muted/40 p-3 rounded-lg text-xs space-y-1">
+                <p><strong>Order ID:</strong> #{selectedOrderForStatus.id}</p>
+                <p><strong>Customer Name:</strong> {selectedOrderForStatus.customer_name}</p>
+                <p><strong>Order Total:</strong> ₹{(selectedOrderForStatus.total || 0).toFixed(2)}</p>
+                <p><strong>Farmer Payout:</strong> ₹{(selectedOrderForStatus.farmer_payout_total || 0).toFixed(2)}</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground block">Select Status</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    variant={newPayoutStatus === 'paid' ? 'default' : 'outline'}
+                    onClick={() => setNewPayoutStatus('paid')}
+                    className={newPayoutStatus === 'paid' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}
+                  >
+                    <CheckCircle2 className="w-4 h-4 mr-1.5" /> Paid
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={newPayoutStatus === 'unpaid' ? 'default' : 'outline'}
+                    onClick={() => setNewPayoutStatus('unpaid')}
+                    className={newPayoutStatus === 'unpaid' ? 'bg-amber-600 hover:bg-amber-700 text-white' : ''}
+                  >
+                    <AlertCircle className="w-4 h-4 mr-1.5" /> Unpaid
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={newPayoutStatus === 'cancelled' ? 'default' : 'outline'}
+                    onClick={() => setNewPayoutStatus('cancelled')}
+                    className={newPayoutStatus === 'cancelled' ? 'bg-red-600 hover:bg-red-700 text-white' : ''}
+                  >
+                    <XCircle className="w-4 h-4 mr-1.5" /> Exclude
+                  </Button>
+                </div>
+              </div>
+
+              {newPayoutStatus === 'cancelled' && (
+                <div className="space-y-3 p-3 border rounded-lg bg-red-50/50">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-red-800 block">Exclusion Reason</label>
+                    <select
+                      value={cancelReasonPreset}
+                      onChange={(e) => setCancelReasonPreset(e.target.value)}
+                      className="w-full bg-background border border-input rounded-md px-3 py-1.5 text-sm"
+                    >
+                      <option value="Order Cancelled">Order Cancelled</option>
+                      <option value="Customer Returned">Customer Returned</option>
+                      <option value="Test Order">Test Order</option>
+                      <option value="Custom">Custom Reason...</option>
+                    </select>
+                  </div>
+
+                  {cancelReasonPreset === 'Custom' && (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground block">Write Custom Reason</label>
+                      <Input
+                        value={customCancelReason}
+                        onChange={(e) => setCustomCancelReason(e.target.value)}
+                        placeholder="e.g. Returned due to damage"
+                        required
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsStatusDialogOpen(false)}
+              disabled={statusUpdating}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSavePayoutStatusDetail}
+              disabled={statusUpdating}
+              className="bg-primary hover:bg-primary/95 text-white"
+            >
+              {statusUpdating ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

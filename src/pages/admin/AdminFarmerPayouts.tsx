@@ -44,6 +44,7 @@ const AdminFarmerPayouts = () => {
   const [cancelReasonPreset, setCancelReasonPreset] = useState<string>('Order Cancelled');
   const [customCancelReason, setCustomCancelReason] = useState<string>('');
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [productSearchQuery, setProductSearchQuery] = useState('');
   
   // Date filter (Year and Month)
   const currentYear = new Date().getFullYear();
@@ -331,6 +332,12 @@ const AdminFarmerPayouts = () => {
   
   const totalPayoutAll = nonCancelledOrders.reduce((sum, o) => sum + Number(o.farmer_payout_total || 0), 0);
   const netProfit = totalSales - totalPayoutAll;
+
+  const filteredProducts = products.filter((product) => 
+    product.name?.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+    (product.botanical_name || '').toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+    (product.slug || '').toLowerCase().includes(productSearchQuery.toLowerCase())
+  );
 
   return (
     <div className="p-6 space-y-6">
@@ -622,11 +629,22 @@ const AdminFarmerPayouts = () => {
 
           {/* Catalog Cost Editing Table */}
           <Card className="bg-card overflow-hidden">
-            <div className="p-4 border-b flex justify-between items-center bg-muted/20">
+            <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/20">
               <h3 className="font-semibold text-sm">Consolidated Pricing & Farmer Payout Catalog</h3>
-              <Button variant="ghost" size="sm" onClick={fetchProducts} className="text-xs">
-                <RefreshCw className="w-3 h-3 mr-1" /> Reload
-              </Button>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-64">
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search plant by name..."
+                    value={productSearchQuery}
+                    onChange={(e) => setProductSearchQuery(e.target.value)}
+                    className="pl-8 h-8 text-xs w-full"
+                  />
+                </div>
+                <Button variant="ghost" size="sm" onClick={fetchProducts} className="text-xs h-8">
+                  <RefreshCw className="w-3 h-3 mr-1" /> Reload
+                </Button>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
@@ -647,14 +665,14 @@ const AdminFarmerPayouts = () => {
                         Loading pricing catalog...
                       </td>
                     </tr>
-                  ) : products.length === 0 ? (
+                  ) : filteredProducts.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
-                        No plants found in the database.
+                        {products.length === 0 ? "No plants found in the database." : "No matching plants found."}
                       </td>
                     </tr>
                   ) : (
-                    products.map((product) => {
+                    filteredProducts.map((product) => {
                       const isEditing = editingProductId === product.id;
                       
                       // Live math based on inputs or database state

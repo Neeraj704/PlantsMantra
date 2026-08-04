@@ -348,11 +348,16 @@ const AdminFarmerPayouts = () => {
   const totalPayoutAll = nonCancelledOrders.reduce((sum, o) => sum + getOrderFarmerPayoutTotal(o), 0);
   const netProfit = totalSales - totalPayoutAll;
 
-  const filteredProducts = products.filter((product) => 
-    product.name?.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
-    (product.botanical_name || '').toLowerCase().includes(productSearchQuery.toLowerCase()) ||
-    (product.slug || '').toLowerCase().includes(productSearchQuery.toLowerCase())
-  );
+  const filteredProducts = products.filter((product) => {
+    if (product.stock_status === 'out_of_stock' || product.status !== 'active') {
+      return false;
+    }
+    return (
+      product.name?.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+      (product.botanical_name || '').toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+      (product.slug || '').toLowerCase().includes(productSearchQuery.toLowerCase())
+    );
+  });
 
   return (
     <div className="p-6 space-y-6">

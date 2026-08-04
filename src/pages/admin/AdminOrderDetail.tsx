@@ -206,7 +206,7 @@ const AdminOrderDetail = () => {
         // Fetch only the fields we need from products
         const { data: productsData, error: productsError } = await supabase
           .from('products' as any)
-          .select('id, slug, main_image_url, main_image_alt, name')
+          .select('id, slug, main_image_url, main_image_alt, name, actual_price, stock_status')
           .in('id', productIds);
 
         if (productsError) {
@@ -229,6 +229,8 @@ const AdminOrderDetail = () => {
               product_image_url: product?.main_image_url ?? null,
               product_image_alt:
                 product?.main_image_alt ?? product?.name ?? item.product_name,
+              catalog_actual_price: product?.actual_price ?? null,
+              catalog_stock_status: product?.stock_status ?? null,
             };
           });
         }
@@ -729,33 +731,63 @@ const AdminOrderDetail = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex justify-between items-center bg-muted/30 p-3 rounded-lg">
-              <div>
-                <p className="text-sm font-medium">Payout Status</p>
-                <p className="text-xs text-muted-foreground">Status of settlement with the farmer</p>
-              </div>
-              <Badge className={order.farmer_payout_status === 'paid' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-amber-100 text-amber-800 border-amber-200'}>
-                {order.farmer_payout_status === 'paid' ? 'Paid / Settled' : 'Unpaid / Owed'}
-              </Badge>
-            </div>
-            
-            <Separator />
-            
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Total Customer Payment</span>
-                <span className="font-medium">₹{Number(order.total).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Total Farmer Payout (Cost Price)</span>
-                <span className="font-semibold text-amber-700">-₹{Number(order.farmer_payout_total || 0).toFixed(2)}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between text-base font-bold text-primary">
-                <span>Net Share (Your Profit)</span>
-                <span>₹{(Number(order.total) - Number(order.farmer_payout_total || 0)).toFixed(2)}</span>
-              </div>
-            </div>
+            {(() => {
+              const isPayoutCancelled = order.farmer_payout_status === 'cancelled';
+              const dynamicFarmerPayoutTotal = orderItems.reduce((sum, item: any) => {
+                const isOutOfStock = item.catalog_stock_status === 'out_of_stock';
+                const costPrice = isOutOfStock ? 0 : (item.catalog_actual_price !== null && item.catalog_actual_price !== undefined ? Number(item.catalog_actual_price) : Number(item.actual_price || 0));
+                return sum + (costPrice * (item.quantity || 0));
+              }, 0);
+              const finalPayout = isPayoutCancelled ? 0 : dynamicFarmerPayoutTotal;
+              const finalProfit = Number(order.total || 0) - finalPayout;
+
+              return (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center bg-muted/30 p-3 rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium">Payout Status</p>
+                      <p className="text-xs text-muted-foreground">Status of settlement with the farmer</p>
+                    </div>
+                    <Badge className={
+                      order.farmer_payout_status === 'paid' 
+                        ? 'bg-green-100 text-green-800 border-green-200' 
+                        : order.farmer_payout_status === 'cancelled'
+                          ? 'bg-gray-100 text-gray-800 border-gray-200'
+                          : 'bg-amber-100 text-amber-800 border-amber-200'
+                    }>
+                      {order.farmer_payout_status === 'paid' 
+                        ? 'Paid / Settled' 
+                        : order.farmer_payout_status === 'cancelled'
+                          ? 'Excluded / Cancelled'
+                          : 'Unpaid / Owed'}
+                    </Badge>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Total Customer Payment</span>
+                      <span className="font-medium">₹{Number(order.total).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Total Farmer Payout (Cost Price)</span>
+                      <span className="font-semibold text-amber-700">-₹{finalPayout.toFixed(2)}</span>
+                    </div>
+                    {isPayoutCancelled && (order as any).farmer_payout_cancel_reason && (
+                      <div className="text-xs text-muted-foreground italic pl-3 border-l-2 border-muted">
+                        Reason: {(order as any).farmer_payout_cancel_reason}
+                      </div>
+                    )}
+                    <Separator />
+                    <div className="flex justify-between text-base font-bold text-primary">
+                      <span>Net Share (Your Profit)</span>
+                      <span>₹{finalProfit.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </CardContent>
       </Card>

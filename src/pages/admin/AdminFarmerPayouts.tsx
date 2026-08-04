@@ -117,7 +117,7 @@ const AdminFarmerPayouts = () => {
       setLoading(true);
       let query = supabase
         .from('orders' as any)
-        .select('*')
+        .select('*, order_items(*)')
         .order('created_at', { ascending: false });
 
       // Apply month/year filtering
@@ -322,15 +322,30 @@ const AdminFarmerPayouts = () => {
   // Exclude cancelled payouts from financial calculations
   const nonCancelledOrders = filteredOrders.filter(o => o.farmer_payout_status !== 'cancelled');
 
+  // Dynamic order payout calculation helper (respecting current plant costs & out-of-stock exclusions)
+  const getOrderFarmerPayoutTotal = (order: any) => {
+    if (order.order_items && order.order_items.length > 0) {
+      const priceMap = new Map(products.map(p => [p.id, Number(p.actual_price || 0)]));
+      const stockMap = new Map(products.map(p => [p.id, p.stock_status]));
+      
+      return order.order_items.reduce((sum: number, item: any) => {
+        const isOutOfStock = stockMap.get(item.product_id) === 'out_of_stock';
+        const costPrice = isOutOfStock ? 0 : (priceMap.get(item.product_id) ?? Number(item.actual_price || 0));
+        return sum + (costPrice * (item.quantity || 0));
+      }, 0);
+    }
+    return Number(order.farmer_payout_total || 0);
+  };
+
   const totalSales = nonCancelledOrders.reduce((sum, o) => sum + (o.total || 0), 0);
   const totalPayoutOwed = nonCancelledOrders
     .filter(o => o.farmer_payout_status !== 'paid')
-    .reduce((sum, o) => sum + Number(o.farmer_payout_total || 0), 0);
+    .reduce((sum, o) => sum + getOrderFarmerPayoutTotal(o), 0);
   const totalPayoutPaid = nonCancelledOrders
     .filter(o => o.farmer_payout_status === 'paid')
-    .reduce((sum, o) => sum + Number(o.farmer_payout_total || 0), 0);
+    .reduce((sum, o) => sum + getOrderFarmerPayoutTotal(o), 0);
   
-  const totalPayoutAll = nonCancelledOrders.reduce((sum, o) => sum + Number(o.farmer_payout_total || 0), 0);
+  const totalPayoutAll = nonCancelledOrders.reduce((sum, o) => sum + getOrderFarmerPayoutTotal(o), 0);
   const netProfit = totalSales - totalPayoutAll;
 
   const filteredProducts = products.filter((product) => 
@@ -507,7 +522,7 @@ const AdminFarmerPayouts = () => {
                     </tr>
                   ) : (
                     filteredOrders.map((order) => {
-                      const payout = Number(order.farmer_payout_total || 0);
+                      const payout = getOrderFarmerPayoutTotal(order);
                       const share = (order.total || 0) - payout;
                       const isPaid = order.farmer_payout_status === 'paid';
 
@@ -651,23 +666,24 @@ const AdminFarmerPayouts = () => {
                 <thead className="bg-muted/50 text-muted-foreground uppercase text-xs border-b">
                   <tr>
                     <th className="px-6 py-4">Plant Name</th>
-                    <th className="px-6 py-4 text-right">Website Price (INR)</th>
-                    <th className="px-6 py-4 text-right">Farmer Payout Cost (INR)</th>
-                    <th className="px-6 py-4 text-right">Your Profit (INR)</th>
-                    <th className="px-6 py-4 text-center">Profit Margin (%)</th>
+                    <th className="px-6 py-4 text-right">Original Price (MRP)</th>
+                    <th className="px-6 py-4 text-right">Customer Sale Price</th>
+                    <th className="px-6 py-4 text-right">Farmer Payout Cost</th>
+                    <th className="px-6 py-4 text-right">Your Net Profit</th>
+                    <th className="px-6 py-4 text-center">Profit Margin</th>
                     <th className="px-6 py-4 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {productsLoading ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground animate-pulse">
+                      <td colSpan={7} className="px-6 py-12 text-center text-muted-foreground animate-pulse">
                         Loading pricing catalog...
                       </td>
                     </tr>
                   ) : filteredProducts.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
+                      <td colSpan={7} className="px-6 py-12 text-center text-muted-foreground">
                         {products.length === 0 ? "No plants found in the database." : "No matching plants found."}
                       </td>
                     </tr>
@@ -675,11 +691,12 @@ const AdminFarmerPayouts = () => {
                     filteredProducts.map((product) => {
                       const isEditing = editingProductId === product.id;
                       
-                      // Live math based on inputs or database state
-                      const retail = isEditing ? parseFloat(editBasePrice) : product.base_price;
+                      // Live math based on MRP, active selling price, and payout cost
+                      const mrp = isEditing ? parseFloat(editBasePrice) : product.base_price;
+                      const sellingPrice = product.sale_price || mrp;
                       const payout = isEditing ? parseFloat(editActualPrice) : (product.actual_price || 0);
-                      const profit = (retail || 0) - (payout || 0);
-                      const margin = retail > 0 ? (profit / retail) * 100 : 0;
+                      const profit = (sellingPrice || 0) - (payout || 0);
+                      const margin = sellingPrice > 0 ? (profit / sellingPrice) * 100 : 0;
 
                       return (
                         <tr key={product.id} className="hover:bg-muted/10 transition-colors">
@@ -701,7 +718,15 @@ const AdminFarmerPayouts = () => {
                                 onChange={(e) => setEditBasePrice(e.target.value)}
                               />
                             ) : (
-                              <span className="font-serif font-medium">₹{product.base_price.toFixed(2)}</span>
+                              <span className="font-serif text-muted-foreground line-through">₹{product.base_price.toFixed(2)}</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <span className="font-serif font-medium text-emerald-800">
+                              ₹{sellingPrice.toFixed(2)}
+                            </span>
+                            {product.sale_price && (
+                              <span className="block text-[10px] text-emerald-600 font-semibold">Active Sale Discount</span>
                             )}
                           </td>
                           <td className="px-6 py-4 text-right">
@@ -714,7 +739,7 @@ const AdminFarmerPayouts = () => {
                                 onChange={(e) => setEditActualPrice(e.target.value)}
                               />
                             ) : (
-                              <span className="font-serif font-semibold text-amber-700">₹{(product.actual_price || 0).toFixed(2)}</span>
+                              <span className="font-serif font-semibold text-amber-700">₹{payout.toFixed(2)}</span>
                             )}
                           </td>
                           <td className="px-6 py-4 text-right font-serif font-semibold text-primary">

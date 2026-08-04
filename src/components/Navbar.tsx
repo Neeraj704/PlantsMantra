@@ -56,7 +56,7 @@ const Navbar = () => {
       if (!searchQuery || searchQuery.length < 2) return [];
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, slug, main_image_url, base_price')
+        .select('id, name, slug, main_image_url, base_price, sale_price')
         .eq('status', 'active')
         .or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,care_guide.ilike.%${searchQuery}%`)
         .limit(10);
@@ -173,7 +173,14 @@ const Navbar = () => {
                             <div className="flex-1 min-w-0">
                               <p className="font-medium truncate text-foreground">{product.name}</p>
                               <p className="text-sm text-muted-foreground">
-                                ₹{product.base_price.toFixed(2)}
+                                {product.sale_price ? (
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="font-semibold text-primary">₹{product.sale_price.toFixed(2)}</span>
+                                    <span className="line-through text-xs text-muted-foreground/70">₹{product.base_price.toFixed(2)}</span>
+                                  </span>
+                                ) : (
+                                  <span>₹{product.base_price.toFixed(2)}</span>
+                                )}
                               </p>
                             </div>
                           </Link>

@@ -150,6 +150,15 @@ const Checkout = () => {
   const upiDiscount = paymentMethod === 'razorpay' ? Math.min(tempTotal * 0.1, 100) : 0;
   const total = tempTotal - upiDiscount;
 
+  const totalCartQuantity = items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+  const isCODUnlocked = totalCartQuantity >= 3;
+
+  useEffect(() => {
+    if (!isCODUnlocked && paymentMethod === 'cod') {
+      setPaymentMethod('razorpay');
+    }
+  }, [isCODUnlocked, paymentMethod]);
+
   const hasValidDetails = true; // Validation handled on click instead of disabling button
 
   /**
@@ -844,22 +853,49 @@ const Checkout = () => {
                         </div>
                       </label>
 
-                      <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:border-primary transition-smooth">
-                        <div className="flex items-center gap-3">
-                          <RadioGroupItem value="cod" id="cod" />
+                      <label 
+                        className={`flex items-start justify-between p-3 border rounded-lg transition-smooth ${
+                          isCODUnlocked 
+                            ? 'cursor-pointer hover:border-primary' 
+                            : 'cursor-not-allowed opacity-60 bg-muted/20'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="pt-0.5">
+                            <RadioGroupItem 
+                              value="cod" 
+                              id="cod" 
+                              disabled={!isCODUnlocked} 
+                            />
+                          </div>
                           <div>
                             <Label
                               htmlFor="cod"
-                              className="flex items-center gap-2"
+                              className={`flex items-center gap-2 ${!isCODUnlocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                             >
                               Cash on Delivery
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                                Popular
-                              </span>
+                              {isCODUnlocked ? (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 border border-green-200">
+                                  Unlocked
+                                </span>
+                              ) : (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                  Locked
+                                </span>
+                              )}
                             </Label>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground mt-0.5">
                               Pay when your plants arrive at your doorstep.
                             </p>
+                            {!isCODUnlocked ? (
+                              <p className="text-[11px] text-amber-600 mt-1.5 font-medium flex items-center gap-1">
+                                💡 Add {3 - totalCartQuantity} more {3 - totalCartQuantity === 1 ? 'plant' : 'plants'} to unlock Cash on Delivery (COD)!
+                              </p>
+                            ) : (
+                              <p className="text-[11px] text-green-700 mt-1.5 font-medium flex items-center gap-1">
+                                🎉 Cash on Delivery is unlocked for your order!
+                              </p>
+                            )}
                           </div>
                         </div>
                       </label>

@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useWishlist } from '@/hooks/useWishlist';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, getProxiedUrl } from '@/integrations/supabase/client';
 import { trackPixelEvent } from '@/utils/pixel';
 import logo from '@/assets/logo.png';
 
@@ -166,7 +166,7 @@ const Navbar = () => {
                             className="flex items-center gap-3 p-3 hover:bg-muted transition-colors"
                           >
                             <img
-                              src={product.main_image_url}
+                              src={getProxiedUrl(product.main_image_url)}
                               alt={product.name}
                               className="w-12 h-12 object-cover rounded"
                             />

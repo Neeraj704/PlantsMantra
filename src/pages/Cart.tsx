@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Trash2, Minus, Plus, ShoppingBag, Percent } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, getProxiedUrl } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { trackPixelEvent } from '@/utils/pixel';
 
@@ -105,7 +105,7 @@ const Cart = () => {
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-4">
             {items.map((item, index) => {
-              const imgSrc = item.product.main_image_url || '/placeholder.svg';
+              const imgSrc = getProxiedUrl(item.product.main_image_url) || '/placeholder.svg';
               const price =
                 (item.product.sale_price || item.product.base_price) +
                 (item.variant?.price_adjustment || 0);

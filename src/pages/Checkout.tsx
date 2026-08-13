@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/hooks/useCart';
 import { useBuyNow } from '@/hooks/useBuyNow';
-import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
+import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, getProxiedUrl } from '@/integrations/supabase/client';
 import { Address } from '@/types/database';
 import { toast } from 'sonner';
 import { Plus, MapPin, CreditCard, Percent, Lock, X, Eye, EyeOff, Phone, PhoneOff, Check } from 'lucide-react';
@@ -946,7 +946,7 @@ const Checkout = () => {
                       if (!item) return null;
                       const product = item.product;
                       const productImg =
-                        product.main_image_url ||
+                        getProxiedUrl(product.main_image_url) ||
                         productImages[product.slug] ||
                         monsteraImg;
                       const basePrice =

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, getProxiedUrl } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -436,7 +436,7 @@ const Shop = () => {
                 ))
               ) : productList.map((product: Product, index: number) => {
 
-                const imgSrc = product.main_image_url || productImages[product.slug] || monsteraImg;
+                const imgSrc = getProxiedUrl(product.main_image_url) || productImages[product.slug] || monsteraImg;
                 const displayPrice = product.sale_price || product.base_price;
                 const hasDiscount = product.sale_price !== null;
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, getProxiedUrl } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -83,7 +83,7 @@ const ProductDetail = () => {
       }
 
       setProduct(data);
-      const imgSrc = data.main_image_url || productImages[data.slug] || monsteraImg;
+      const imgSrc = getProxiedUrl(data.main_image_url) || productImages[data.slug] || monsteraImg;
       setMainImage(imgSrc);
       setMainImageAltText(data.main_image_alt || data.name);
       fetchRelated(data);
@@ -150,7 +150,7 @@ const ProductDetail = () => {
   const seoTitle = product.seo_title || defaultSeoTitle;
   const metaDescription = product.meta_description || defaultMetaDescription;
 
-  const imgSrc = product.main_image_url || productImages[product.slug] || monsteraImg;
+  const imgSrc = getProxiedUrl(product.main_image_url) || productImages[product.slug] || monsteraImg;
   const isOutOfStock = product.stock_status === 'out_of_stock' || product.scarcity_status === 'sold_out';
 
   const getCurrentPrice = () => {
@@ -285,9 +285,9 @@ const ProductDetail = () => {
               <div className="grid grid-cols-4 gap-4">
                 <div
                   className="aspect-square rounded-lg overflow-hidden border-2 border-primary cursor-pointer hover:opacity-80 transition-smooth"
-                  onClick={() => handleImageClick(product.main_image_url || imgSrc, 0)}
+                  onClick={() => handleImageClick(getProxiedUrl(product.main_image_url) || imgSrc, 0)}
                 >
-                  <img src={product.main_image_url || imgSrc} alt={product.main_image_alt || product.name} className="w-full h-full object-cover" />
+                  <img src={getProxiedUrl(product.main_image_url) || imgSrc} alt={product.main_image_alt || product.name} className="w-full h-full object-cover" />
                 </div>
                 {product.gallery_images.map((image, index) => {
                   const altText = product.gallery_alt_texts?.[index] || `${product.name} close-up view ${index + 1}`;
@@ -295,9 +295,9 @@ const ProductDetail = () => {
                     <div
                       key={index}
                       className="aspect-square rounded-lg overflow-hidden border border-border cursor-pointer hover:border-primary transition-smooth"
-                      onClick={() => handleImageClick(image, index + 1)}
+                      onClick={() => handleImageClick(getProxiedUrl(image), index + 1)}
                     >
-                      <img src={image} alt={altText} className="w-full h-full object-cover" />
+                      <img src={getProxiedUrl(image)} alt={altText} className="w-full h-full object-cover" />
                     </div>
                   );
                 })}
@@ -465,7 +465,7 @@ const ProductDetail = () => {
             <h2 className="text-2xl md:text-3xl font-serif font-bold mb-8">You May Also Like</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {relatedProducts.map((relatedProduct) => {
-                const relatedImgSrc = relatedProduct.main_image_url || productImages[relatedProduct.slug] || monsteraImg;
+                const relatedImgSrc = getProxiedUrl(relatedProduct.main_image_url) || productImages[relatedProduct.slug] || monsteraImg;
                 const relatedDisplayPrice = relatedProduct.sale_price || relatedProduct.base_price;
                 const relatedHasDiscount = relatedProduct.sale_price !== null;
 

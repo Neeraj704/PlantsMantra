@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, getProxiedUrl } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import useEmblaCarousel from 'embla-carousel-react';
 
@@ -66,16 +66,16 @@ const BannerCarousel = () => {
                 <div key={banner.id} className="flex-[0_0_100%] min-w-0">
                   <div className="w-full">
                     {banner.link_url ? (
-                      <Link to={banner.link_url} className="block">
+                       <Link to={banner.link_url} className="block">
                         <img
-                          src={banner.image_url}
+                          src={getProxiedUrl(banner.image_url)}
                           alt={banner.title}
                           className="w-full h-auto max-h-[580px] object-contain hover:opacity-90 transition-opacity"
                         />
                       </Link>
                     ) : (
                       <img
-                        src={banner.image_url}
+                        src={getProxiedUrl(banner.image_url)}
                         alt={banner.title}
                         className="w-full h-auto max-h-[580px] object-contain"
                       />

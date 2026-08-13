@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Leaf, Heart, Shield, Sparkles } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, getProxiedUrl } from '@/integrations/supabase/client';
 import heroImage from '@/assets/hero-plants.jpg';
 import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
@@ -171,7 +171,7 @@ const Home = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {combos.map((product, index) => {
-                const imgSrc = product.main_image_url || productImages[product.slug] || monsteraImg;
+                const imgSrc = getProxiedUrl(product.main_image_url) || productImages[product.slug] || monsteraImg;
                 const displayPrice = product.sale_price || product.base_price;
                 const hasDiscount = product.sale_price !== null;
 
@@ -247,7 +247,7 @@ const Home = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {featuredProducts?.map((product, index) => {
-              const imgSrc = product.main_image_url || productImages[product.slug] || monsteraImg;
+              const imgSrc = getProxiedUrl(product.main_image_url) || productImages[product.slug] || monsteraImg;
               const displayPrice = product.sale_price || product.base_price;
               const hasDiscount = product.sale_price !== null;
 

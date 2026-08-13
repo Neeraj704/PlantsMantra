@@ -15,3 +15,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
   }
 });
+
+export const getProxiedUrl = (url: string | null | undefined): string => {
+  if (!url) return '';
+  if (url.includes('fuhpzltwbiblcxeixtsz.supabase.co/storage')) {
+    return url.replace('https://fuhpzltwbiblcxeixtsz.supabase.co', '');
+  }
+  return url;
+};

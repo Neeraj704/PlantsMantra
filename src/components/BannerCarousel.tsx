@@ -66,13 +66,23 @@ const BannerCarousel = () => {
                 <div key={banner.id} className="flex-[0_0_100%] min-w-0">
                   <div className="w-full">
                     {banner.link_url ? (
-                       <Link to={banner.link_url} className="block">
-                        <img
-                          src={getProxiedUrl(banner.image_url)}
-                          alt={banner.title}
-                          className="w-full h-auto max-h-[580px] object-contain hover:opacity-90 transition-opacity"
-                        />
-                      </Link>
+                      banner.link_url.startsWith('http') ? (
+                        <a href={banner.link_url} className="block">
+                          <img
+                            src={getProxiedUrl(banner.image_url)}
+                            alt={banner.title}
+                            className="w-full h-auto max-h-[580px] object-contain hover:opacity-90 transition-opacity"
+                          />
+                        </a>
+                      ) : (
+                        <Link to={banner.link_url} className="block">
+                          <img
+                            src={getProxiedUrl(banner.image_url)}
+                            alt={banner.title}
+                            className="w-full h-auto max-h-[580px] object-contain hover:opacity-90 transition-opacity"
+                          />
+                        </Link>
+                      )
                     ) : (
                       <img
                         src={getProxiedUrl(banner.image_url)}

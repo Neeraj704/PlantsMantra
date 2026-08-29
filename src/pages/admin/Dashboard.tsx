@@ -1,9 +1,26 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { Package, ShoppingCart, Users, DollarSign } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const [timeframe, setTimeframe] = useState<string>('all');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
+  
+  const [allProducts, setAllProducts] = useState<any[]>([]);
+  const [allOrders, setAllOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [stats, setStats] = useState({
     products: 0,
     orders: 0,
@@ -17,39 +34,96 @@ const Dashboard = () => {
   >([]);
 
   useEffect(() => {
-    fetchStats();
+    fetchData();
   }, []);
 
-  const fetchStats = async () => {
-    // Products count
-    const { count: productsCount } = await supabase
-      .from('products')
-      .select('*', { count: 'exact', head: true });
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch all products with created_at to allow timeframe filtering
+      const { data: productsData } = await supabase
+        .from('products')
+        .select('id, created_at');
+      setAllProducts(productsData || []);
 
-    // Customers count (profiles)
-    const { count: customersCount } = await supabase
-      .from('profiles' as any)
-      .select('*', { count: 'exact', head: true });
+      // Fetch all non-cancelled orders with customer metadata
+      const { data: ordersData } = await supabase
+        .from('orders' as any)
+        .select('id, total, status, customer_name, customer_email, created_at')
+        .neq('status', 'cancelled')
+        .order('created_at', { ascending: false });
+      setAllOrders(ordersData || []);
 
-    // Orders & revenue (EXCLUDING cancelled)
-    const { data: ordersData } = await supabase
-      .from('orders' as any)
-      .select('id, total, status, customer_name, created_at')
-      .neq('status', 'cancelled')
-      .order('created_at', { ascending: false });
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const orders = ordersData || [];
+  // Helper to check if a date falls within selected timeframe
+  const isWithinTimeframe = (dateString: string | null | undefined) => {
+    if (!dateString) return false;
+    if (timeframe === 'all') return true;
 
-    const ordersCount = orders.length;
-    const revenue =
-      orders.reduce((sum: number, order: any) => sum + Number(order.total || 0), 0) || 0;
+    const date = new Date(dateString);
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    // Recent orders (non-cancelled only)
-    setRecentOrders(orders.slice(0, 5));
+    switch (timeframe) {
+      case 'day': {
+        return date >= startOfToday;
+      }
+      case 'week': {
+        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return date >= oneWeekAgo;
+      }
+      case 'month': {
+        const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        return date >= oneMonthAgo;
+      }
+      case 'year': {
+        const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        return date >= oneYearAgo;
+      }
+      case 'custom': {
+        if (!customStartDate) return true;
+        const start = new Date(customStartDate);
+        start.setHours(0, 0, 0, 0);
+        
+        const end = customEndDate ? new Date(customEndDate) : new Date();
+        end.setHours(23, 59, 59, 999);
+        
+        return date >= start && date <= end;
+      }
+      default:
+        return true;
+    }
+  };
 
-    // Order status summary (non-cancelled only)
+  // Recalculate stats dynamically when timeframe or raw data changes
+  useEffect(() => {
+    const filteredProducts = allProducts.filter(p => isWithinTimeframe(p.created_at));
+    const filteredOrders = allOrders.filter(o => isWithinTimeframe(o.created_at));
+
+    const ordersCount = filteredOrders.length;
+    const revenue = filteredOrders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+
+    // Calculate unique customers based on unique customer emails in filtered orders
+    const uniqueEmails = new Set(
+      filteredOrders
+        .map(o => o.customer_email?.trim().toLowerCase())
+        .filter(Boolean)
+    );
+    const customersCount = uniqueEmails.size;
+
+    // Recent orders in this timeframe
+    setRecentOrders(filteredOrders.slice(0, 5));
+
+    // Order status summary in this timeframe
     const statusMap = new Map<string, number>();
-    orders.forEach((order: any) => {
+    filteredOrders.forEach((order: any) => {
       const status = order.status || 'pending';
       statusMap.set(status, (statusMap.get(status) || 0) + 1);
     });
@@ -61,12 +135,12 @@ const Dashboard = () => {
     setOrderStatusSummary(statusArray);
 
     setStats({
-      products: productsCount || 0,
+      products: filteredProducts.length,
       orders: ordersCount,
-      customers: customersCount || 0,
+      customers: customersCount,
       revenue,
     });
-  };
+  }, [timeframe, customStartDate, customEndDate, allProducts, allOrders]);
 
   const statCards = [
     {
@@ -74,24 +148,28 @@ const Dashboard = () => {
       value: stats.products,
       icon: Package,
       color: 'text-blue-600',
+      link: '/admin/products',
     },
     {
       title: 'Active Orders',
       value: stats.orders,
       icon: ShoppingCart,
       color: 'text-green-600',
+      link: '/admin/orders',
     },
     {
       title: 'Total Customers',
       value: stats.customers,
       icon: Users,
       color: 'text-purple-600',
+      link: '/admin/customers',
     },
     {
       title: 'Total Revenue',
       value: `₹${stats.revenue.toFixed(2)}`,
       icon: DollarSign,
       color: 'text-orange-600',
+      link: '/admin/analytics',
     },
   ];
 
@@ -111,15 +189,56 @@ const Dashboard = () => {
   );
 
   return (
-    <div>
-      <h1 className="text-3xl font-serif font-bold mb-8">Dashboard</h1>
+    <div className="space-y-8">
+      {/* Header and Filter Selector */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h1 className="text-3xl font-serif font-bold">Dashboard</h1>
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <Select value={timeframe} onValueChange={setTimeframe}>
+            <SelectTrigger className="w-[180px] bg-background">
+              <SelectValue placeholder="Select Timeframe" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Time</SelectItem>
+              <SelectItem value="day">Today</SelectItem>
+              <SelectItem value="week">This Week</SelectItem>
+              <SelectItem value="month">This Month</SelectItem>
+              <SelectItem value="year">This Year</SelectItem>
+              <SelectItem value="custom">Custom Range</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {timeframe === 'custom' && (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+              <span className="text-sm text-muted-foreground">to</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Top stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat) => {
           const IconComponent = stat.icon;
           return (
-            <Card key={stat.title}>
+            <Card 
+              key={stat.title}
+              className="cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+              onClick={() => stat.link && navigate(stat.link)}
+            >
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   {stat.title}
@@ -134,7 +253,7 @@ const Dashboard = () => {
         })}
       </div>
 
-      {/* New working sections */}
+      {/* Detailed Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Orders */}
         <Card>
@@ -144,7 +263,7 @@ const Dashboard = () => {
           <CardContent>
             {recentOrders.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No recent orders yet.
+                No recent orders found in this timeframe.
               </p>
             ) : (
               <div className="space-y-4">
@@ -186,7 +305,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Order Status Overview (non-cancelled) */}
+        {/* Order Status Overview */}
         <Card>
           <CardHeader>
             <CardTitle>Order Status Overview</CardTitle>
@@ -194,7 +313,7 @@ const Dashboard = () => {
           <CardContent>
             {orderStatusSummary.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No active orders to display.
+                No active orders to display for this timeframe.
               </p>
             ) : (
               <div className="space-y-4">

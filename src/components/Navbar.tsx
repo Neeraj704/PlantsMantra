@@ -109,7 +109,7 @@ const Navbar = () => {
                   exit={{ opacity: 0, y: -10 }}
                   className="hidden md:flex items-center gap-8"
                 >
-                  {['Home', 'Shop', 'Care Guides', 'Contact'].map((label, idx) => (
+                  {['Home', 'Shop', 'Care Guides', 'Bulk Orders', 'Contact'].map((label, idx) => (
                     <Link
                       key={idx}
                       to={`/${label === 'Home' ? '' : label.toLowerCase().replace(' ', '-')}`}
@@ -263,7 +263,7 @@ const Navbar = () => {
               className="md:hidden border-t border-border bg-background/95 backdrop-blur-md"
             >
               <div className="py-4 space-y-3">
-                {['Home', 'Shop', 'Care Guides', 'Contact'].map((label, idx) => (
+                {['Home', 'Shop', 'Care Guides', 'Bulk Orders', 'Contact'].map((label, idx) => (
                   <Link
                     key={idx}
                     to={`/${label === 'Home' ? '' : label.toLowerCase().replace(' ', '-')}`}

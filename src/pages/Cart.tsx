@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { supabase, getProxiedUrl } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { trackPixelEvent } from '@/utils/pixel';
+import { CheckoutRecommendations } from '@/components/CheckoutRecommendations';
 
 const Cart = () => {
   const {
@@ -311,6 +312,9 @@ const Cart = () => {
             </Card>
           </div>
         </div>
+        
+        {/* Upselling Section */}
+        <CheckoutRecommendations />
       </div>
     </div>
   );

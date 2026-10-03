@@ -16,6 +16,7 @@ import { Address } from '@/types/database';
 import { toast } from 'sonner';
 import { Plus, MapPin, CreditCard, Percent, Lock, X, Eye, EyeOff, Phone, PhoneOff, Check } from 'lucide-react';
 import AddressForm from '@/components/AddressForm';
+import { CheckoutRecommendations } from '@/components/CheckoutRecommendations';
 import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
 import pothosImg from '@/assets/pothos.jpg';
@@ -1047,6 +1048,9 @@ const Checkout = () => {
               </Card>
             </div>
           </div>
+          
+          {/* Recommendations / Upselling Section */}
+          <CheckoutRecommendations />
         </motion.div>
       </div>
 

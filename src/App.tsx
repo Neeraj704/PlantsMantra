@@ -45,6 +45,7 @@ import Banners from "./pages/admin/Banners";
 import Reviews from "./pages/admin/Reviews";
 import AdminProductReviews from "./pages/admin/AdminProductReviews";
 import PlantFinder from "./pages/PlantFinder";
+import BulkOrders from "./pages/BulkOrders";
 
 import NotFound from "./pages/NotFound";
 
@@ -74,6 +75,7 @@ const App = () => (
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/care-guides" element={<CareGuides />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/bulk-orders" element={<BulkOrders />} />
               <Route path="/about" element={<About />} />
               <Route path="/shipping" element={<ShippingInfo />} />
               <Route path="/returns" element={<Returns />} />

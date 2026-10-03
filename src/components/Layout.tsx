@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import { CampaignBanner } from './CampaignBanner';
+import { CartDrawer } from './CartDrawer';
 
 const Layout = () => {
   return (
@@ -12,6 +13,7 @@ const Layout = () => {
         <Outlet />
       </main>
       <Footer />
+      <CartDrawer />
     </div>
   );
 };

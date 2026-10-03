@@ -55,6 +55,8 @@ interface CartStore {
   syncWithDatabase: (userId: string) => Promise<void>;
   loadFromDatabase: (userId: string) => Promise<void>;
   setInitialized: (value: boolean) => void;
+  isCartOpen: boolean;
+  setCartOpen: (isOpen: boolean) => void;
 }
 
 const FREE_SHIPPING_THRESHOLD = 599;
@@ -67,7 +69,9 @@ export const useCart = create<CartStore>()(
       isInitialized: false,
       appliedCoupon: null,
       shippingCost: 0,
+      isCartOpen: false,
 
+      setCartOpen: (isOpen) => set({ isCartOpen: isOpen }),
       setInitialized: (value) => set({ isInitialized: value }),
 
       applyCoupon: (coupon) => set({ appliedCoupon: coupon }),
@@ -179,6 +183,7 @@ export const useCart = create<CartStore>()(
               toast.success('Added to cart');
             }
             await get().loadFromDatabase(user.id);
+            get().setCartOpen(true);
           } catch (error) {
             console.error('Error adding to cart:', error);
             toast.error('Failed to add to cart');
@@ -198,7 +203,7 @@ export const useCart = create<CartStore>()(
               newItems = [...state.items, { product, variant, quantity }];
               toast.success('Added to cart');
             }
-            return { items: newItems };
+            return { items: newItems, isCartOpen: true };
           });
         }
       },

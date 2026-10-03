@@ -20,7 +20,7 @@ const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const { items } = useCart();
+  const { items, setCartOpen } = useCart();
   const { wishlistItems } = useWishlist();
   const { user } = useAuth();
   const location = useLocation();
@@ -223,18 +223,21 @@ const Navbar = () => {
               </Button>
             </Link>
 
-            <Link to="/cart">
-              <Button variant="ghost" size="icon" className={`relative ${colorTransition}`}>
-                <ShoppingCart className="w-5 h-5" />
-                {cartItemsCount > 0 && (
-                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-1 -right-1">
-                    <Badge variant="destructive" className="h-5 w-5 flex items-center justify-center p-0 text-xs">
-                      {cartItemsCount}
-                    </Badge>
-                  </motion.div>
-                )}
-              </Button>
-            </Link>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={`relative ${colorTransition}`}
+              onClick={() => setCartOpen(true)}
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {cartItemsCount > 0 && (
+                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-1 -right-1">
+                  <Badge variant="destructive" className="h-5 w-5 flex items-center justify-center p-0 text-xs">
+                    {cartItemsCount}
+                  </Badge>
+                </motion.div>
+              )}
+            </Button>
 
             <Link to={user ? '/account' : '/auth'}>
               <Button variant="ghost" size="icon" className={colorTransition}>

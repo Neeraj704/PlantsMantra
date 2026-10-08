@@ -107,15 +107,22 @@ const Navbar = () => {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="hidden md:flex items-center gap-8"
+                  className="hidden md:flex items-center gap-7"
                 >
-                  {['Home', 'Shop', 'Care Guides', 'Bulk Orders', 'Contact'].map((label, idx) => (
+                  {[
+                    { label: 'Home', path: '/' },
+                    { label: 'Shop', path: '/shop' },
+                    { label: 'Sale 🔥', path: '/sale' },
+                    { label: 'Care Guides', path: '/care-guides' },
+                    { label: 'Bulk Orders', path: '/bulk-orders' },
+                    { label: 'Contact', path: '/contact' },
+                  ].map((item, idx) => (
                     <Link
                       key={idx}
-                      to={`/${label === 'Home' ? '' : label.toLowerCase().replace(' ', '-')}`}
+                      to={item.path}
                       className={colorTransition + ' text-sm font-medium'}
                     >
-                      {label}
+                      {item.label}
                     </Link>
                   ))}
                 </motion.div>
@@ -266,14 +273,21 @@ const Navbar = () => {
               className="md:hidden border-t border-border bg-background/95 backdrop-blur-md"
             >
               <div className="py-4 space-y-3">
-                {['Home', 'Shop', 'Care Guides', 'Bulk Orders', 'Contact'].map((label, idx) => (
+                {[
+                  { label: 'Home', path: '/' },
+                  { label: 'Shop', path: '/shop' },
+                  { label: 'Sale 🔥', path: '/sale' },
+                  { label: 'Care Guides', path: '/care-guides' },
+                  { label: 'Bulk Orders', path: '/bulk-orders' },
+                  { label: 'Contact', path: '/contact' },
+                ].map((item, idx) => (
                   <Link
                     key={idx}
-                    to={`/${label === 'Home' ? '' : label.toLowerCase().replace(' ', '-')}`}
+                    to={item.path}
                     className="block py-2 text-sm font-medium text-foreground hover:text-primary transition-colors"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    {label}
+                    {item.label}
                   </Link>
                 ))}
               </div>

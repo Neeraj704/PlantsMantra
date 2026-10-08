@@ -389,6 +389,26 @@ const Shop = () => {
           </aside>
 
           <main className="flex-1">
+            {/* Sale Urgency Banner on Shop Page */}
+            <div className="mb-6 p-3.5 sm:p-4 rounded-xl bg-gradient-to-r from-emerald-950 via-[#1b3b22] to-teal-900 text-white flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm border border-emerald-850">
+              <div className="flex items-center gap-3 text-center sm:text-left">
+                <span className="text-2xl">🔥</span>
+                <div>
+                  <h3 className="font-serif font-bold text-sm sm:text-base leading-tight">
+                    Festive Sale is LIVE! Limited Time Only
+                  </h3>
+                  <p className="text-xs text-emerald-200/90 mt-0.5">
+                    Extra discounts, Buy 1 Get 1 Free, and Free Shipping above ₹599.
+                  </p>
+                </div>
+              </div>
+              <Link to="/sale">
+                <Button size="sm" className="bg-amber-400 text-emerald-950 hover:bg-amber-300 font-bold text-xs h-8 whitespace-nowrap px-4 shadow-sm">
+                  Explore Sale Deals ⚡
+                </Button>
+              </Link>
+            </div>
+
             <div className="flex items-center justify-between mb-6">
               <p className="text-sm text-muted-foreground">
                 {totalCount} plants found
@@ -421,7 +441,7 @@ const Shop = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
               {showSkeletons ? (
                 // Show skeletons while loading (timed out at 5s)
 

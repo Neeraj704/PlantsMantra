@@ -3,25 +3,21 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Leaf, Heart, Shield, Sparkles } from 'lucide-react';
+import { ArrowRight, Leaf, Heart, Shield, Sparkles, ShoppingCart, Zap } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase, getProxiedUrl } from '@/integrations/supabase/client';
-import heroImage from '@/assets/hero-plants.jpg';
 import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
 import pothosImg from '@/assets/pothos.jpg';
 import fiddleLeafImg from '@/assets/fiddle-leaf.jpg';
 import BannerCarousel from '@/components/BannerCarousel';
+import { CategoryIconRow } from '@/components/CategoryIconRow';
+import { MarqueeRibbon } from '@/components/MarqueeRibbon';
+import { useCart } from '@/hooks/useCart';
+import { toast } from 'sonner';
 
 const Home = () => {
-  // Define the exact 5 categories to show
-  const displayCategories = [
-    { slug: 'succulents', name: 'Succulents', description: 'Low maintenance desert', emoji: '🎍' },
-    { slug: 'cactus', name: 'Cactus', description: 'Hardy and resilient plants', emoji: '🌵' },
-    { slug: 'snake', name: 'Snake Plants', description: 'Perfect for low light spaces', emoji: '🐍' },
-    { slug: 'indoor-plants', name: 'Indoor Plants', description: 'Lush greenery for your home', emoji: '🪴' },
-    { slug: 'air-purifying', name: 'Air Purifying', description: 'Clean your air naturally', emoji: '🌬️' },
-  ];
+  const { addItem } = useCart();
 
   const { data: featuredProducts } = useQuery({
     queryKey: ['featured-products'],
@@ -33,7 +29,7 @@ const Home = () => {
         .eq('status', 'active')
         .order('priority', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: false })
-        .limit(4);
+        .limit(10);
       if (error) throw error;
       return data;
     },
@@ -48,15 +44,20 @@ const Home = () => {
         .ilike('name', 'combo')
         .maybeSingle();
       
-      if (!category) return [];
-
-      const { data, error } = await supabase
+      const query = supabase
         .from('products')
         .select('*')
-        .eq('category_id', category.id)
-        .eq('status', 'active')
+        .eq('status', 'active');
+
+      if (category) {
+        query.eq('category_id', category.id);
+      } else {
+        query.ilike('name', '%combo%');
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false })
-        .limit(4);
+        .limit(10);
         
       if (error) throw error;
       return data;
@@ -70,10 +71,20 @@ const Home = () => {
     'fiddle-leaf-fig': fiddleLeafImg,
   };
 
+  const handleQuickAdd = (e: React.MouseEvent, product: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addItem(product, undefined, 1);
+    toast.success(`${product.name} added to cart!`);
+  };
+
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative h-screen flex items-center justify-center overflow-hidden">
+    <div className="min-h-screen bg-white">
+      {/* 1. Category Circular Icons Row (PlantOrbit style) */}
+      <CategoryIconRow />
+
+      {/* 2. Compact, Shorter Hero Section */}
+      <section className="relative h-[360px] sm:h-[400px] md:h-[440px] flex items-center justify-center overflow-hidden">
         <video
           autoPlay
           loop
@@ -83,388 +94,287 @@ const Home = () => {
         >
           <source src="https://cdn.pixabay.com/video/2023/06/09/166394-834930270_large.mp4" type="video/mp4" />
         </video>
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/30" />
         
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="relative z-10 text-center text-white px-4 max-w-4xl"
-        >
-          <h1 className="text-5xl md:text-7xl font-serif font-bold mb-6">
-            Your Urban Jungle,<br />Delivered
-          </h1>
-          <p className="text-lg md:text-xl mb-8 text-white/90 max-w-2xl mx-auto">
-            Transform your space with our curated collection of premium indoor plants. 
-            From low-maintenance succulents to statement tropical beauties.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" asChild className="gradient-hero text-lg px-8">
-              <Link to="/shop">
-                Shop All Plants <ArrowRight className="ml-2 w-5 h-5" />
-              </Link>
-            </Button>
-            <Button size="lg" variant="outline" asChild className="bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20">
-              <Link to="/plant-finder">Find Your Perfect Plant</Link>
-            </Button>
-          </div>
-        </motion.div>
-      </section>
-
-      {/* Banner Carousel */}
-      <BannerCarousel />
-
-      {/* Categories */}
-      <section className="py-20 container mx-auto px-4 mt-[-100px]">
-        <motion.div
           initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="relative z-10 text-center text-white px-4 max-w-3xl"
         >
-          <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4">Shop by Category</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Find the perfect plant for your space, lifestyle, and experience level
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-emerald-300 text-xs font-medium uppercase tracking-wider mb-3">
+            <Sparkles className="w-3.5 h-3.5" /> India's Loved Online Plant Nursery
+          </span>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold mb-3 tracking-tight">
+            Bring Nature Home, Effortlessly
+          </h1>
+          <p className="text-xs sm:text-sm md:text-base mb-6 text-white/90 max-w-xl mx-auto font-sans leading-relaxed">
+            Handpicked, healthy indoor plants & stylish ceramic planters delivered with 100% damage-proof packaging to your doorstep.
           </p>
-        </motion.div>
-
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-          {displayCategories.map((category, index) => (
-            <motion.div
-              key={category.slug}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Link to={`/shop?category=${category.slug}`}>
-                <Card className="hover:shadow-hover transition-smooth overflow-hidden group cursor-pointer">
-                  <CardContent className="p-6 text-center">
-                    <div className="text-4xl mb-3 group-hover:scale-110 transition-smooth">
-                      {category.emoji}
-                    </div>
-                    <h3 className="font-serif font-semibold text-base mb-1">{category.name}</h3>
-                    <p className="text-xs text-muted-foreground">{category.description}</p>
-                  </CardContent>
-                </Card>
+          <div className="flex flex-row gap-3 justify-center items-center">
+            <Button size="sm" sm-size="lg" asChild className="gradient-hero text-xs sm:text-sm px-6 h-10 shadow-lg">
+              <Link to="/shop">
+                Shop Plants <ArrowRight className="ml-1.5 w-4 h-4" />
               </Link>
-            </motion.div>
-          ))}
-        </div>
+            </Button>
+            <Button size="sm" variant="outline" asChild className="bg-white/10 backdrop-blur-sm border-white/30 text-white hover:bg-white/20 text-xs sm:text-sm h-10">
+              <Link to="/sale">
+                Explore Deals 🔥
+              </Link>
+            </Button>
+          </div>
+        </motion.div>
       </section>
 
-      {/* Combos Section */}
-      {combos && combos.length > 0 && (
-        <section className="py-20 bg-background">
-          <div className="container mx-auto px-4">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-center mb-12"
-            >
-              <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4">Customer Favourite Combos</h2>
-              <p className="text-muted-foreground max-w-2xl mx-auto">
-                Specially curated plant combinations providing the best value. Perfect for gifting or expanding your indoor jungle effortlessly.
+      {/* 3. Scrolling Marquee Ribbon */}
+      <MarqueeRibbon />
+
+      {/* 4. Banner Carousel */}
+      <div className="py-6">
+        <BannerCarousel />
+      </div>
+
+      {/* 5. Our Best Selling Products (5-Column Compact Grid) */}
+      <section className="py-12 bg-gray-50/50">
+        <div className="container mx-auto px-3 sm:px-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mb-8 gap-2">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-serif font-bold text-gray-900 tracking-tight">
+                Our Best Selling Plants
+              </h2>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                Customer-favorite indoor greens with proven air-purifying & mood-boosting qualities
               </p>
-            </motion.div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {combos.map((product, index) => {
-                const imgSrc = getProxiedUrl(product.main_image_url) || productImages[product.slug] || monsteraImg;
-                const displayPrice = product.sale_price || product.base_price;
-                const hasDiscount = product.sale_price !== null;
-
-                return (
-                  <motion.div
-                    key={product.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <Link to={`/product/${product.slug}`}>
-                      <Card className="overflow-hidden group cursor-pointer hover:shadow-hover transition-smooth border-primary/20 bg-primary/5">
-                        <div className="aspect-square overflow-hidden bg-muted/50">
-                          <img
-                            src={imgSrc}
-                            alt={product.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-smooth"
-                          />
-                        </div>
-                        <CardContent className="p-4 bg-white">
-                          <div className="flex items-center justify-between mb-2">
-                            {hasDiscount && (
-                              <Badge variant="destructive">Sale</Badge>
-                            )}
-                            <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 hover:text-white">COMBO</Badge>
-                          </div>
-                          <h3 className="font-serif font-semibold text-lg mb-1">{product.name}</h3>
-                          {product.botanical_name && (
-                            <p className="text-xs text-muted-foreground italic mb-2">{product.botanical_name}</p>
-                          )}
-                          <div className="flex items-center gap-2 mt-2">
-                            <span className="text-lg font-bold">₹{displayPrice.toFixed(2)}</span>
-                            {hasDiscount && (
-                              <span className="text-sm text-muted-foreground line-through">
-                                ₹{product.base_price.toFixed(2)}
-                              </span>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  </motion.div>
-                );
-              })}
             </div>
-
-            <div className="text-center mt-12">
-              <Button size="lg" className="gradient-hero" asChild>
-                <Link to="/shop?category=combo">
-                  View More Combos <ArrowRight className="ml-2 w-5 h-5" />
-                </Link>
-              </Button>
-            </div>
+            <Link to="/shop" className="text-xs sm:text-sm font-semibold text-emerald-800 hover:text-emerald-950 flex items-center gap-1">
+              View All <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
-        </section>
-      )}
 
-      {/* Featured Products */}
-      <section className="py-20 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4">Bestsellers</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Our most loved plants, chosen by plant parents just like you
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* 5-Column Grid on desktop, 2-column on mobile */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
             {featuredProducts?.map((product, index) => {
               const imgSrc = getProxiedUrl(product.main_image_url) || productImages[product.slug] || monsteraImg;
               const displayPrice = product.sale_price || product.base_price;
-              const hasDiscount = product.sale_price !== null;
+              const hasDiscount = product.sale_price !== null && product.sale_price < product.base_price;
+              const discountPercent = hasDiscount 
+                ? Math.round(((product.base_price - product.sale_price!) / product.base_price) * 100) 
+                : 0;
 
               return (
                 <motion.div
                   key={product.id}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 15 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="flex flex-col h-full"
                 >
-                  <Link to={`/product/${product.slug}`}>
-                    <Card className="overflow-hidden group cursor-pointer hover:shadow-hover transition-smooth">
-                      <div className="aspect-square overflow-hidden bg-muted/50 relative">
-                        <img
-                          src={imgSrc}
-                          alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-smooth"
-                        />
-                        {product.scarcity_status === 'sold_out' ? (
-                          <Badge
-                            variant="destructive"
-                            className="absolute top-2 right-2 text-xs"
-                          >
-                            Sold Out
-                          </Badge>
-                        ) : product.scarcity_status === 'limited_stock' && product.scarcity_value && product.scarcity_value > 0 ? (
-                          <Badge
-                            className="absolute top-2 right-2 text-xs bg-gradient-to-r from-orange-600 to-red-600 text-white border-none shadow-md animate-pulse"
-                          >
-                            🔥 Only {product.scarcity_value} left!
-                          </Badge>
-                        ) : (
-                          <>
-                            {product.stock_status === 'low_stock' && (
-                              <Badge
-                                variant="secondary"
-                                className="absolute top-2 right-2 text-xs"
-                              >
-                                Low Stock
-                              </Badge>
-                            )}
-                            {product.stock_status === 'out_of_stock' && (
-                              <Badge
-                                variant="destructive"
-                                className="absolute top-2 right-2 text-xs"
-                              >
-                                Out of Stock
-                              </Badge>
-                            )}
-                          </>
+                  <Link to={`/product/${product.slug}`} className="group flex flex-col h-full bg-white rounded-xl border border-gray-100 hover:border-emerald-200 shadow-sm hover:shadow-md transition-all overflow-hidden">
+                    <div className="aspect-square overflow-hidden bg-gray-100 relative">
+                      <img
+                        src={imgSrc}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                      />
+
+                      {/* Badges */}
+                      <div className="absolute top-2 left-2 flex flex-col gap-1">
+                        {hasDiscount && (
+                          <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                            -{discountPercent}%
+                          </span>
                         )}
                         {product.is_b1g1 && (
-                          <Badge
-                            className="absolute bottom-2 left-2 text-xs bg-emerald-600 text-white border-none shadow-md"
-                          >
+                          <span className="bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
                             B1G1
-                          </Badge>
+                          </span>
                         )}
                       </div>
-                      <CardContent className="p-4">
-                        {hasDiscount && (
-                          <Badge variant="destructive" className="mb-2">Sale</Badge>
-                        )}
-                        <h3 className="font-serif font-semibold text-lg mb-1">{product.name}</h3>
-                        {product.botanical_name && (
-                          <p className="text-xs text-muted-foreground italic mb-2">{product.botanical_name}</p>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold">₹{displayPrice.toFixed(2)}</span>
+
+                      {product.scarcity_status === 'limited_stock' && product.scarcity_value && product.scarcity_value > 0 ? (
+                        <span className="absolute bottom-2 right-2 text-[9px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded shadow-sm">
+                          🔥 Only {product.scarcity_value} left!
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="p-3 flex flex-col flex-1 justify-between">
+                      <div>
+                        <h3 className="font-serif font-medium text-xs sm:text-sm text-gray-900 line-clamp-1 group-hover:text-emerald-700 transition-colors">
+                          {product.name}
+                        </h3>
+                        {product.botanical_name ? (
+                          <p className="text-[10px] text-muted-foreground italic line-clamp-1">
+                            {product.botanical_name}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <div className="mt-2.5">
+                        <div className="flex items-baseline gap-1.5 mb-2.5">
+                          <span className="text-sm sm:text-base font-bold text-gray-900">
+                            ₹{displayPrice.toFixed(2)}
+                          </span>
                           {hasDiscount && (
-                            <span className="text-sm text-muted-foreground line-through">
+                            <span className="text-[11px] text-muted-foreground line-through">
                               ₹{product.base_price.toFixed(2)}
                             </span>
                           )}
                         </div>
-                      </CardContent>
-                    </Card>
+
+                        {/* PlantOrbit Style Quick Add to Cart Button */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full h-8 text-xs font-semibold rounded-lg border-emerald-700 text-emerald-800 hover:bg-emerald-700 hover:text-white transition-all flex items-center justify-center gap-1"
+                          onClick={(e) => handleQuickAdd(e, product)}
+                        >
+                          <ShoppingCart className="w-3.5 h-3.5" />
+                          <span>Add to Cart</span>
+                        </Button>
+                      </div>
+                    </div>
                   </Link>
                 </motion.div>
               );
             })}
           </div>
+        </div>
+      </section>
 
-          <div className="text-center mt-12">
-            <Button size="lg" variant="outline" asChild>
-              <Link to="/shop">
-                View All Plants <ArrowRight className="ml-2 w-5 h-5" />
+      {/* 6. Combos & Hampers Section (5-Column Grid) */}
+      {combos && combos.length > 0 && (
+        <section className="py-12 bg-white">
+          <div className="container mx-auto px-3 sm:px-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mb-8 gap-2">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-serif font-bold text-gray-900 tracking-tight">
+                  Customer Favourite Combos
+                </h2>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                  Value-packed pairings and curated gift sets designed to thrive together
+                </p>
+              </div>
+              <Link to="/shop?category=combo" className="text-xs sm:text-sm font-semibold text-emerald-800 hover:text-emerald-950 flex items-center gap-1">
+                View All Combos <ArrowRight className="w-3.5 h-3.5" />
               </Link>
-            </Button>
-          </div>
-        </div>
-      </section>
+            </div>
 
-      {/* Features */}
-      <section className="py-16">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+              {combos.map((product, index) => {
+                const imgSrc = getProxiedUrl(product.main_image_url) || productImages[product.slug] || monsteraImg;
+                const displayPrice = product.sale_price || product.base_price;
+                const hasDiscount = product.sale_price !== null && product.sale_price < product.base_price;
+                const discountPercent = hasDiscount 
+                  ? Math.round(((product.base_price - product.sale_price!) / product.base_price) * 100) 
+                  : 0;
+
+                return (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 15 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.05 }}
+                    className="flex flex-col h-full"
+                  >
+                    <Link to={`/product/${product.slug}`} className="group flex flex-col h-full bg-white rounded-xl border border-emerald-100 hover:border-emerald-300 shadow-sm hover:shadow-md transition-all overflow-hidden">
+                      <div className="aspect-square overflow-hidden bg-gray-100 relative">
+                        <img
+                          src={imgSrc}
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          loading="lazy"
+                        />
+                        <div className="absolute top-2 left-2 flex flex-col gap-1">
+                          <span className="bg-emerald-800 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                            COMBO
+                          </span>
+                          {hasDiscount && (
+                            <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                              -{discountPercent}%
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="p-3 flex flex-col flex-1 justify-between">
+                        <div>
+                          <h3 className="font-serif font-medium text-xs sm:text-sm text-gray-900 line-clamp-1 group-hover:text-emerald-700 transition-colors">
+                            {product.name}
+                          </h3>
+                        </div>
+
+                        <div className="mt-2.5">
+                          <div className="flex items-baseline gap-1.5 mb-2.5">
+                            <span className="text-sm sm:text-base font-bold text-gray-900">
+                              ₹{displayPrice.toFixed(2)}
+                            </span>
+                            {hasDiscount && (
+                              <span className="text-[11px] text-muted-foreground line-through">
+                                ₹{product.base_price.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full h-8 text-xs font-semibold rounded-lg border-emerald-700 text-emerald-800 hover:bg-emerald-700 hover:text-white transition-all flex items-center justify-center gap-1"
+                            onClick={(e) => handleQuickAdd(e, product)}
+                          >
+                            <ShoppingCart className="w-3.5 h-3.5" />
+                            <span>Add to Cart</span>
+                          </Button>
+                        </div>
+                      </div>
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 7. Features / Trust Points */}
+      <section className="py-12 bg-gray-50 border-t border-gray-100">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-center"
-            >
-              <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Leaf className="w-8 h-8 text-primary" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+            <div className="bg-white p-4 rounded-xl border border-gray-100 text-center">
+              <div className="bg-emerald-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 text-emerald-700">
+                <Leaf className="w-6 h-6" />
               </div>
-              <h3 className="font-serif font-semibold text-lg mb-2">Sustainable</h3>
-              <p className="text-sm text-muted-foreground">Eco-friendly packaging and practices</p>
-            </motion.div>
+              <h3 className="font-serif font-semibold text-sm mb-1">Sustainable Care</h3>
+              <p className="text-[11px] text-muted-foreground">Eco-friendly plant pots & packaging</p>
+            </div>
             
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-              className="text-center"
-            >
-              <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Heart className="w-8 h-8 text-primary" />
+            <div className="bg-white p-4 rounded-xl border border-gray-100 text-center">
+              <div className="bg-emerald-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 text-emerald-700">
+                <Heart className="w-6 h-6" />
               </div>
-              <h3 className="font-serif font-semibold text-lg mb-2">Expert Care</h3>
-              <p className="text-sm text-muted-foreground">Lifetime plant care support</p>
-            </motion.div>
+              <h3 className="font-serif font-semibold text-sm mb-1">Lifetime Support</h3>
+              <p className="text-[11px] text-muted-foreground">WhatsApp consultation for any plant issue</p>
+            </div>
             
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-              className="text-center"
-            >
-              <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-8 h-8 text-primary" />
+            <div className="bg-white p-4 rounded-xl border border-gray-100 text-center">
+              <div className="bg-emerald-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 text-emerald-700">
+                <Shield className="w-6 h-6" />
               </div>
-              <h3 className="font-serif font-semibold text-lg mb-2">7-Day Guarantee</h3>
-              <p className="text-sm text-muted-foreground">Happy plants or your money back</p>
-            </motion.div>
+              <h3 className="font-serif font-semibold text-sm mb-1">7-Day Guarantee</h3>
+              <p className="text-[11px] text-muted-foreground">Free replacement if plants arrive damaged</p>
+            </div>
             
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.3 }}
-              className="text-center"
-            >
-              <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Sparkles className="w-8 h-8 text-primary" />
+            <div className="bg-white p-4 rounded-xl border border-gray-100 text-center">
+              <div className="bg-emerald-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 text-emerald-700">
+                <Sparkles className="w-6 h-6" />
               </div>
-              <h3 className="font-serif font-semibold text-lg mb-2">Premium Quality</h3>
-              <p className="text-sm text-muted-foreground">Hand-picked healthy plants</p>
-            </motion.div>
+              <h3 className="font-serif font-semibold text-sm mb-1">Premium Quality</h3>
+              <p className="text-[11px] text-muted-foreground">Farm-fresh, rooted & pest-inspected</p>
+            </div>
           </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-20 container mx-auto px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4">Plant Parent Love</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            See what our community is saying about their PlantsMantra plants
-          </p>
-        </motion.div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {[
-            {
-              rating: "⭐⭐⭐⭐⭐ (5/5)",
-              name: "Riya Patel, Lucknow",
-              content: `I bought the Fairy Castle Cactus and a few Echinopsis varieties from Plants Mantra. The plants arrived fresh and well-hydrated, even after a long-distance shipment. The soil mix suggestions on their care guide really helped me maintain them properly. I’ve been recommending this site to all my friends who love indoor gardening. It’s like having a trusted local nursery online.`,
-              img: "https://media.istockphoto.com/id/2156062809/photo/headshot-closeup-portrait-middle-eastern-israel-businesswoman-business-lady-standing-isolated.jpg?s=612x612&w=0&k=20&c=SrsOr7hFwcm7O2xr1hbx0ZVkB_eJPLScCc7CPNW7pZQ=",
-            },
-            {
-              rating: "⭐⭐⭐⭐⭐ (5/5)",
-              name: "Arjun Sharma, Haldwani",
-              content: `Plants Mantra is easily the best online nursery I’ve tried so far. The plants are healthy, affordable, and exactly as shown in the pictures. What I loved most was their “bare-rooted” cactus collection clean, pest-free, and easy to pot. Delivery was faster than expected, and they even replaced one damaged plant without any hassle. Great customer service and premium quality!`,
-              img: "https://img.freepik.com/free-photo/cheerful-indian-businessman-smiling-closeup-portrait-jobs-career-campaign_53876-129416.jpg",
-            },
-            {
-              rating: "⭐⭐⭐⭐⭐ (5/5)",
-              name: "Neha Joshi, Dehradun",
-              content: `I recently ordered a few succulents and indoor plants from Plants Mantra, and I’m genuinely impressed! The packaging was super secure not a single leaf was damaged. Each plant came with a small care note, which was very helpful for a beginner like me. Within a week, my cactus started showing new growth! You can tell they really care about plant quality and customer satisfaction!`,
-              img: "https://static.vecteezy.com/system/resources/previews/039/334/804/non_2x/ai-generated-indian-female-student-free-photo.jpg",
-            },
-          ].map((t, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-            >
-              <Card className="shadow-card">
-                <CardContent className="p-6">
-                  <div className="text-accent mb-4">{t.rating}</div>
-                  <p className="text-sm mb-4 text-muted-foreground">{t.content}</p>
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={t.img}
-                      alt={t.name}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                    <div>
-                      <p className="font-semibold text-sm">{t.name}</p>
-                      <p className="text-xs text-muted-foreground">Verified Buyer</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
         </div>
       </section>
     </div>

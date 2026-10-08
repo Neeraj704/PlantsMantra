@@ -102,9 +102,6 @@ const Home = () => {
           transition={{ duration: 0.6 }}
           className="relative z-10 text-center text-white px-4 max-w-3xl"
         >
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-emerald-300 text-xs font-medium uppercase tracking-wider mb-3">
-            <Sparkles className="w-3.5 h-3.5" /> India's Loved Online Plant Nursery
-          </span>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold mb-3 tracking-tight">
             Bring Nature Home, Effortlessly
           </h1>

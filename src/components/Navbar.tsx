@@ -77,20 +77,12 @@ const Navbar = () => {
   }, [searchResults]);
 
   // Common class for text & icon color transitions
-  const colorTransition = `transition-colors duration-500 ${isDarkModeNavbar ? 'text-white hover:text-white/80' : 'text-foreground hover:text-primary'
-    }`;
+  const colorTransition = 'transition-colors duration-200 text-foreground hover:text-primary';
 
   return (
-    <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${isScrolled || !isHomePage
-          ? 'bg-background/70 backdrop-blur-2xl shadow-md border-b border-border/50 text-foreground'
-          : searchActive
-            ? 'bg-background/70 backdrop-blur-2xl border-b border-border/50 text-foreground'
-            : 'bg-transparent text-white'
-        }`}
-    >
+    <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm text-foreground">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16 md:h-20 transition-all duration-500">
+        <div className="flex items-center justify-between h-16 md:h-18 transition-all duration-300">
           {/* Logo */}
           <div className={`flex items-center transition-all duration-500 ${searchActive ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
             <Link to="/" className="flex items-center group">
@@ -295,7 +287,7 @@ const Navbar = () => {
           )}
         </AnimatePresence>
       </div>
-    </nav>
+    </header>
   );
 };
 

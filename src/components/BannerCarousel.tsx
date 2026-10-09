@@ -67,28 +67,34 @@ const BannerCarousel = () => {
                   <div className="w-full">
                     {banner.link_url ? (
                       banner.link_url.startsWith('http') ? (
-                        <a href={banner.link_url} className="block">
-                          <img
-                            src={getProxiedUrl(banner.image_url)}
-                            alt={banner.title}
-                            className="w-full h-auto max-h-[580px] object-contain hover:opacity-90 transition-opacity"
-                          />
+                        <a href={banner.link_url} className="block w-full">
+                          <div className="w-full h-[180px] sm:h-[260px] md:h-[340px] lg:h-[400px] overflow-hidden rounded-xl bg-gray-100 flex items-center justify-center">
+                            <img
+                              src={getProxiedUrl(banner.image_url)}
+                              alt={banner.title}
+                              className="w-full h-full object-cover hover:opacity-95 transition-all duration-500"
+                            />
+                          </div>
                         </a>
                       ) : (
-                        <Link to={banner.link_url} className="block">
-                          <img
-                            src={getProxiedUrl(banner.image_url)}
-                            alt={banner.title}
-                            className="w-full h-auto max-h-[580px] object-contain hover:opacity-90 transition-opacity"
-                          />
+                        <Link to={banner.link_url} className="block w-full">
+                          <div className="w-full h-[180px] sm:h-[260px] md:h-[340px] lg:h-[400px] overflow-hidden rounded-xl bg-gray-100 flex items-center justify-center">
+                            <img
+                              src={getProxiedUrl(banner.image_url)}
+                              alt={banner.title}
+                              className="w-full h-full object-cover hover:opacity-95 transition-all duration-500"
+                            />
+                          </div>
                         </Link>
                       )
                     ) : (
-                      <img
-                        src={getProxiedUrl(banner.image_url)}
-                        alt={banner.title}
-                        className="w-full h-auto max-h-[580px] object-contain"
-                      />
+                      <div className="w-full h-[180px] sm:h-[260px] md:h-[340px] lg:h-[400px] overflow-hidden rounded-xl bg-gray-100 flex items-center justify-center">
+                        <img
+                          src={getProxiedUrl(banner.image_url)}
+                          alt={banner.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
                     )}
                   </div>
                 </div>

@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { Minus, Plus, Trash2, ShoppingBag, Truck, Gift, Percent, ShieldCheck, Tag, Heart } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, Truck, Gift, Percent, ShieldCheck, Tag, X } from 'lucide-react';
 import { getProxiedUrl, supabase } from '@/integrations/supabase/client';
 import { DrawerRecommendations } from './DrawerRecommendations';
+import { fireConfetti } from '@/utils/confetti';
 import { toast } from 'sonner';
 
 const FREE_SHIPPING_THRESHOLD = 599;
@@ -35,6 +36,39 @@ export const CartDrawer = () => {
 
   const subtotal = getSubtotal();
 
+  // Milestone confetti tracking
+  const previousMilestoneRef = useRef<number>(0);
+  useEffect(() => {
+    if (subtotal >= DISCOUNT_THRESHOLD && previousMilestoneRef.current < DISCOUNT_THRESHOLD) {
+      fireConfetti('discount');
+      previousMilestoneRef.current = DISCOUNT_THRESHOLD;
+    } else if (subtotal >= FREE_GIFT_THRESHOLD && previousMilestoneRef.current < FREE_GIFT_THRESHOLD) {
+      fireConfetti('gift');
+      previousMilestoneRef.current = FREE_GIFT_THRESHOLD;
+    } else if (subtotal >= FREE_SHIPPING_THRESHOLD && previousMilestoneRef.current < FREE_SHIPPING_THRESHOLD) {
+      fireConfetti('delivery');
+      previousMilestoneRef.current = FREE_SHIPPING_THRESHOLD;
+    } else if (subtotal < FREE_SHIPPING_THRESHOLD) {
+      previousMilestoneRef.current = 0;
+    }
+  }, [subtotal]);
+
+  // Mobile back button intercepts to close cart drawer instead of navigating away
+  useEffect(() => {
+    if (!isCartOpen) return;
+
+    window.history.pushState({ cartOpen: true }, '');
+
+    const handlePopState = () => {
+      setCartOpen(false);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isCartOpen, setCartOpen]);
+
   // Calculate total original price vs current price to compute savings
   const originalTotal = items.reduce((sum, item) => {
     const origPrice = item.product.base_price + (item.variant?.price_adjustment || 0);
@@ -54,10 +88,10 @@ export const CartDrawer = () => {
     milestoneText = `Add ₹${diff} more for FREE shipping 🚚`;
   } else if (subtotal < FREE_GIFT_THRESHOLD) {
     const diff = Math.ceil(FREE_GIFT_THRESHOLD - subtotal);
-    milestoneText = `Free shipping unlocked! Add ₹${diff} for a Free Plant Gift 🎁`;
+    milestoneText = `🎉 Free shipping unlocked! Add ₹${diff} for a Free Plant Gift 🎁`;
   } else if (subtotal < DISCOUNT_THRESHOLD) {
     const diff = Math.ceil(DISCOUNT_THRESHOLD - subtotal);
-    milestoneText = `Free Gift unlocked! Add ₹${diff} for 10% Extra Discount ⚡`;
+    milestoneText = `🎁 Free Gift unlocked! Add ₹${diff} for 10% Extra Discount ⚡`;
   } else {
     milestoneText = `🎉 All Perks Unlocked: Free Shipping + Gift + 10% Off!`;
   }
@@ -108,11 +142,22 @@ export const CartDrawer = () => {
           <span>⚡ Express 72h Dispatch</span>
         </div>
 
+        {/* Drawer Header with Title and explicit Close Cross Button */}
         <SheetHeader className="px-4 py-3 border-b flex flex-row items-center justify-between space-y-0">
-          <SheetTitle className="flex items-center gap-2 font-serif text-lg text-emerald-950">
+          <SheetTitle className="flex items-center gap-2 font-serif text-base sm:text-lg text-emerald-950">
             <ShoppingBag className="w-5 h-5 text-emerald-800" />
             Shopping Cart ({items.reduce((acc, item) => acc + item.quantity, 0)})
           </SheetTitle>
+
+          {/* Explicit Mobile-friendly Cross Button */}
+          <button
+            type="button"
+            onClick={() => setCartOpen(false)}
+            aria-label="Close cart drawer"
+            className="p-1 rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </SheetHeader>
 
         {items.length === 0 ? (
@@ -142,7 +187,7 @@ export const CartDrawer = () => {
               {/* Bar */}
               <div className="relative w-full h-2 bg-emerald-200/60 rounded-full overflow-hidden mb-1.5">
                 <div 
-                  className="h-full bg-gradient-to-r from-emerald-600 to-teal-500 rounded-full transition-all duration-500"
+                  className="h-full bg-gradient-to-r from-emerald-600 via-teal-500 to-amber-400 rounded-full transition-all duration-500"
                   style={{ width: `${Math.max(4, progressPercent)}%` }}
                 />
               </div>
@@ -171,8 +216,9 @@ export const CartDrawer = () => {
                   const currentPrice = salePrice || basePrice;
 
                   return (
-                    <div key={`${item.product.id}-${item.variant?.id}`} className="py-3 flex gap-3">
-                      <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-md overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-100">
+                    <div key={`${item.product.id}-${item.variant?.id}`} className="py-3 flex gap-3 items-center">
+                      {/* Compact, fixed-width image container prevents blowing up on mobile */}
+                      <div className="w-16 h-16 min-w-[64px] max-w-[64px] rounded-lg overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-100">
                         <img 
                           src={imgSrc} 
                           alt={item.product.name} 
@@ -193,7 +239,7 @@ export const CartDrawer = () => {
                             </Link>
                             <button 
                               aria-label="Remove item"
-                              className="text-gray-400 hover:text-red-500 transition-colors p-0.5"
+                              className="text-gray-400 hover:text-red-500 transition-colors p-0.5 ml-1"
                               onClick={() => removeItem(item.product.id, item.variant?.id)}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -239,8 +285,11 @@ export const CartDrawer = () => {
                 })}
               </div>
 
+              {/* Recommendations moved right below cart items for high visibility */}
+              <DrawerRecommendations />
+
               {/* Personalized Gift Note Option */}
-              <div className="mt-2 py-2 border-t border-gray-100">
+              <div className="mt-3 py-2 border-t border-gray-100">
                 <button
                   onClick={() => setShowGiftNote(!showGiftNote)}
                   className="text-xs font-medium text-emerald-800 hover:text-emerald-950 flex items-center gap-1.5 transition-colors"
@@ -295,9 +344,6 @@ export const CartDrawer = () => {
                   </div>
                 )}
               </div>
-
-              {/* Recommendations */}
-              <DrawerRecommendations />
             </ScrollArea>
 
             {/* Bottom Footer Section */}

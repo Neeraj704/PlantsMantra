@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { Package, ShoppingCart, Users, DollarSign } from 'lucide-react';
+import { Package, ShoppingCart, Users, DollarSign, Sparkles, CheckCircle2, Flame, Gift, ArrowUpRight } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -356,6 +356,111 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Feature Release & Admin Updates Section */}
+      <Card className="border-emerald-100 bg-gradient-to-br from-emerald-50/40 via-white to-teal-50/30">
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2 text-emerald-950 font-serif">
+              <Sparkles className="w-5 h-5 text-emerald-700" />
+              What's New & Recently Implemented
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Comprehensive list of new features, storefront optimizations, and admin controls
+            </p>
+          </div>
+          <span className="text-[11px] font-semibold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full">
+            Version 2.4 Live
+          </span>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+            {/* Group 1 */}
+            <div className="p-3.5 bg-white rounded-lg border border-gray-100 shadow-xs space-y-2">
+              <div className="flex items-center gap-1.5 font-semibold text-gray-900">
+                <Flame className="w-4 h-4 text-amber-600" />
+                <span>Sales & Urgency Manager</span>
+              </div>
+              <ul className="space-y-1.5 text-muted-foreground">
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span>Site-wide sales campaigns with auto-expiry countdown timers.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span>Independent Hype Stock marketing counts (separate from real inventory).</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span>Promo tags (B1G1 / Offers) with 1-click catalog updates.</span>
+                </li>
+              </ul>
+              <button 
+                onClick={() => navigate('/admin/sales')}
+                className="text-emerald-700 font-semibold hover:underline flex items-center gap-0.5 pt-1 text-[11px]"
+              >
+                Open Sales Manager <ArrowUpRight className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Group 2 */}
+            <div className="p-3.5 bg-white rounded-lg border border-gray-100 shadow-xs space-y-2">
+              <div className="flex items-center gap-1.5 font-semibold text-gray-900">
+                <ShoppingCart className="w-4 h-4 text-emerald-600" />
+                <span>Gamified Cart Drawer & Confetti</span>
+              </div>
+              <ul className="space-y-1.5 text-muted-foreground">
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span>Milestone progress bar (Free Ship at ₹599, Gift at ₹899, 10% Off at ₹1299).</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span>Celebratory Confetti particle bursts upon crossing each milestone.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span>In-drawer coupon input + personalized gift note + savings badge.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span>Mobile cross (X) button & native browser back-button drawer close.</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Group 3 */}
+            <div className="p-3.5 bg-white rounded-lg border border-gray-100 shadow-xs space-y-2">
+              <div className="flex items-center gap-1.5 font-semibold text-gray-900">
+                <Sparkles className="w-4 h-4 text-teal-600" />
+                <span>Storefront UI & Catalog Grid</span>
+              </div>
+              <ul className="space-y-1.5 text-muted-foreground">
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span>Dedicated public Sale Campaign page at <code>/sale</code> with live countdown.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span>Compact 5-column product grid on desktop & 2-column on mobile.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span>Real category circles (Succulents, Cactus, Snake Plants, Combos, Pots).</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span>Uniform height banner carousel preventing layout shifts.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span>Corporate bulk orders inquiry page at <code>/bulk-orders</code>.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

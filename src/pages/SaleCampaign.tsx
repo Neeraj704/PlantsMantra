@@ -253,11 +253,24 @@ export const SaleCampaign = () => {
                             -{discountPercent}%
                           </span>
                         )}
-                        {product.is_b1g1 && (
-                          <span className="bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                            B1G1 FREE
-                          </span>
-                        )}
+                        {(() => {
+                          const promoTag = product.tags?.find(t => t.startsWith('promo:'))?.replace('promo:', '');
+                          if (promoTag) {
+                            return (
+                              <span className="bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                                {promoTag}
+                              </span>
+                            );
+                          }
+                          if (product.is_b1g1) {
+                            return (
+                              <span className="bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                                B1G1 FREE
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
 
                       {product.scarcity_status === 'limited_stock' && product.scarcity_value && product.scarcity_value > 0 ? (

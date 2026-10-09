@@ -90,14 +90,34 @@ const Banners = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Banners</h1>
-        <Button onClick={handleAdd}>
+        <div>
+          <h1 className="text-3xl font-bold font-serif text-gray-900">Banners</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Manage storefront promotional sliders and hero banners
+          </p>
+        </div>
+        <Button onClick={handleAdd} className="gradient-hero">
           <Plus className="w-4 h-4 mr-2" />
           Add Banner
         </Button>
       </div>
 
-      <div className="border rounded-lg">
+      {/* Standard Size Requirement Callout */}
+      <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 text-emerald-950 flex items-start gap-3">
+        <div className="p-2 rounded-lg bg-emerald-100 text-emerald-800 flex-shrink-0">
+          <Badge className="bg-emerald-700 hover:bg-emerald-700 text-white text-[10px]">Standard Size</Badge>
+        </div>
+        <div className="space-y-1 text-xs">
+          <p className="font-bold text-sm text-emerald-900">
+            Recommended Banner Dimensions: 1920 × 600 px (or 1440 × 450 px)
+          </p>
+          <p className="text-emerald-800 leading-relaxed">
+            To ensure the carousel looks crisp and never jumps in height or cuts off content, please make sure <strong>all banners share the same 16:5 widescreen aspect ratio</strong>.
+          </p>
+        </div>
+      </div>
+
+      <div className="border rounded-lg bg-white overflow-hidden shadow-xs">
         <Table>
           <TableHeader>
             <TableRow>

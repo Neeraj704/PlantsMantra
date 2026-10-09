@@ -124,31 +124,47 @@ const BannerModal = ({ open, onClose, banner }: BannerModalProps) => {
             />
           </div>
 
-          <div>
-            <Label htmlFor="image">Banner Image (300x179 recommended)</Label>
+          <div className="space-y-2">
+            <div className="flex justify-between items-baseline">
+              <Label htmlFor="image">Banner Image</Label>
+              <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                Size: 1920 × 600 px (16:5 ratio)
+              </span>
+            </div>
             <Input
               id="image"
               type="file"
               accept="image/*"
               onChange={(e) => {
                 const file = e.target.files?.[0] || null;
-                if (file && file.size > 1024 * 1024) {
-                  toast({
-                    title: 'Large File Warning',
-                    description: 'Warning: This banner is larger than 1MB. It will be compressed automatically to keep bandwidth low.',
-                    variant: 'destructive',
-                  });
+                if (file) {
+                  const img = new Image();
+                  img.src = URL.createObjectURL(file);
+                  img.onload = () => {
+                    const ratio = img.width / img.height;
+                    if (ratio < 2.0) {
+                      toast({
+                        title: 'Aspect Ratio Notice',
+                        description: `Uploaded image is ${img.width}×${img.height}px. For best full-width banner display without cropping, please upload widescreen 1920×600px.`,
+                      });
+                    }
+                  };
                 }
                 setImageFile(file);
               }}
               required={!banner}
             />
+            <p className="text-[10px] text-muted-foreground">
+              Tip: Keep all banners at 1920×600 px so the slider never changes height between slides.
+            </p>
             {banner?.image_url && (
-              <img
-                src={banner.image_url}
-                alt="Current banner"
-                className="mt-2 max-h-[100px] object-contain"
-              />
+              <div className="mt-2 rounded-lg overflow-hidden border border-gray-100 bg-gray-50 p-1">
+                <img
+                  src={banner.image_url}
+                  alt="Current banner"
+                  className="max-h-[120px] w-auto mx-auto object-contain rounded"
+                />
+              </div>
             )}
           </div>
 

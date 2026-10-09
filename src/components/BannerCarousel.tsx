@@ -45,56 +45,50 @@ const BannerCarousel = () => {
     };
   }, [emblaApi, onSelect]);
 
-  // Auto-scroll every 3 seconds
+  // Auto-scroll every 3.5 seconds
   useEffect(() => {
     if (!emblaApi) return;
     const interval = setInterval(() => {
       emblaApi.scrollNext();
-    }, 3000);
+    }, 3500);
     return () => clearInterval(interval);
   }, [emblaApi]);
 
   if (!banners || banners.length === 0) return null;
 
   return (
-    <section className="py-8 mt-16 mb-16 bg-muted/30">
+    <section className="py-6 mt-8 mb-12 bg-muted/20">
       <div className="container mx-auto px-4">
-        <div className="relative rounded-lg overflow-hidden">
+        <div className="relative rounded-2xl overflow-hidden shadow-xs">
           <div className="overflow-hidden" ref={emblaRef}>
             <div className="flex">
               {banners.map((banner) => (
                 <div key={banner.id} className="flex-[0_0_100%] min-w-0">
-                  <div className="w-full">
+                  <div className="w-full flex items-center justify-center">
                     {banner.link_url ? (
                       banner.link_url.startsWith('http') ? (
                         <a href={banner.link_url} className="block w-full">
-                          <div className="w-full h-[180px] sm:h-[260px] md:h-[340px] lg:h-[400px] overflow-hidden rounded-xl bg-gray-100 flex items-center justify-center">
-                            <img
-                              src={getProxiedUrl(banner.image_url)}
-                              alt={banner.title}
-                              className="w-full h-full object-cover hover:opacity-95 transition-all duration-500"
-                            />
-                          </div>
+                          <img
+                            src={getProxiedUrl(banner.image_url)}
+                            alt={banner.title}
+                            className="w-full h-auto max-h-[580px] object-contain rounded-xl hover:opacity-95 transition-opacity duration-300"
+                          />
                         </a>
                       ) : (
                         <Link to={banner.link_url} className="block w-full">
-                          <div className="w-full h-[180px] sm:h-[260px] md:h-[340px] lg:h-[400px] overflow-hidden rounded-xl bg-gray-100 flex items-center justify-center">
-                            <img
-                              src={getProxiedUrl(banner.image_url)}
-                              alt={banner.title}
-                              className="w-full h-full object-cover hover:opacity-95 transition-all duration-500"
-                            />
-                          </div>
+                          <img
+                            src={getProxiedUrl(banner.image_url)}
+                            alt={banner.title}
+                            className="w-full h-auto max-h-[580px] object-contain rounded-xl hover:opacity-95 transition-opacity duration-300"
+                          />
                         </Link>
                       )
                     ) : (
-                      <div className="w-full h-[180px] sm:h-[260px] md:h-[340px] lg:h-[400px] overflow-hidden rounded-xl bg-gray-100 flex items-center justify-center">
-                        <img
-                          src={getProxiedUrl(banner.image_url)}
-                          alt={banner.title}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
+                      <img
+                        src={getProxiedUrl(banner.image_url)}
+                        alt={banner.title}
+                        className="w-full h-auto max-h-[580px] object-contain rounded-xl"
+                      />
                     )}
                   </div>
                 </div>
@@ -107,7 +101,7 @@ const BannerCarousel = () => {
               <Button
                 variant="outline"
                 size="icon"
-                className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-background/80 backdrop-blur-sm"
+                className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 shadow-md hover:bg-white text-gray-800"
                 onClick={scrollPrev}
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -115,7 +109,7 @@ const BannerCarousel = () => {
               <Button
                 variant="outline"
                 size="icon"
-                className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-background/80 backdrop-blur-sm"
+                className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 shadow-md hover:bg-white text-gray-800"
                 onClick={scrollNext}
               >
                 <ChevronRight className="h-4 w-4" />
@@ -125,10 +119,10 @@ const BannerCarousel = () => {
                 {banners.map((_, index) => (
                   <button
                     key={index}
-                    className={`w-2 h-2 rounded-full transition-all ${
+                    className={`h-2 rounded-full transition-all duration-300 ${
                       index === selectedIndex
-                        ? 'bg-primary w-8'
-                        : 'bg-primary/30'
+                        ? 'bg-emerald-700 w-8'
+                        : 'bg-emerald-300/50 w-2'
                     }`}
                     onClick={() => emblaApi?.scrollTo(index)}
                   />

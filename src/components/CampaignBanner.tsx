@@ -1,6 +1,5 @@
-// src/components/CampaignBanner.tsx
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { CampaignSettings } from '@/types/database';
 import { Sparkles, ArrowRight } from 'lucide-react';
@@ -10,6 +9,8 @@ const LOCAL_STORAGE_KEY = 'plantsmantra_campaign_settings';
 
 export const CampaignBanner = () => {
   const [campaign, setCampaign] = useState<CampaignSettings | null>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const fetchCampaign = async () => {
@@ -53,9 +54,27 @@ export const CampaignBanner = () => {
     }
   }
 
+  const handleBannerClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (location.pathname === '/sale') {
+      const el = document.getElementById('sale-plants');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      navigate('/sale#sale-plants');
+      setTimeout(() => {
+        const el = document.getElementById('sale-plants');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 350);
+    }
+  };
+
   return (
-    <Link 
-      to="/sale" 
+    <div 
+      onClick={handleBannerClick} 
       className="block w-full bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white text-center py-2 px-3 text-xs font-medium tracking-wide shadow-sm hover:opacity-95 transition-opacity cursor-pointer group"
     >
       <div className="container mx-auto flex items-center justify-center gap-2">
@@ -70,6 +89,6 @@ export const CampaignBanner = () => {
           Shop Sale <ArrowRight className="w-3 h-3" />
         </span>
       </div>
-    </Link>
+    </div>
   );
 };

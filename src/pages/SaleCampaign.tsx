@@ -6,7 +6,7 @@ import { Product } from '@/types/database';
 import { useCart } from '@/hooks/useCart';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ShoppingCart, Sparkles, Clock, ArrowRight, ShieldCheck, Flame } from 'lucide-react';
+import { ShoppingCart, Sparkles, Clock, ArrowRight, ShieldCheck, Flame, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { getProductPricing } from '@/utils/pricing';
 
@@ -32,6 +32,15 @@ export const SaleCampaign = () => {
   useEffect(() => {
     fetchCampaignAndProducts();
   }, [slug]);
+
+  // Smooth scroll to plants if navigated with #sale-plants
+  useEffect(() => {
+    if (window.location.hash === '#sale-plants' && !loading) {
+      setTimeout(() => {
+        document.getElementById('sale-plants')?.scrollIntoView({ behavior: 'smooth' });
+      }, 250);
+    }
+  }, [loading]);
 
   // Live ticking countdown
   useEffect(() => {
@@ -112,17 +121,22 @@ export const SaleCampaign = () => {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        // Find products designated for sale, promo tags, or discounts
-        const saleItems = data.filter((p: any) => {
+        // 1. First check for products specifically chosen by the client with promo tags, urgency, or B1G1
+        const campaignSelectedItems = data.filter((p: any) => {
           const hasPromoTag = p.tags && Array.isArray(p.tags) && p.tags.some((t: string) => t.startsWith('promo:'));
-          const hasDiscount = p.sale_price !== null && p.sale_price !== undefined && p.sale_price < p.base_price;
           const isB1G1 = Boolean(p.is_b1g1);
           const isUrgent = p.scarcity_status === 'limited_stock' || (p.tags && Array.isArray(p.tags) && p.tags.includes('urgent:limited_stock'));
-          return hasPromoTag || hasDiscount || isB1G1 || isUrgent;
+          return hasPromoTag || isB1G1 || isUrgent;
         });
 
-        // If specific sale items exist, show them; otherwise show all active products as safe fallback
-        setProducts(saleItems.length > 0 ? saleItems : data);
+        if (campaignSelectedItems.length > 0) {
+          // If the admin chose specific plants for this sale, display ONLY those selected plants!
+          setProducts(campaignSelectedItems);
+        } else {
+          // Fallback if no specific plants have been configured with promo tags yet
+          const generalSale = data.filter((p: any) => p.sale_price !== null && p.sale_price !== undefined && p.sale_price < p.base_price);
+          setProducts(generalSale.length > 0 ? generalSale : data);
+        }
       } else {
         setProducts([]);
       }
@@ -259,11 +273,26 @@ export const SaleCampaign = () => {
             <span>•</span>
             <span>Extra 10% Off Prepaid</span>
           </div>
+
+          {/* Call to action button */}
+          <div className="mt-6 flex justify-center">
+            <button
+              type="button"
+              onClick={() => {
+                const el = document.getElementById('sale-plants');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs uppercase tracking-wider shadow-lg hover:scale-105 transition-all cursor-pointer"
+            >
+              <span>Explore Sale Deals</span>
+              <ArrowDown className="w-4 h-4 animate-bounce" />
+            </button>
+          </div>
         </div>
       </section>
 
-      {/* Filter Tabs */}
-      <div className="container mx-auto px-4 py-6">
+      {/* Filter Tabs & Products Grid */}
+      <div id="sale-plants" className="container mx-auto px-4 py-8 scroll-mt-20">
         <div className="flex items-center justify-center gap-2 overflow-x-auto pb-2 no-scrollbar">
           <button
             onClick={() => setFilterType('all')}

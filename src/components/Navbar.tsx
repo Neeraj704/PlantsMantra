@@ -112,6 +112,13 @@ const Navbar = () => {
                     <Link
                       key={idx}
                       to={item.path}
+                      onClick={(e) => {
+                        if (item.path === '/sale' && location.pathname === '/sale') {
+                          e.preventDefault();
+                          const el = document.getElementById('sale-plants');
+                          if (el) el.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      }}
                       className={colorTransition + ' text-sm font-medium'}
                     >
                       {item.label}
@@ -277,7 +284,14 @@ const Navbar = () => {
                     key={idx}
                     to={item.path}
                     className="block py-2 text-sm font-medium text-foreground hover:text-primary transition-colors"
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    onClick={(e) => {
+                      setIsMobileMenuOpen(false);
+                      if (item.path === '/sale' && location.pathname === '/sale') {
+                        e.preventDefault();
+                        const el = document.getElementById('sale-plants');
+                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
                   >
                     {item.label}
                   </Link>

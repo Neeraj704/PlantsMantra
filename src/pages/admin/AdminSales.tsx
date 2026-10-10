@@ -100,7 +100,8 @@ const AdminSales = () => {
     scarcity_status: 'none' | 'limited_stock' | 'sold_out';
     scarcity_value: number;
     promo_tag: string; // 'none' | 'B1G1' | 'B2G1' | custom offer
-    is_on_sale: boolean;
+    sale_price_input: string; // client-chosen sale price
+    is_on_sale?: boolean;
     is_custom_promo?: boolean;
   }>>({});
 
@@ -165,6 +166,7 @@ const AdminSales = () => {
           scarcity_status: (p.scarcity_status as any) || 'none',
           scarcity_value: p.scarcity_value || 0,
           promo_tag: currentPromo,
+          sale_price_input: p.sale_price ? String(p.sale_price) : '',
           is_on_sale: p.sale_price !== null && p.sale_price < p.base_price,
           is_custom_promo: !isPredefined && currentPromo !== 'none',
         };
@@ -277,18 +279,21 @@ const AdminSales = () => {
         currentTags.push(`promo:${cleanPromo}`);
       }
 
+      // Parse client-chosen sale price
+      let chosenSalePrice: number | null = null;
+      if (changes.sale_price_input && changes.sale_price_input.trim() !== '') {
+        const val = parseFloat(changes.sale_price_input.trim());
+        if (!isNaN(val) && val > 0) {
+          chosenSalePrice = val;
+        }
+      }
+
       const updates: any = {
         scarcity_status: changes.scarcity_status,
         scarcity_value: changes.scarcity_value,
         tags: currentTags,
+        sale_price: chosenSalePrice,
       };
-
-      // If toggled On Sale and product has no sale_price, default to 15% off base_price
-      if (changes.is_on_sale && product && !product.sale_price) {
-        updates.sale_price = Math.round(product.base_price * 0.85);
-      } else if (!changes.is_on_sale && product && product.sale_price) {
-        updates.sale_price = null;
-      }
 
       const { error } = await supabase
         .from('products')
@@ -639,9 +644,9 @@ const AdminSales = () => {
                     </div>
 
                     {/* Controls Row */}
-                    <div className="flex flex-wrap sm:grid sm:grid-cols-12 gap-3 sm:gap-2 items-end pt-2 border-t border-gray-100 text-xs">
-                      {/* 1. Promo Tag Dropdown (5 cols) */}
-                      <div className="w-[45%] sm:w-auto sm:col-span-5 space-y-0.5">
+                    <div className="flex flex-wrap sm:grid sm:grid-cols-12 gap-2.5 sm:gap-2 items-end pt-2 border-t border-gray-100 text-xs">
+                      {/* 1. Promo Tag Dropdown (4 cols) */}
+                      <div className="w-full sm:w-auto sm:col-span-4 space-y-0.5">
                         <label className="text-[10px] font-semibold text-gray-600 block">Promo Offer</label>
                         <select
                           value={
@@ -689,13 +694,31 @@ const AdminSales = () => {
                         )}
                       </div>
 
-                      {/* 2. Urgency Badge (3 cols) */}
-                      <div className="w-[45%] sm:w-auto sm:col-span-3 space-y-0.5">
+                      {/* 2. Client-Chosen Sale Price (2 cols) */}
+                      <div className="w-[47%] sm:w-auto sm:col-span-2 space-y-0.5">
+                        <label className="text-[10px] font-semibold text-gray-600 block">Sale Price ₹</label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="1"
+                          placeholder="Regular"
+                          value={changes.sale_price_input || ''}
+                          onChange={(e) => handleProductChange(product.id, 'sale_price_input', e.target.value)}
+                          className={`h-7 text-xs text-center font-bold px-1 ${
+                            changes.sale_price_input 
+                              ? 'bg-emerald-50 border-emerald-400 text-emerald-800' 
+                              : 'bg-white border-gray-200 text-gray-700'
+                          }`}
+                        />
+                      </div>
+
+                      {/* 3. Urgency Badge (2 cols) */}
+                      <div className="w-[47%] sm:w-auto sm:col-span-2 space-y-0.5">
                         <label className="text-[10px] font-semibold text-gray-600 block">Urgency</label>
                         <select
                           value={changes.scarcity_status}
                           onChange={(e) => handleProductChange(product.id, 'scarcity_status', e.target.value)}
-                          className="w-full text-[11px] bg-white border border-gray-200 rounded px-1.5 py-1 text-gray-700"
+                          className="w-full text-[11px] bg-white border border-gray-200 rounded px-1.5 py-1 text-gray-700 h-7"
                         >
                           <option value="none">Normal</option>
                           <option value="limited_stock">🔥 Limited</option>
@@ -703,8 +726,8 @@ const AdminSales = () => {
                         </select>
                       </div>
 
-                      {/* 3. Hype Stock Count (2 cols) */}
-                      <div className="w-[45%] sm:w-auto sm:col-span-2 space-y-0.5">
+                      {/* 4. Hype Stock Count (2 cols) */}
+                      <div className="w-[47%] sm:w-auto sm:col-span-2 space-y-0.5">
                         <label className="text-[10px] font-semibold text-gray-600 block text-center">Hype Stock</label>
                         <Input
                           type="number"
@@ -716,8 +739,8 @@ const AdminSales = () => {
                         />
                       </div>
 
-                      {/* 4. Explicit "Save" Button (2 cols) */}
-                      <div className="w-[45%] sm:w-auto sm:col-span-2 flex justify-end items-end h-full">
+                      {/* 5. Explicit "Save" Button (2 cols) */}
+                      <div className="w-[47%] sm:w-auto sm:col-span-2 flex justify-end items-end h-full">
                         <Button
                           size="sm"
                           onClick={() => handleSaveProductRow(product.id)}

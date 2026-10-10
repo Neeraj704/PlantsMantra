@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, Sparkles, Clock, ArrowRight, ShieldCheck, Flame } from 'lucide-react';
 import { toast } from 'sonner';
+import { getProductPricing } from '@/utils/pricing';
 
 export const SaleCampaign = () => {
   const { slug } = useParams();
@@ -220,11 +221,7 @@ export const SaleCampaign = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 mt-6">
             {filteredProducts.map((product, index) => {
               const imgSrc = getProxiedUrl(product.main_image_url) || '/placeholder.svg';
-              const displayPrice = product.sale_price || product.base_price;
-              const hasDiscount = product.sale_price !== null && product.sale_price < product.base_price;
-              const discountPercent = hasDiscount
-                ? Math.round(((product.base_price - product.sale_price!) / product.base_price) * 100)
-                : 0;
+              const pricing = getProductPricing(product);
 
               return (
                 <motion.div
@@ -248,9 +245,9 @@ export const SaleCampaign = () => {
 
                       {/* Badges */}
                       <div className="absolute top-2 left-2 flex flex-col gap-1">
-                        {hasDiscount && (
+                        {pricing.hasDiscount && (
                           <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                            -{discountPercent}%
+                            -{pricing.discountPercent}%
                           </span>
                         )}
                         {(() => {
@@ -295,11 +292,11 @@ export const SaleCampaign = () => {
                       <div className="mt-2.5">
                         <div className="flex items-baseline gap-1.5 mb-2.5">
                           <span className="text-sm sm:text-base font-bold text-gray-900">
-                            ₹{displayPrice.toFixed(2)}
+                            ₹{pricing.displayPrice.toFixed(2)}
                           </span>
-                          {hasDiscount && (
+                          {pricing.hasDiscount && (
                             <span className="text-[11px] text-muted-foreground line-through">
-                              ₹{product.base_price.toFixed(2)}
+                              ₹{pricing.cutPrice.toFixed(2)}
                             </span>
                           )}
                         </div>

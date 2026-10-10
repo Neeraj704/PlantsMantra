@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Filter, X, Heart, ShoppingCart, Zap, Star, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-
+import { getProductPricing } from '@/utils/pricing';
 
 import monsteraImg from '@/assets/monstera.jpg';
 import snakePlantImg from '@/assets/snake-plant.jpg';
@@ -457,8 +457,7 @@ const Shop = () => {
               ) : productList.map((product: Product, index: number) => {
 
                 const imgSrc = getProxiedUrl(product.main_image_url) || productImages[product.slug] || monsteraImg;
-                const displayPrice = product.sale_price || product.base_price;
-                const hasDiscount = product.sale_price !== null;
+                const pricing = getProductPricing(product);
 
                 return (
                   <motion.div
@@ -467,7 +466,7 @@ const Shop = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
                   >
-                    <Card className="overflow-hidden group hover:shadow-hover transition-smooth relative flex flex-col">
+                    <Card className="overflow-hidden group hover:shadow-hover transition-smooth relative flex flex-col h-full">
                       <Button
                         variant={isInWishlist(product.id) ? 'default' : 'outline'}
                         size="icon"
@@ -539,9 +538,9 @@ const Shop = () => {
                         </div>
                         <CardContent className="p-2.5 sm:p-4 flex flex-col flex-grow">
                           <div className="flex-grow">
-                            {hasDiscount && (
+                            {pricing.hasDiscount && (
                               <Badge variant="destructive" className="mb-1 sm:mb-2 text-[10px] sm:text-xs">
-                                Sale
+                                Sale {pricing.discountPercent > 0 ? `-${pricing.discountPercent}%` : ''}
                               </Badge>
                             )}
                             <h3 className="font-serif font-semibold text-sm sm:text-lg mb-0.5 sm:mb-1 line-clamp-2">
@@ -555,11 +554,11 @@ const Shop = () => {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-1 sm:gap-2">
                                 <span className="text-sm sm:text-lg font-bold">
-                                  ₹{displayPrice.toFixed(2)}
+                                  ₹{pricing.displayPrice.toFixed(2)}
                                 </span>
-                                {hasDiscount && (
+                                {pricing.hasDiscount && (
                                   <span className="text-[10px] sm:text-sm text-muted-foreground line-through">
-                                    ₹{product.base_price.toFixed(2)}
+                                    ₹{pricing.cutPrice.toFixed(2)}
                                   </span>
                                 )}
                               </div>
@@ -574,7 +573,7 @@ const Shop = () => {
                             </div>
 
                           </div>
-                          <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mt-2 sm:mt-4">
+                          <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mt-auto pt-2 sm:pt-4">
                             <Button
                               variant="outline"
                               size="sm"

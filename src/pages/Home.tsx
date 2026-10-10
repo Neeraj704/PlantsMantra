@@ -15,6 +15,7 @@ import { CategoryIconRow } from '@/components/CategoryIconRow';
 import { MarqueeRibbon } from '@/components/MarqueeRibbon';
 import { useCart } from '@/hooks/useCart';
 import { toast } from 'sonner';
+import { getProductPricing } from '@/utils/pricing';
 
 const Home = () => {
   const { addItem } = useCart();
@@ -152,11 +153,7 @@ const Home = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
             {featuredProducts?.map((product, index) => {
               const imgSrc = getProxiedUrl(product.main_image_url) || productImages[product.slug] || monsteraImg;
-              const displayPrice = product.sale_price || product.base_price;
-              const hasDiscount = product.sale_price !== null && product.sale_price < product.base_price;
-              const discountPercent = hasDiscount 
-                ? Math.round(((product.base_price - product.sale_price!) / product.base_price) * 100) 
-                : 0;
+              const pricing = getProductPricing(product);
 
               return (
                 <motion.div
@@ -178,9 +175,9 @@ const Home = () => {
 
                       {/* Badges */}
                       <div className="absolute top-2 left-2 flex flex-col gap-1">
-                        {hasDiscount && (
+                        {pricing.hasDiscount && (
                           <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                            -{discountPercent}%
+                            -{pricing.discountPercent}%
                           </span>
                         )}
                         {product.is_b1g1 && (
@@ -212,11 +209,11 @@ const Home = () => {
                       <div className="mt-2.5">
                         <div className="flex items-baseline gap-1.5 mb-2.5">
                           <span className="text-sm sm:text-base font-bold text-gray-900">
-                            ₹{displayPrice.toFixed(2)}
+                            ₹{pricing.displayPrice.toFixed(2)}
                           </span>
-                          {hasDiscount && (
+                          {pricing.hasDiscount && (
                             <span className="text-[11px] text-muted-foreground line-through">
-                              ₹{product.base_price.toFixed(2)}
+                              ₹{pricing.cutPrice.toFixed(2)}
                             </span>
                           )}
                         </div>
@@ -262,11 +259,7 @@ const Home = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
               {combos.map((product, index) => {
                 const imgSrc = getProxiedUrl(product.main_image_url) || productImages[product.slug] || monsteraImg;
-                const displayPrice = product.sale_price || product.base_price;
-                const hasDiscount = product.sale_price !== null && product.sale_price < product.base_price;
-                const discountPercent = hasDiscount 
-                  ? Math.round(((product.base_price - product.sale_price!) / product.base_price) * 100) 
-                  : 0;
+                const pricing = getProductPricing(product);
 
                 return (
                   <motion.div
@@ -289,9 +282,9 @@ const Home = () => {
                           <span className="bg-emerald-800 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
                             COMBO
                           </span>
-                          {hasDiscount && (
+                          {pricing.hasDiscount && (
                             <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                              -{discountPercent}%
+                              -{pricing.discountPercent}%
                             </span>
                           )}
                         </div>
@@ -307,11 +300,11 @@ const Home = () => {
                         <div className="mt-2.5">
                           <div className="flex items-baseline gap-1.5 mb-2.5">
                             <span className="text-sm sm:text-base font-bold text-gray-900">
-                              ₹{displayPrice.toFixed(2)}
+                              ₹{pricing.displayPrice.toFixed(2)}
                             </span>
-                            {hasDiscount && (
+                            {pricing.hasDiscount && (
                               <span className="text-[11px] text-muted-foreground line-through">
-                                ₹{product.base_price.toFixed(2)}
+                                ₹{pricing.cutPrice.toFixed(2)}
                               </span>
                             )}
                           </div>

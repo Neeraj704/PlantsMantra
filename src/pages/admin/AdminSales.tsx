@@ -50,7 +50,11 @@ CREATE POLICY "Allow admin write access to campaign_settings"
 
 INSERT INTO public.campaign_settings (id, campaign_name, banner_text, is_active, end_type)
 VALUES ('00000000-0000-0000-0000-000000000001', 'Festive Flash Sale', 'Buy 1 Get 1 Free on select indoor plants! Limited time only.', false, 'manual')
-ON CONFLICT (id) DO NOTHING;`;
+ON CONFLICT (id) DO NOTHING;
+
+-- Also add required columns to products table if missing
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS scarcity_status TEXT DEFAULT 'none';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS scarcity_value INTEGER DEFAULT 0;`;
 
 const PROMO_OPTIONS = [
   { value: 'none', label: 'None (No Promo)' },
@@ -271,7 +275,6 @@ const AdminSales = () => {
       const updates: any = {
         scarcity_status: changes.scarcity_status,
         scarcity_value: changes.scarcity_value,
-        is_b1g1: isPromoActive, // maintains backward compatibility with sale page queries
         tags: currentTags,
       };
 
@@ -631,9 +634,9 @@ const AdminSales = () => {
                     </div>
 
                     {/* Controls Row */}
-                    <div className="grid grid-cols-12 gap-2 items-center pt-2 border-t border-gray-100 text-xs">
+                    <div className="flex flex-wrap sm:grid sm:grid-cols-12 gap-3 sm:gap-2 items-end pt-2 border-t border-gray-100 text-xs">
                       {/* 1. Promo Tag Dropdown (4 cols) */}
-                      <div className="col-span-5 space-y-0.5">
+                      <div className="w-[45%] sm:w-auto sm:col-span-5 space-y-0.5">
                         <label className="text-[10px] font-semibold text-gray-600 block">Promo Offer</label>
                         <select
                           value={changes.promo_tag}
@@ -651,7 +654,7 @@ const AdminSales = () => {
                       </div>
 
                       {/* 2. Urgency Badge (3 cols) */}
-                      <div className="col-span-3 space-y-0.5">
+                      <div className="w-[45%] sm:w-auto sm:col-span-3 space-y-0.5">
                         <label className="text-[10px] font-semibold text-gray-600 block">Urgency</label>
                         <select
                           value={changes.scarcity_status}
@@ -665,7 +668,7 @@ const AdminSales = () => {
                       </div>
 
                       {/* 3. Hype Stock Count (2 cols) */}
-                      <div className="col-span-2 space-y-0.5">
+                      <div className="w-[45%] sm:w-auto sm:col-span-2 space-y-0.5">
                         <label className="text-[10px] font-semibold text-gray-600 block text-center">Hype Stock</label>
                         <Input
                           type="number"
@@ -678,14 +681,14 @@ const AdminSales = () => {
                       </div>
 
                       {/* 4. Explicit "Save" Button (2 cols) */}
-                      <div className="col-span-2 flex justify-end items-end h-full pt-3">
+                      <div className="w-[45%] sm:w-auto sm:col-span-2 flex justify-end items-end h-full">
                         <Button
                           size="sm"
                           onClick={() => handleSaveProductRow(product.id)}
                           disabled={isSaving}
-                          className="h-7 px-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-semibold rounded shadow-xs"
+                          className="h-7 w-full sm:w-auto px-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-semibold rounded shadow-xs"
                         >
-                          {isSaving ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'Save'}
+                          {isSaving ? <RefreshCw className="w-3 h-3 animate-spin mx-auto" /> : 'Save'}
                         </Button>
                       </div>
                     </div>

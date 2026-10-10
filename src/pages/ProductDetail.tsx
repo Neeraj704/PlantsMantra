@@ -23,6 +23,7 @@ import snakePlantImg from '@/assets/snake-plant.jpg';
 import pothosImg from '@/assets/pothos.jpg';
 import fiddleLeafImg from '@/assets/fiddle-leaf.jpg';
 import SEOTags from '@/components/SEOTags';
+import { getProductPricing } from '@/utils/pricing';
 import { toast, Toaster } from 'react-hot-toast';
 import { trackPixelEvent } from '@/utils/pixel';
 
@@ -153,14 +154,16 @@ const ProductDetail = () => {
   const imgSrc = getProxiedUrl(product.main_image_url) || productImages[product.slug] || monsteraImg;
   const isOutOfStock = product.stock_status === 'out_of_stock' || product.scarcity_status === 'sold_out';
 
+  const pricing = getProductPricing(product);
+
   const getCurrentPrice = () => {
-    const basePrice = product.sale_price || product.base_price;
+    const basePrice = pricing.displayPrice;
     const variantAdjustment = selectedVariant?.price_adjustment || 0;
     return basePrice + variantAdjustment;
   };
 
   const displayPrice = getCurrentPrice();
-  const hasDiscount = product.sale_price !== null;
+  const hasDiscount = pricing.hasDiscount;
 
   const handleImageClick = (clickedImage: string, altIndex: number) => {
     if (product) {
@@ -349,7 +352,7 @@ const ProductDetail = () => {
 
             <div className="flex items-baseline gap-3 mb-4">
               <span className="text-3xl font-bold">₹{displayPrice.toFixed(2)}</span>
-              {hasDiscount && !selectedVariant && <span className="text-xl text-muted-foreground line-through">₹{product.base_price.toFixed(2)}</span>}
+              {hasDiscount && !selectedVariant && <span className="text-xl text-muted-foreground line-through">₹{pricing.cutPrice.toFixed(2)}</span>}
             </div>
 
             {variants.length > 0 && (

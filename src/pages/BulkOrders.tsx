@@ -97,33 +97,23 @@ const BulkOrders = () => {
                 <CardTitle className="text-xl">Direct Contact</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <a href="tel:+919876543210" className="flex items-center gap-3 p-3 rounded-lg border hover:border-primary transition-colors cursor-pointer group">
+                <a href="tel:+919528501181" className="flex items-center gap-3 p-3 rounded-lg border hover:border-primary transition-colors cursor-pointer group">
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                     <Phone className="w-5 h-5 text-primary" />
                   </div>
                   <div>
                     <p className="font-medium">Call Us Now</p>
-                    <p className="text-sm text-muted-foreground">+91 98765 43210</p>
+                    <p className="text-sm text-muted-foreground">+91 95285 01181</p>
                   </div>
                 </a>
                 
-                <a href="https://wa.me/919876543210" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-lg border hover:border-green-500 transition-colors cursor-pointer group">
+                <a href="https://wa.me/919528501181" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-lg border hover:border-green-500 transition-colors cursor-pointer group">
                   <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center group-hover:bg-green-500/20 transition-colors">
                     <MessageSquare className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
                     <p className="font-medium">WhatsApp</p>
                     <p className="text-sm text-muted-foreground">Chat with our sales team</p>
-                  </div>
-                </a>
-
-                <a href="mailto:sales@plantsmantra.com" className="flex items-center gap-3 p-3 rounded-lg border hover:border-primary transition-colors cursor-pointer group">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                    <Mail className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Email Us</p>
-                    <p className="text-sm text-muted-foreground">sales@plantsmantra.com</p>
                   </div>
                 </a>
               </CardContent>

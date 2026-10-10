@@ -18,6 +18,8 @@ export const SaleCampaign = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [campaignTitle, setCampaignTitle] = useState('Festive Flash Sale');
   const [bannerText, setBannerText] = useState('Exclusive limited-period discounts on handpicked live plants');
+  const [bannerImageUrl, setBannerImageUrl] = useState<string | null>(null);
+  const [bannerOverlayOpacity, setBannerOverlayOpacity] = useState<number>(0.65);
   
   // Countdown Timer: 2 days 14 hours default or dynamic
   const [timeLeft, setTimeLeft] = useState({
@@ -60,6 +62,10 @@ export const SaleCampaign = () => {
         if (campaignData) {
           setCampaignTitle(campaignData.campaign_name || 'Festive Flash Sale');
           if (campaignData.banner_text) setBannerText(campaignData.banner_text);
+          if (campaignData.banner_image_url) setBannerImageUrl(campaignData.banner_image_url);
+          if (campaignData.banner_overlay_opacity !== undefined && campaignData.banner_overlay_opacity !== null) {
+            setBannerOverlayOpacity(Number(campaignData.banner_overlay_opacity));
+          }
           if (campaignData.end_date) {
             const end = new Date(campaignData.end_date).getTime();
             const now = Date.now();
@@ -70,9 +76,29 @@ export const SaleCampaign = () => {
             const seconds = Math.floor((diff % (1000 * 60)) / 1000);
             setTimeLeft({ days, hours, minutes, seconds });
           }
+        } else {
+          // Check localStorage fallback
+          const stored = localStorage.getItem('plantsmantra_campaign_settings');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed.campaign_name) setCampaignTitle(parsed.campaign_name);
+            if (parsed.banner_text) setBannerText(parsed.banner_text);
+            if (parsed.banner_image_url) setBannerImageUrl(parsed.banner_image_url);
+            if (parsed.banner_overlay_opacity !== undefined) setBannerOverlayOpacity(Number(parsed.banner_overlay_opacity));
+          }
         }
       } catch (err) {
         // Safe fallback if table doesn't exist
+        const stored = localStorage.getItem('plantsmantra_campaign_settings');
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            if (parsed.campaign_name) setCampaignTitle(parsed.campaign_name);
+            if (parsed.banner_text) setBannerText(parsed.banner_text);
+            if (parsed.banner_image_url) setBannerImageUrl(parsed.banner_image_url);
+            if (parsed.banner_overlay_opacity !== undefined) setBannerOverlayOpacity(Number(parsed.banner_overlay_opacity));
+          } catch (e) {}
+        }
       }
 
       // 2. Fetch products safely without column crashes
@@ -170,8 +196,26 @@ export const SaleCampaign = () => {
   return (
     <div className="min-h-screen bg-white pt-20 pb-16">
       {/* Hero Banner with Countdown */}
-      <section className="bg-gradient-to-r from-emerald-950 via-[#1b3b22] to-teal-950 text-white py-10 px-4 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]" />
+      <section 
+        className="text-white py-12 sm:py-16 px-4 relative overflow-hidden bg-cover bg-center transition-all duration-300"
+        style={{
+          backgroundImage: bannerImageUrl ? `url(${bannerImageUrl})` : undefined,
+          backgroundColor: '#062314',
+        }}
+      >
+        {/* Fallback rich gradient when no photo is set */}
+        {!bannerImageUrl && (
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-950 via-[#13301a] to-teal-950" />
+        )}
+
+        {/* Dynamic Dark Tint Overlay for ultra-crisp typography */}
+        <div 
+          className="absolute inset-0 bg-black transition-opacity duration-300"
+          style={{ opacity: bannerImageUrl ? bannerOverlayOpacity : 0.2 }}
+        />
+
+        {/* Subtle decorative dot pattern */}
+        <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]" />
         
         <div className="container mx-auto max-w-4xl text-center relative z-10">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold uppercase tracking-widest mb-3 border border-amber-400/30">

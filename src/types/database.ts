@@ -174,6 +174,8 @@ export interface CampaignSettings {
   is_active: boolean;
   end_type: 'manual' | 'timer';
   end_date: string | null;
+  banner_image_url?: string | null;
+  banner_overlay_opacity?: number;
   created_at: string;
 }
 

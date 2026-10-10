@@ -20,12 +20,50 @@ import {
   Flame,
   Copy,
   ExternalLink,
-  Tag
+  Tag,
+  Upload,
+  Image as ImageIcon,
+  X,
+  Eye
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { compressImage } from '@/utils/image';
 
 const CAMPAIGN_ID = '00000000-0000-0000-0000-000000000001';
 const LOCAL_STORAGE_KEY = 'plantsmantra_campaign_settings';
+
+export const BANNER_PRESETS = [
+  {
+    id: 'none',
+    name: '💎 Minimalist Emerald',
+    description: 'Clean dark gradient (No photo)',
+    url: '',
+  },
+  {
+    id: 'diwali',
+    name: '🪔 Diwali Festive Glow',
+    description: 'Warm golden bokeh & fairy lights',
+    url: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=1920&q=80',
+  },
+  {
+    id: 'rainforest',
+    name: '🌿 Lush Tropical Jungle',
+    description: 'Deep emerald monstera & palm foliage',
+    url: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=1920&q=80',
+  },
+  {
+    id: 'succulent',
+    name: '🌵 Desert Succulent Garden',
+    description: 'Exotic cacti & succulent collection',
+    url: 'https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?auto=format&fit=crop&w=1920&q=80',
+  },
+  {
+    id: 'monsoon',
+    name: '🌧️ Monsoon Fresh Nursery',
+    description: 'Vibrant dewy botanical leaves',
+    url: 'https://images.unsplash.com/photo-1509423350716-97f9360b4e09?auto=format&fit=crop&w=1920&q=80',
+  },
+];
 
 export const SQL_MIGRATION_SNIPPET = `-- Run this in your Supabase SQL Editor:
 CREATE TABLE IF NOT EXISTS public.campaign_settings (
@@ -35,6 +73,8 @@ CREATE TABLE IF NOT EXISTS public.campaign_settings (
   is_active BOOLEAN DEFAULT false,
   end_type TEXT DEFAULT 'manual',
   end_date TIMESTAMP WITH TIME ZONE,
+  banner_image_url TEXT,
+  banner_overlay_opacity NUMERIC DEFAULT 0.65,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
@@ -52,7 +92,9 @@ INSERT INTO public.campaign_settings (id, campaign_name, banner_text, is_active,
 VALUES ('00000000-0000-0000-0000-000000000001', 'Festive Flash Sale', 'Buy 1 Get 1 Free on select indoor plants! Limited time only.', false, 'manual')
 ON CONFLICT (id) DO NOTHING;
 
--- Also add required columns to products table if missing
+-- Also add required columns to products table and campaign_settings if missing
+ALTER TABLE public.campaign_settings ADD COLUMN IF NOT EXISTS banner_image_url TEXT;
+ALTER TABLE public.campaign_settings ADD COLUMN IF NOT EXISTS banner_overlay_opacity NUMERIC DEFAULT 0.65;
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS scarcity_status TEXT DEFAULT 'none';
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS scarcity_value INTEGER DEFAULT 0;`;
 
@@ -87,13 +129,16 @@ const AdminSales = () => {
     is_active: false,
     end_type: 'manual',
     end_date: null,
+    banner_image_url: null,
+    banner_overlay_opacity: 0.65,
     created_at: '',
   });
 
-  // Helper days selector
+  // Helper days selector & banner uploading state
   const [daysDuration, setDaysDuration] = useState('5');
   const [isCustomName, setIsCustomName] = useState(false);
   const [customNameInput, setCustomNameInput] = useState('');
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   // Row-level product changes state
   const [productChanges, setProductChanges] = useState<Record<string, {
@@ -196,6 +241,54 @@ const AdminSales = () => {
     }
   };
 
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingBanner(true);
+      let uploadFile = file;
+      try {
+        const compressed = await compressImage(file, 1920, 1080, 0.85);
+        uploadFile = new File([compressed], file.name.replace(/\.[^/.]+$/, '') + '.jpg', {
+          type: 'image/jpeg',
+          lastModified: Date.now(),
+        });
+      } catch (cErr) {
+        console.warn('Compression error:', cErr);
+      }
+
+      const fileName = `sale-banner-${Date.now()}-${Math.random().toString(36).substring(2, 7)}.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from('banners')
+        .upload(fileName, uploadFile);
+
+      if (uploadError) {
+        console.warn('Storage upload error, using local data URL fallback:', uploadError);
+        const reader = new FileReader();
+        reader.onload = (re) => {
+          const dataUrl = re.target?.result as string;
+          setCampaign(prev => ({ ...prev, banner_image_url: dataUrl }));
+          toast.success('Banner image selected successfully!');
+        };
+        reader.readAsDataURL(uploadFile);
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('banners')
+        .getPublicUrl(fileName);
+
+      setCampaign(prev => ({ ...prev, banner_image_url: publicUrl }));
+      toast.success('Banner image uploaded successfully!');
+    } catch (err: any) {
+      console.error('Error uploading banner:', err);
+      toast.error('Failed to upload image. You can also paste an image URL directly.');
+    } finally {
+      setUploadingBanner(false);
+    }
+  };
+
   const handleSaveCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -225,6 +318,8 @@ const AdminSales = () => {
         is_active: campaign.is_active,
         end_type: campaign.end_type,
         end_date: targetEndDate,
+        banner_image_url: campaign.banner_image_url || null,
+        banner_overlay_opacity: campaign.banner_overlay_opacity ?? 0.65,
       };
 
       // Always save to localStorage as reliable backup
@@ -456,10 +551,10 @@ const AdminSales = () => {
                 </div>
               </div>
 
-              {/* Row 2: Banner Text + Duration Settings + Save Button */}
+              {/* Row 2: Banner Text + Duration Settings */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end pt-1">
                 {/* Banner Text */}
-                <div className="md:col-span-5 space-y-1">
+                <div className="md:col-span-6 space-y-1">
                   <Label htmlFor="banner-text" className="text-xs font-semibold">Announcement Banner Text</Label>
                   <Input
                     id="banner-text"
@@ -471,7 +566,7 @@ const AdminSales = () => {
                 </div>
 
                 {/* Countdown Duration Section */}
-                <div className="md:col-span-5 space-y-1">
+                <div className="md:col-span-6 space-y-1">
                   <Label className="text-xs font-semibold flex items-center justify-between">
                     <span>Countdown & Duration</span>
                     {campaign.end_type === 'timer' && (
@@ -526,15 +621,197 @@ const AdminSales = () => {
                     )}
                   </div>
                 </div>
+              </div>
 
-                {/* Save Campaign Button */}
-                <div className="md:col-span-2">
+              {/* Row 3: Banner Background Image & Theme Section */}
+              <div className="pt-4 border-t border-gray-100 space-y-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <div>
+                    <Label className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                      <ImageIcon className="w-4 h-4 text-emerald-800" /> Banner Background Image & Visual Theme
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground">
+                      Pick a curated sale backdrop, paste any web image link, or upload your own picture for the sale hero banner.
+                    </p>
+                  </div>
+
+                  {campaign.banner_image_url && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setCampaign(prev => ({ ...prev, banner_image_url: null }))}
+                      className="text-[11px] text-red-600 hover:text-red-700 h-7 px-2 gap-1"
+                    >
+                      <X className="w-3.5 h-3.5" /> Revert to Gradient
+                    </Button>
+                  )}
+                </div>
+
+                {/* Curated Preset Background Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {BANNER_PRESETS.map((preset) => {
+                    const isSelected = preset.url 
+                      ? campaign.banner_image_url === preset.url 
+                      : !campaign.banner_image_url;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => setCampaign(prev => ({ ...prev, banner_image_url: preset.url || null }))}
+                        className={`relative rounded-lg p-2 text-left border transition-all text-xs overflow-hidden group ${
+                          isSelected
+                            ? 'border-emerald-600 ring-2 ring-emerald-500/30 bg-emerald-50/50 shadow-xs'
+                            : 'border-gray-200 hover:border-emerald-300 bg-white'
+                        }`}
+                      >
+                        {preset.url ? (
+                          <div 
+                            className="h-12 w-full rounded mb-1.5 bg-cover bg-center border border-black/10 relative"
+                            style={{ backgroundImage: `url(${preset.url})` }}
+                          >
+                            <div className="absolute inset-0 bg-black/40 rounded" />
+                            {isSelected && (
+                              <div className="absolute top-1 right-1 bg-emerald-600 text-white rounded-full p-0.5">
+                                <Check className="w-3 h-3" />
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="h-12 w-full rounded mb-1.5 bg-gradient-to-r from-emerald-950 via-[#13301a] to-teal-950 border border-black/10 relative">
+                            {isSelected && (
+                              <div className="absolute top-1 right-1 bg-emerald-600 text-white rounded-full p-0.5">
+                                <Check className="w-3 h-3" />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        <div className="font-semibold text-[11px] truncate text-gray-900">{preset.name}</div>
+                        <div className="text-[9px] text-muted-foreground truncate">{preset.description}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Custom URL + File Upload + Darkness Tint */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end pt-1">
+                  <div className="sm:col-span-6 space-y-1">
+                    <Label htmlFor="custom-banner-url" className="text-[11px] font-semibold text-gray-700">
+                      Or Paste Custom Image URL
+                    </Label>
+                    <Input
+                      id="custom-banner-url"
+                      type="url"
+                      placeholder="https://images.unsplash.com/... or https://..."
+                      value={campaign.banner_image_url || ''}
+                      onChange={(e) => setCampaign(prev => ({ ...prev, banner_image_url: e.target.value || null }))}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-3 space-y-1">
+                    <Label className="text-[11px] font-semibold text-gray-700 block">
+                      Upload from Device
+                    </Label>
+                    <label className="flex items-center justify-center gap-1.5 h-8 px-3 rounded-md border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium cursor-pointer shadow-2xs">
+                      <Upload className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>{uploadingBanner ? 'Uploading...' : 'Choose File'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={uploadingBanner}
+                        onChange={handleBannerUpload}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Dark Overlay Tint Selector */}
+                  <div className="sm:col-span-3 space-y-1">
+                    <Label className="text-[11px] font-semibold text-gray-700 flex justify-between">
+                      <span>Dark Overlay Tint</span>
+                      <span className="font-bold text-emerald-800">{Math.round((campaign.banner_overlay_opacity ?? 0.65) * 100)}%</span>
+                    </Label>
+                    <div className="flex border border-gray-200 rounded-md overflow-hidden bg-gray-50 text-[11px] h-8">
+                      {[
+                        { label: 'Light', val: 0.45 },
+                        { label: 'Medium', val: 0.65 },
+                        { label: 'Deep', val: 0.85 },
+                      ].map((t) => (
+                        <button
+                          key={t.label}
+                          type="button"
+                          onClick={() => setCampaign(prev => ({ ...prev, banner_overlay_opacity: t.val }))}
+                          className={`flex-1 font-semibold transition-colors ${
+                            (campaign.banner_overlay_opacity ?? 0.65) === t.val
+                              ? 'bg-emerald-800 text-white'
+                              : 'text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live Interactive Preview Box */}
+                <div className="mt-3 rounded-xl overflow-hidden border border-gray-300 shadow-xs">
+                  <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200 flex items-center justify-between text-[11px] text-gray-600 font-medium">
+                    <span className="flex items-center gap-1.5 font-semibold text-gray-800">
+                      <Eye className="w-3.5 h-3.5 text-emerald-700" /> Live Sale Banner Preview
+                    </span>
+                    <span className="text-[10px] text-gray-500">Live preview of how customers will see your banner on /sale</span>
+                  </div>
+
+                  <div 
+                    className="p-6 sm:p-8 text-white text-center relative overflow-hidden bg-cover bg-center min-h-[170px] flex flex-col items-center justify-center transition-all duration-300"
+                    style={{
+                      backgroundImage: campaign.banner_image_url ? `url(${campaign.banner_image_url})` : undefined,
+                      backgroundColor: '#062314',
+                    }}
+                  >
+                    {!campaign.banner_image_url && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-950 via-[#13301a] to-teal-950" />
+                    )}
+                    <div 
+                      className="absolute inset-0 bg-black transition-opacity duration-300"
+                      style={{ opacity: campaign.banner_image_url ? (campaign.banner_overlay_opacity ?? 0.65) : 0.2 }}
+                    />
+                    <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]" />
+
+                    <div className="relative z-10 max-w-lg mx-auto space-y-2">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-bold uppercase tracking-widest border border-amber-400/30">
+                        <Flame className="w-3 h-3 text-amber-400" /> Limited Period Offer
+                      </span>
+                      <h3 className="text-xl sm:text-2xl font-serif font-bold tracking-tight">
+                        {isCustomName ? (customNameInput || 'Your Sale Title') : campaign.campaign_name}
+                      </h3>
+                      <p className="text-xs text-emerald-100/90 line-clamp-2">
+                        {campaign.banner_text || 'Exclusive limited-period discounts on handpicked live plants'}
+                      </p>
+
+                      {/* Mini Preview Countdown */}
+                      <div className="flex items-center justify-center gap-1.5 pt-1">
+                        {['02 DAYS', '14 HOURS', '34 MINS', '16 SECS'].map((txt, i) => (
+                          <div key={i} className="bg-black/50 backdrop-blur-xs border border-white/10 rounded px-2 py-1 text-[10px] font-mono font-bold text-amber-300">
+                            {txt}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Action Row */}
+                <div className="pt-2 flex justify-end">
                   <Button 
                     type="submit" 
                     disabled={savingCampaign} 
-                    className="w-full gradient-hero text-xs font-semibold h-9 shadow-sm"
+                    className="gradient-hero text-xs font-semibold h-9 px-6 shadow-sm gap-2"
                   >
-                    {savingCampaign ? 'Saving...' : 'Save Campaign'}
+                    <Save className="w-3.5 h-3.5" />
+                    {savingCampaign ? 'Saving Campaign...' : 'Save Campaign Settings'}
                   </Button>
                 </div>
               </div>

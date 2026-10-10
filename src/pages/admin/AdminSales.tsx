@@ -66,6 +66,7 @@ const PROMO_OPTIONS = [
   { value: 'BOGO 50%', label: 'BOGO 50% – 50% Off 2nd' },
   { value: 'Combo Deal', label: 'Combo Deal' },
   { value: 'Special Offer', label: 'Special Offer' },
+  { value: 'custom', label: '✍️ Custom Offer...' },
 ];
 
 const AdminSales = () => {
@@ -98,8 +99,9 @@ const AdminSales = () => {
   const [productChanges, setProductChanges] = useState<Record<string, {
     scarcity_status: 'none' | 'limited_stock' | 'sold_out';
     scarcity_value: number;
-    promo_tag: string; // 'none' | 'B1G1' | 'B2G1' | etc.
+    promo_tag: string; // 'none' | 'B1G1' | 'B2G1' | custom offer
     is_on_sale: boolean;
+    is_custom_promo?: boolean;
   }>>({});
 
   useEffect(() => {
@@ -157,12 +159,14 @@ const AdminSales = () => {
         // Extract promo tag from tags array if present (e.g. 'promo:B2G1') or check is_b1g1
         const foundPromo = p.tags?.find(t => t.startsWith('promo:'))?.replace('promo:', '');
         const currentPromo = foundPromo || (p.is_b1g1 ? 'B1G1' : 'none');
+        const isPredefined = PROMO_OPTIONS.some(opt => opt.value === currentPromo);
 
         initialChanges[p.id] = {
           scarcity_status: (p.scarcity_status as any) || 'none',
           scarcity_value: p.scarcity_value || 0,
           promo_tag: currentPromo,
           is_on_sale: p.sale_price !== null && p.sale_price < p.base_price,
+          is_custom_promo: !isPredefined && currentPromo !== 'none',
         };
       });
       setProductChanges(initialChanges);
@@ -264,12 +268,13 @@ const AdminSales = () => {
       setSavingProductIds(prev => [...prev, productId]);
 
       const product = products.find(p => p.id === productId);
-      const isPromoActive = changes.promo_tag !== 'none';
+      const cleanPromo = (changes.promo_tag || '').trim();
+      const isPromoActive = cleanPromo !== '' && cleanPromo !== 'none' && cleanPromo !== 'custom';
 
       // Update tags array: remove old promo tags, add new one if active
       const currentTags = (product?.tags || []).filter(t => !t.startsWith('promo:'));
       if (isPromoActive) {
-        currentTags.push(`promo:${changes.promo_tag}`);
+        currentTags.push(`promo:${cleanPromo}`);
       }
 
       const updates: any = {
@@ -635,12 +640,29 @@ const AdminSales = () => {
 
                     {/* Controls Row */}
                     <div className="flex flex-wrap sm:grid sm:grid-cols-12 gap-3 sm:gap-2 items-end pt-2 border-t border-gray-100 text-xs">
-                      {/* 1. Promo Tag Dropdown (4 cols) */}
+                      {/* 1. Promo Tag Dropdown (5 cols) */}
                       <div className="w-[45%] sm:w-auto sm:col-span-5 space-y-0.5">
                         <label className="text-[10px] font-semibold text-gray-600 block">Promo Offer</label>
                         <select
-                          value={changes.promo_tag}
-                          onChange={(e) => handleProductChange(product.id, 'promo_tag', e.target.value)}
+                          value={
+                            changes.is_custom_promo
+                              ? 'custom'
+                              : PROMO_OPTIONS.some(o => o.value === changes.promo_tag)
+                              ? changes.promo_tag
+                              : (changes.promo_tag && changes.promo_tag !== 'none' ? 'custom' : 'none')
+                          }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === 'custom') {
+                              handleProductChange(product.id, 'is_custom_promo', true);
+                              if (PROMO_OPTIONS.some(o => o.value === changes.promo_tag && o.value !== 'custom')) {
+                                handleProductChange(product.id, 'promo_tag', '');
+                              }
+                            } else {
+                              handleProductChange(product.id, 'is_custom_promo', false);
+                              handleProductChange(product.id, 'promo_tag', val);
+                            }
+                          }}
                           className={`w-full text-[11px] rounded px-2 py-1 font-medium border transition-colors ${
                             changes.promo_tag !== 'none' 
                               ? 'bg-emerald-50 border-emerald-400 text-emerald-900 font-bold' 
@@ -651,6 +673,20 @@ const AdminSales = () => {
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                           ))}
                         </select>
+
+                        {/* Custom Offer Text Input */}
+                        {Boolean(
+                          changes.is_custom_promo ||
+                          (changes.promo_tag && !PROMO_OPTIONS.some(o => o.value === changes.promo_tag) && changes.promo_tag !== 'none')
+                        ) && (
+                          <Input
+                            type="text"
+                            placeholder="Type offer (e.g. Free Pot)"
+                            value={changes.promo_tag === 'custom' ? '' : changes.promo_tag}
+                            onChange={(e) => handleProductChange(product.id, 'promo_tag', e.target.value)}
+                            className="h-6 text-[10px] mt-1 bg-white border-emerald-400 px-1.5 font-medium"
+                          />
+                        )}
                       </div>
 
                       {/* 2. Urgency Badge (3 cols) */}

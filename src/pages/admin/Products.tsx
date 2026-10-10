@@ -220,7 +220,8 @@ const Products = () => {
               <thead className="border-b">
                 <tr>
                   <th className="text-left p-4 font-semibold">Product</th>
-                  <th className="text-left p-4 font-semibold">Price</th>
+                  <th className="text-left p-4 font-semibold">Customer Sale Price</th>
+                  <th className="text-left p-4 font-semibold">Original Price (MRP)</th>
                   <th className="text-left p-4 font-semibold">Priority</th>
                   <th className="text-left p-4 font-semibold">Stock</th>
                   <th className="text-left p-4 font-semibold">Status</th>
@@ -243,16 +244,25 @@ const Products = () => {
                     <td className="p-4">
                       <div>
                         {product.sale_price && product.sale_price < product.base_price ? (
-                          <>
+                          <div>
                             <span className="font-semibold text-emerald-700">₹{product.sale_price.toFixed(2)}</span>
-                            <span className="text-sm text-muted-foreground line-through ml-2">
-                              ₹{product.base_price.toFixed(2)}
-                            </span>
-                          </>
+                            <span className="block text-[10px] text-emerald-600 font-medium">Active Discount</span>
+                          </div>
                         ) : (
                           <span className="font-semibold">₹{(product.sale_price || product.base_price).toFixed(2)}</span>
                         )}
                       </div>
+                    </td>
+                    <td className="p-4">
+                      {product.sale_price && product.sale_price < product.base_price ? (
+                        <span className="text-sm text-muted-foreground line-through">
+                          ₹{product.base_price.toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          ₹{product.base_price.toFixed(2)}
+                        </span>
+                      )}
                     </td>
                     <td className="p-4">
                       {product.priority ? (

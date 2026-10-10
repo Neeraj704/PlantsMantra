@@ -15,7 +15,7 @@ export const SaleCampaign = () => {
   const { addItem } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState<'all' | 'b1g1' | 'under199'>('all');
+  const [filterType, setFilterType] = useState<string>('all');
   const [campaignTitle, setCampaignTitle] = useState('Festive Flash Sale');
   const [bannerText, setBannerText] = useState('Exclusive limited-period discounts on handpicked live plants');
   
@@ -75,31 +75,44 @@ export const SaleCampaign = () => {
         // Safe fallback if table doesn't exist
       }
 
-      // 2. Fetch products that are designated for sale / discount / B1G1
+      // 2. Fetch products safely without column crashes
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .eq('status', 'active')
-        .or('sale_price.not.is.null,is_b1g1.eq.true,scarcity_status.eq.limited_stock')
         .order('priority', { ascending: true, nullsFirst: false })
-        .limit(40);
+        .limit(60);
 
       if (error) throw error;
 
-      // Fallback: If not enough explicitly on sale, fetch featured products
-      if (!data || data.length === 0) {
-        const { data: fallback } = await supabase
-          .from('products')
-          .select('*')
-          .eq('status', 'active')
-          .limit(20);
-        setProducts(fallback || []);
+      if (data && data.length > 0) {
+        // Find products designated for sale, promo tags, or discounts
+        const saleItems = data.filter((p: any) => {
+          const hasPromoTag = p.tags && Array.isArray(p.tags) && p.tags.some((t: string) => t.startsWith('promo:'));
+          const hasDiscount = p.sale_price !== null && p.sale_price !== undefined && p.sale_price < p.base_price;
+          const isB1G1 = Boolean(p.is_b1g1);
+          const isUrgent = p.scarcity_status === 'limited_stock';
+          return hasPromoTag || hasDiscount || isB1G1 || isUrgent;
+        });
+
+        // If specific sale items exist, show them; otherwise show all active products as safe fallback
+        setProducts(saleItems.length > 0 ? saleItems : data);
       } else {
-        setProducts(data);
+        setProducts([]);
       }
     } catch (e: any) {
       console.error('Error loading sale campaign products:', e);
-      toast.error('Failed to load sale products');
+      // Resilient fallback: fetch minimal fields
+      try {
+        const { data: fallback } = await supabase
+          .from('products')
+          .select('id, name, slug, base_price, sale_price, main_image_url, tags')
+          .eq('status', 'active')
+          .limit(30);
+        setProducts(fallback || []);
+      } catch (fallbackErr) {
+        console.error('Fallback fetch failed:', fallbackErr);
+      }
     } finally {
       setLoading(false);
     }
@@ -112,14 +125,46 @@ export const SaleCampaign = () => {
     toast.success(`${product.name} added to cart!`);
   };
 
+  // Dynamic promo tags detection from loaded products
+  const promoTagsMap = products.reduce((acc: Record<string, number>, p) => {
+    const tags = (p.tags || [])
+      .filter((t: string) => t.startsWith('promo:'))
+      .map((t: string) => t.replace('promo:', ''));
+    
+    if (p.is_b1g1 && !tags.includes('B1G1')) {
+      tags.push('B1G1');
+    }
+    
+    tags.forEach((t: string) => {
+      acc[t] = (acc[t] || 0) + 1;
+    });
+    return acc;
+  }, {});
+
+  const under199Count = products.filter(
+    (p) => (p.sale_price || p.base_price) <= 199
+  ).length;
+
+  const promoLabels: Record<string, { label: string; icon: string }> = {
+    'B1G1': { label: 'Buy 1 Get 1 Free', icon: '✨' },
+    'B2G1': { label: 'Buy 2 Get 1 Free', icon: '🎁' },
+    'B2G2': { label: 'Buy 2 Get 2 Free', icon: '🔥' },
+    'B3G1': { label: 'Buy 3 Get 1 Free', icon: '🌿' },
+    'BOGO 50%': { label: 'Buy 1 Get 50% Off', icon: '🏷️' },
+  };
+
   // Filtered items
   const filteredProducts = products.filter((p) => {
-    if (filterType === 'b1g1') return p.is_b1g1;
+    if (filterType === 'all') return true;
     if (filterType === 'under199') {
       const price = p.sale_price || p.base_price;
       return price <= 199;
     }
-    return true;
+    const tags = (p.tags || []).map((t: string) => t.replace('promo:', ''));
+    if (filterType === 'B1G1') {
+      return tags.includes('B1G1') || Boolean(p.is_b1g1);
+    }
+    return tags.includes(filterType);
   });
 
   return (
@@ -175,10 +220,10 @@ export const SaleCampaign = () => {
 
       {/* Filter Tabs */}
       <div className="container mx-auto px-4 py-6">
-        <div className="flex items-center justify-center gap-2 overflow-x-auto pb-2">
+        <div className="flex items-center justify-center gap-2 overflow-x-auto pb-2 no-scrollbar">
           <button
             onClick={() => setFilterType('all')}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
               filterType === 'all'
                 ? 'bg-emerald-800 text-white shadow-sm'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -186,26 +231,38 @@ export const SaleCampaign = () => {
           >
             All Sale Plants ({products.length})
           </button>
-          <button
-            onClick={() => setFilterType('b1g1')}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1 ${
-              filterType === 'b1g1'
-                ? 'bg-emerald-800 text-white shadow-sm'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            <Sparkles className="w-3 h-3 text-amber-500" /> Buy 1 Get 1 Free
-          </button>
-          <button
-            onClick={() => setFilterType('under199')}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-              filterType === 'under199'
-                ? 'bg-emerald-800 text-white shadow-sm'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Under ₹199 Deals
-          </button>
+
+          {/* Dynamically list buttons for each active promo tag (B1G1, B2G1, B2G2, etc.) */}
+          {Object.entries(promoTagsMap).map(([tag, count]) => {
+            const meta = promoLabels[tag] || { label: tag, icon: '🏷️' };
+            const isActive = filterType === tag;
+            return (
+              <button
+                key={tag}
+                onClick={() => setFilterType(tag)}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                  isActive
+                    ? 'bg-emerald-800 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <span>{meta.icon}</span> {meta.label} ({count})
+              </button>
+            );
+          })}
+
+          {under199Count > 0 && (
+            <button
+              onClick={() => setFilterType('under199')}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                filterType === 'under199'
+                  ? 'bg-emerald-800 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Under ₹199 Deals ({under199Count})
+            </button>
+          )}
         </div>
 
         {/* 5-Column Compact Grid */}

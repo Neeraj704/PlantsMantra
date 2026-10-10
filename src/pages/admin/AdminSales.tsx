@@ -914,13 +914,13 @@ const AdminSales = () => {
               No plants match your search query.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {filteredProducts.map((product) => {
                 const changes = productChanges[product.id] || {
                   scarcity_status: 'none',
                   scarcity_value: 0,
                   promo_tag: 'none',
-                  is_on_sale: false,
+                  sale_price_input: '',
                 };
                 const isSaving = savingProductIds.includes(product.id);
                 const imgSrc = getProxiedUrl(product.main_image_url) || '/placeholder.svg';
@@ -928,11 +928,11 @@ const AdminSales = () => {
                 return (
                   <div 
                     key={product.id}
-                    className="p-3 rounded-xl border border-gray-200 bg-white hover:border-emerald-200 hover:shadow-xs transition-all flex flex-col justify-between gap-2.5"
+                    className="p-3.5 rounded-xl border border-gray-200 bg-white hover:border-emerald-300 hover:shadow-xs transition-all flex flex-col justify-between gap-3"
                   >
                     {/* Plant Header */}
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-lg bg-gray-50 border border-gray-100 overflow-hidden flex-shrink-0">
+                      <div className="w-13 h-13 rounded-lg bg-gray-50 border border-gray-100 overflow-hidden flex-shrink-0">
                         <img 
                           src={imgSrc} 
                           alt={product.name} 
@@ -945,15 +945,15 @@ const AdminSales = () => {
                         <h4 className="font-semibold text-xs sm:text-sm text-gray-900 truncate">
                           {product.name}
                         </h4>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[11px] font-bold text-gray-800">₹{product.base_price}</span>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="text-xs font-bold text-gray-800">₹{product.base_price}</span>
                           {product.sale_price && (
-                            <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded">
+                            <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                               Sale: ₹{product.sale_price}
                             </span>
                           )}
                           {product.botanical_name && (
-                            <span className="text-[10px] text-muted-foreground italic truncate">
+                            <span className="text-[10px] text-muted-foreground italic truncate max-w-[120px]">
                               {product.botanical_name}
                             </span>
                           )}
@@ -961,11 +961,11 @@ const AdminSales = () => {
                       </div>
                     </div>
 
-                    {/* Controls Row */}
-                    <div className="flex flex-wrap sm:grid sm:grid-cols-12 gap-2.5 sm:gap-2 items-end pt-2 border-t border-gray-100 text-xs">
-                      {/* 1. Promo Tag Dropdown (4 cols) */}
-                      <div className="w-full sm:w-auto sm:col-span-4 space-y-0.5">
-                        <label className="text-[10px] font-semibold text-gray-600 block">Promo Offer</label>
+                    {/* Controls Section */}
+                    <div className="pt-2.5 border-t border-gray-100 space-y-2.5 text-xs">
+                      {/* 1. Promo Offer Dropdown */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-gray-700 block uppercase tracking-wider">Promo Offer</label>
                         <select
                           value={
                             changes.is_custom_promo
@@ -986,7 +986,7 @@ const AdminSales = () => {
                               handleProductChange(product.id, 'promo_tag', val);
                             }
                           }}
-                          className={`w-full text-[11px] rounded px-2 py-1 font-medium border transition-colors ${
+                          className={`w-full text-xs rounded-lg px-2.5 py-1.5 font-medium border transition-colors ${
                             changes.promo_tag !== 'none' 
                               ? 'bg-emerald-50 border-emerald-400 text-emerald-900 font-bold' 
                               : 'bg-white border-gray-200 text-gray-700'
@@ -1004,70 +1004,81 @@ const AdminSales = () => {
                         ) && (
                           <Input
                             type="text"
-                            placeholder="Type offer (e.g. Free Pot)"
+                            placeholder="Type custom offer (e.g. Free Pot)"
                             value={changes.promo_tag === 'custom' ? '' : changes.promo_tag}
                             onChange={(e) => handleProductChange(product.id, 'promo_tag', e.target.value)}
-                            className="h-6 text-[10px] mt-1 bg-white border-emerald-400 px-1.5 font-medium"
+                            className="h-8 text-xs mt-1.5 bg-white border-emerald-400 px-2.5 font-medium"
                           />
                         )}
                       </div>
 
-                      {/* 2. Client-Chosen Sale Price (2 cols) */}
-                      <div className="w-[47%] sm:w-auto sm:col-span-2 space-y-0.5">
-                        <label className="text-[10px] font-semibold text-gray-600 block">Sale Price ₹</label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="1"
-                          placeholder="Regular"
-                          value={changes.sale_price_input || ''}
-                          onChange={(e) => handleProductChange(product.id, 'sale_price_input', e.target.value)}
-                          className={`h-7 text-xs text-center font-bold px-1 ${
-                            changes.sale_price_input 
-                              ? 'bg-emerald-50 border-emerald-400 text-emerald-800' 
-                              : 'bg-white border-gray-200 text-gray-700'
-                          }`}
-                        />
+                      {/* 2. Three Inputs: Sale Price, Urgency, Hype Stock */}
+                      <div className="grid grid-cols-3 gap-2">
+                        {/* Sale Price */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-gray-700 block truncate">Sale Price ₹</label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="1"
+                            placeholder="Regular"
+                            value={changes.sale_price_input || ''}
+                            onChange={(e) => handleProductChange(product.id, 'sale_price_input', e.target.value)}
+                            className={`h-8 text-xs text-center font-bold px-1 rounded-md ${
+                              changes.sale_price_input 
+                                ? 'bg-emerald-50 border-emerald-400 text-emerald-800' 
+                                : 'bg-white border-gray-200 text-gray-700'
+                            }`}
+                          />
+                        </div>
+
+                        {/* Urgency */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-gray-700 block truncate">Urgency</label>
+                          <select
+                            value={changes.scarcity_status}
+                            onChange={(e) => handleProductChange(product.id, 'scarcity_status', e.target.value)}
+                            className="w-full text-xs bg-white border border-gray-200 rounded-md px-1.5 py-1 text-gray-700 h-8"
+                          >
+                            <option value="none">Normal</option>
+                            <option value="limited_stock">🔥 Limited</option>
+                            <option value="sold_out">🔴 Sold Out</option>
+                          </select>
+                        </div>
+
+                        {/* Hype Stock */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-gray-700 block text-center truncate">Hype Stock</label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={changes.scarcity_value}
+                            onChange={(e) => handleProductChange(product.id, 'scarcity_value', parseInt(e.target.value) || 0)}
+                            disabled={changes.scarcity_status !== 'limited_stock'}
+                            className="h-8 text-xs text-center font-bold px-1 rounded-md"
+                          />
+                        </div>
                       </div>
 
-                      {/* 3. Urgency Badge (2 cols) */}
-                      <div className="w-[47%] sm:w-auto sm:col-span-2 space-y-0.5">
-                        <label className="text-[10px] font-semibold text-gray-600 block">Urgency</label>
-                        <select
-                          value={changes.scarcity_status}
-                          onChange={(e) => handleProductChange(product.id, 'scarcity_status', e.target.value)}
-                          className="w-full text-[11px] bg-white border border-gray-200 rounded px-1.5 py-1 text-gray-700 h-7"
-                        >
-                          <option value="none">Normal</option>
-                          <option value="limited_stock">🔥 Limited</option>
-                          <option value="sold_out">🔴 Sold Out</option>
-                        </select>
-                      </div>
-
-                      {/* 4. Hype Stock Count (2 cols) */}
-                      <div className="w-[47%] sm:w-auto sm:col-span-2 space-y-0.5">
-                        <label className="text-[10px] font-semibold text-gray-600 block text-center">Hype Stock</label>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={changes.scarcity_value}
-                          onChange={(e) => handleProductChange(product.id, 'scarcity_value', parseInt(e.target.value) || 0)}
-                          disabled={changes.scarcity_status !== 'limited_stock'}
-                          className="h-7 text-xs text-center font-bold px-1"
-                        />
-                      </div>
-
-                      {/* 5. Explicit "Save" Button (2 cols) */}
-                      <div className="w-[47%] sm:w-auto sm:col-span-2 flex justify-end items-end h-full">
-                        <Button
-                          size="sm"
-                          onClick={() => handleSaveProductRow(product.id)}
-                          disabled={isSaving}
-                          className="h-7 w-full sm:w-auto px-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-semibold rounded shadow-xs"
-                        >
-                          {isSaving ? <RefreshCw className="w-3 h-3 animate-spin mx-auto" /> : 'Save'}
-                        </Button>
-                      </div>
+                      {/* 3. Full Width Save Button */}
+                      <Button
+                        size="sm"
+                        onClick={() => handleSaveProductRow(product.id)}
+                        disabled={isSaving}
+                        className="w-full h-8 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-lg shadow-2xs gap-1.5 transition-all mt-1"
+                      >
+                        {isSaving ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Saving...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-3.5 h-3.5" />
+                            <span>Save Plant Settings</span>
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </div>
                 );

@@ -806,7 +806,7 @@ const AdminSales = () => {
                   </div>
 
                   <div 
-                    className="p-6 sm:p-8 text-white text-center relative overflow-hidden bg-cover bg-center min-h-[170px] flex flex-col items-center justify-center transition-all duration-300"
+                    className="p-4 sm:p-6 md:p-8 text-white text-center relative overflow-hidden bg-cover bg-center min-h-[140px] sm:min-h-[170px] flex flex-col items-center justify-center transition-all duration-300"
                     style={{
                       backgroundImage: campaign.banner_image_url ? `url(${campaign.banner_image_url})` : undefined,
                       backgroundColor: '#062314',
@@ -931,12 +931,12 @@ const AdminSales = () => {
                     className="p-3.5 rounded-xl border border-gray-200 bg-white hover:border-emerald-300 hover:shadow-xs transition-all flex flex-col justify-between gap-3"
                   >
                     {/* Plant Header */}
-                    <div className="flex items-center gap-3">
-                      <div className="w-13 h-13 rounded-lg bg-gray-50 border border-gray-100 overflow-hidden flex-shrink-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-12 h-12 min-w-[48px] max-w-[48px] h-12 min-h-[48px] max-h-[48px] rounded-lg bg-gray-50 border border-gray-200 overflow-hidden flex-shrink-0">
                         <img 
                           src={imgSrc} 
                           alt={product.name} 
-                          className="w-full h-full object-cover" 
+                          className="w-full h-full object-cover rounded-lg" 
                           loading="lazy"
                         />
                       </div>

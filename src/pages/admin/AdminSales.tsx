@@ -207,9 +207,15 @@ const AdminSales = () => {
         const currentPromo = foundPromo || (p.is_b1g1 ? 'B1G1' : 'none');
         const isPredefined = PROMO_OPTIONS.some(opt => opt.value === currentPromo);
 
+        // Also extract fallback scarcity / hype from tags if dedicated columns are not present
+        const tagScarcity = p.tags?.find(t => t.startsWith('urgent:'))?.replace('urgent:', '');
+        const tagHype = p.tags?.find(t => t.startsWith('hype:'))?.replace('hype:', '');
+        const resolvedScarcity = (p.scarcity_status as any) || tagScarcity || 'none';
+        const resolvedHype = p.scarcity_value || (tagHype ? parseInt(tagHype) : 0);
+
         initialChanges[p.id] = {
-          scarcity_status: (p.scarcity_status as any) || 'none',
-          scarcity_value: p.scarcity_value || 0,
+          scarcity_status: resolvedScarcity,
+          scarcity_value: resolvedHype,
           promo_tag: currentPromo,
           sale_price_input: p.sale_price ? String(p.sale_price) : '',
           is_on_sale: p.sale_price !== null && p.sale_price < p.base_price,
@@ -368,10 +374,21 @@ const AdminSales = () => {
       const cleanPromo = (changes.promo_tag || '').trim();
       const isPromoActive = cleanPromo !== '' && cleanPromo !== 'none' && cleanPromo !== 'custom';
 
-      // Update tags array: remove old promo tags, add new one if active
-      const currentTags = (product?.tags || []).filter(t => !t.startsWith('promo:'));
+      // Update tags array: remove old promo, urgent, and hype tags
+      const currentTags = (product?.tags || []).filter(t => 
+        !t.startsWith('promo:') && 
+        !t.startsWith('urgent:') && 
+        !t.startsWith('hype:')
+      );
+
       if (isPromoActive) {
         currentTags.push(`promo:${cleanPromo}`);
+      }
+      if (changes.scarcity_status && changes.scarcity_status !== 'none') {
+        currentTags.push(`urgent:${changes.scarcity_status}`);
+      }
+      if (changes.scarcity_value && changes.scarcity_value > 0) {
+        currentTags.push(`hype:${changes.scarcity_value}`);
       }
 
       // Parse client-chosen sale price
@@ -383,26 +400,50 @@ const AdminSales = () => {
         }
       }
 
-      const updates: any = {
-        scarcity_status: changes.scarcity_status,
-        scarcity_value: changes.scarcity_value,
-        tags: currentTags,
-        sale_price: chosenSalePrice,
-      };
+      // Attempt update with dedicated columns first
+      let updateError: any = null;
+      try {
+        const { error } = await supabase
+          .from('products')
+          .update({
+            scarcity_status: changes.scarcity_status,
+            scarcity_value: changes.scarcity_value,
+            tags: currentTags,
+            sale_price: chosenSalePrice,
+          })
+          .eq('id', productId);
+        updateError = error;
+      } catch (colErr: any) {
+        updateError = colErr;
+      }
 
-      const { error } = await supabase
-        .from('products')
-        .update(updates)
-        .eq('id', productId);
-
-      if (error) throw error;
+      // Fallback if scarcity_status column doesn't exist in Supabase schema (PGRST204)
+      if (updateError && (updateError.message?.includes('scarcity_status') || updateError.code === 'PGRST204')) {
+        const { error: fallbackError } = await supabase
+          .from('products')
+          .update({
+            tags: currentTags,
+            sale_price: chosenSalePrice,
+          })
+          .eq('id', productId);
+        if (fallbackError) throw fallbackError;
+      } else if (updateError) {
+        throw updateError;
+      }
 
       // Update local product state
-      setProducts(prev => prev.map(p => p.id === productId ? { ...p, ...updates } : p));
+      setProducts(prev => prev.map(p => p.id === productId ? { 
+        ...p, 
+        tags: currentTags,
+        sale_price: chosenSalePrice,
+        scarcity_status: changes.scarcity_status,
+        scarcity_value: changes.scarcity_value,
+      } : p));
+
       toast.success(`Saved "${product?.name}"!`);
     } catch (e: any) {
       console.error('Error saving product sales settings:', e);
-      toast.error('Failed to update plant settings');
+      toast.error(e?.message || 'Failed to update plant settings');
     } finally {
       setSavingProductIds(prev => prev.filter(id => id !== productId));
     }

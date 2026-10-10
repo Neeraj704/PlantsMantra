@@ -117,7 +117,7 @@ export const SaleCampaign = () => {
           const hasPromoTag = p.tags && Array.isArray(p.tags) && p.tags.some((t: string) => t.startsWith('promo:'));
           const hasDiscount = p.sale_price !== null && p.sale_price !== undefined && p.sale_price < p.base_price;
           const isB1G1 = Boolean(p.is_b1g1);
-          const isUrgent = p.scarcity_status === 'limited_stock';
+          const isUrgent = p.scarcity_status === 'limited_stock' || (p.tags && Array.isArray(p.tags) && p.tags.includes('urgent:limited_stock'));
           return hasPromoTag || hasDiscount || isB1G1 || isUrgent;
         });
 
@@ -371,11 +371,19 @@ export const SaleCampaign = () => {
                         })()}
                       </div>
 
-                      {product.scarcity_status === 'limited_stock' && product.scarcity_value && product.scarcity_value > 0 ? (
-                        <span className="absolute bottom-2 right-2 text-[9px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded shadow-sm">
-                          🔥 {product.scarcity_value} left!
-                        </span>
-                      ) : null}
+                      {(() => {
+                        const isLimited = product.scarcity_status === 'limited_stock' || product.tags?.includes('urgent:limited_stock');
+                        const tagHype = product.tags?.find(t => t.startsWith('hype:'))?.replace('hype:', '');
+                        const hypeVal = product.scarcity_value || (tagHype ? parseInt(tagHype) : 0);
+                        if (isLimited && hypeVal > 0) {
+                          return (
+                            <span className="absolute bottom-2 right-2 text-[9px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded shadow-sm">
+                              🔥 {hypeVal} left!
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
 
                     <div className="p-3 flex flex-col flex-1 justify-between">

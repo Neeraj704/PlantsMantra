@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase, getProxiedUrl } from '@/integrations/supabase/client';
 import { useCart } from '@/hooks/useCart';
 import { Button } from '@/components/ui/button';
-import { Plus, Check } from 'lucide-react';
+import { Plus, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { getProductPricing } from '@/utils/pricing';
 
 interface ProductItem {
   id: string;
@@ -20,6 +21,7 @@ export const DrawerRecommendations = () => {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { addItem, items } = useCart();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchRecommendations();
@@ -32,7 +34,7 @@ export const DrawerRecommendations = () => {
         .from('products')
         .select('id, name, slug, base_price, sale_price, main_image_url, category_id')
         .eq('status', 'active')
-        .limit(16);
+        .limit(24);
 
       if (!error && data) {
         setProducts(data);
@@ -45,9 +47,18 @@ export const DrawerRecommendations = () => {
   };
 
   const handleAdd = (product: ProductItem) => {
-    // Correctly call addItem(product, variant, quantity)
     addItem(product as any, undefined, 1);
     toast.success(`${product.name} added to cart`);
+  };
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 180;
+      scrollContainerRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    }
   };
 
   if (loading || products.length === 0) return null;
@@ -64,53 +75,87 @@ export const DrawerRecommendations = () => {
     return !name.includes('pot') && !name.includes('peat') && !name.includes('soil');
   });
 
-  // Fallback if specific tab doesn't have matches yet
-  const displayList = filteredProducts.length > 0 ? filteredProducts.slice(0, 4) : products.slice(0, 4);
+  // Provide list of up to 12 items for smooth scrolling
+  const displayList = filteredProducts.length > 0 ? filteredProducts.slice(0, 12) : products.slice(0, 12);
 
   return (
     <div className="mt-4 pt-4 border-t border-gray-100">
+      {/* Header Row: Title on Left, Scroll Buttons on Right */}
       <div className="flex items-center justify-between mb-2">
         <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wider">
           You May Also Like
         </h4>
         <div className="flex items-center gap-1">
           <button
-            onClick={() => setActiveTab('plants')}
-            className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors ${
-              activeTab === 'plants' ? 'bg-emerald-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+            type="button"
+            onClick={() => scroll('left')}
+            aria-label="Scroll left"
+            className="w-6 h-6 rounded-full border border-gray-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 flex items-center justify-center text-gray-600 hover:text-emerald-800 transition-colors shadow-xs"
           >
-            Plants
+            <ChevronLeft className="w-3.5 h-3.5" />
           </button>
           <button
-            onClick={() => setActiveTab('pots')}
-            className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors ${
-              activeTab === 'pots' ? 'bg-emerald-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+            type="button"
+            onClick={() => scroll('right')}
+            aria-label="Scroll right"
+            className="w-6 h-6 rounded-full border border-gray-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 flex items-center justify-center text-gray-600 hover:text-emerald-800 transition-colors shadow-xs"
           >
-            Pots
-          </button>
-          <button
-            onClick={() => setActiveTab('accessories')}
-            className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors ${
-              activeTab === 'accessories' ? 'bg-emerald-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Soil/Care
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      <div className="flex gap-2.5 overflow-x-auto pb-2 no-scrollbar">
+      {/* Category Filter Tabs: Dedicated row with full text visibility */}
+      <div className="flex items-center gap-1.5 mb-2.5 overflow-x-auto no-scrollbar">
+        <button
+          type="button"
+          onClick={() => setActiveTab('plants')}
+          className={`text-[10px] px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap transition-colors ${
+            activeTab === 'plants'
+              ? 'bg-emerald-800 text-white shadow-xs'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Plants
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('pots')}
+          className={`text-[10px] px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap transition-colors ${
+            activeTab === 'pots'
+              ? 'bg-emerald-800 text-white shadow-xs'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Pots
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('accessories')}
+          className={`text-[10px] px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap transition-colors ${
+            activeTab === 'accessories'
+              ? 'bg-emerald-800 text-white shadow-xs'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Soil & Care
+        </button>
+      </div>
+
+      {/* Horizontally scrollable product cards */}
+      <div
+        ref={scrollContainerRef}
+        className="flex gap-2.5 overflow-x-auto pb-2 scroll-smooth no-scrollbar"
+      >
         {displayList.map((product) => {
           const isAlreadyInCart = items.some((i) => i.product.id === product.id);
-          const price = product.sale_price || product.base_price;
+          const pricing = getProductPricing(product);
           const imgSrc = getProxiedUrl(product.main_image_url) || '/placeholder.svg';
 
           return (
             <div
               key={product.id}
-              className="min-w-[140px] max-w-[140px] bg-gray-50/80 rounded-lg p-2 flex flex-col justify-between border border-gray-100 flex-shrink-0"
+              className="min-w-[140px] max-w-[140px] bg-gray-50/80 rounded-lg p-2 flex flex-col justify-between border border-gray-100 flex-shrink-0 hover:border-emerald-200 transition-colors"
             >
               <div className="w-full aspect-square rounded-md overflow-hidden bg-white mb-1.5">
                 <img
@@ -124,7 +169,16 @@ export const DrawerRecommendations = () => {
                 {product.name}
               </h5>
               <div className="flex items-center justify-between mt-1.5">
-                <span className="text-xs font-bold text-emerald-800">₹{price}</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xs font-bold text-emerald-800">
+                    ₹{pricing.displayPrice}
+                  </span>
+                  {pricing.hasDiscount && (
+                    <span className="text-[10px] text-muted-foreground line-through">
+                      ₹{pricing.cutPrice}
+                    </span>
+                  )}
+                </div>
                 <Button
                   size="sm"
                   variant={isAlreadyInCart ? 'secondary' : 'outline'}

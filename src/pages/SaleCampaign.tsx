@@ -177,7 +177,7 @@ export const SaleCampaign = () => {
       });
 
       if (enrichedProducts.length > 0) {
-        // First check for products specifically chosen by the client with promo tags, urgency, or B1G1
+        // First check for products specifically chosen by the client with promo tags, urgency, or active discount
         const campaignSelectedItems = enrichedProducts.filter((p: any) => {
           const hasPromoTag = p.tags && Array.isArray(p.tags) && p.tags.some((t: string) => {
             if (!t.startsWith('promo:')) return false;
@@ -186,7 +186,8 @@ export const SaleCampaign = () => {
           });
           const isB1G1 = Boolean(p.is_b1g1);
           const isUrgent = p.scarcity_status === 'limited_stock' || (p.tags && Array.isArray(p.tags) && p.tags.includes('urgent:limited_stock'));
-          return hasPromoTag || isB1G1 || isUrgent;
+          const isOnSale = p.sale_price !== null && p.sale_price !== undefined && Number(p.sale_price) < Number(p.base_price);
+          return hasPromoTag || isB1G1 || isUrgent || isOnSale;
         });
 
         if (campaignSelectedItems.length > 0) {

@@ -447,10 +447,15 @@ const AdminSales = () => {
       await savePromoProductsConfig(promoConfigRef.current);
 
       // 2. Also try update products table if permissions allow (best effort)
+      // If a product is given a promo or sale price, make sure it is 'active' so customers can see and buy it!
+      const shouldActivate = isPromoActive || (chosenSalePrice !== null);
+      const targetStatus = shouldActivate ? 'active' : (product?.status || 'active');
+
       try {
         await supabase
           .from('products')
           .update({
+            status: targetStatus,
             scarcity_status: changes.scarcity_status,
             scarcity_value: changes.scarcity_value,
             tags: currentTags,
@@ -463,6 +468,7 @@ const AdminSales = () => {
           await supabase
             .from('products')
             .update({
+              status: targetStatus,
               tags: currentTags,
               sale_price: chosenSalePrice,
             })
@@ -473,18 +479,36 @@ const AdminSales = () => {
       // Update local product state
       setProducts(prev => prev.map(p => p.id === productId ? { 
         ...p, 
+        status: targetStatus as any,
         tags: currentTags,
         sale_price: chosenSalePrice,
         scarcity_status: changes.scarcity_status,
         scarcity_value: changes.scarcity_value,
       } : p));
 
-      toast.success(`Saved "${product?.name}"!`);
+      toast.success(`Saved "${product?.name}"! (Status: ${targetStatus.toUpperCase()})`);
     } catch (e: any) {
       console.error('Error saving product sales settings:', e);
       toast.error(e?.message || 'Failed to update plant settings');
     } finally {
       setSavingProductIds(prev => prev.filter(id => id !== productId));
+    }
+  };
+
+  const handleQuickToggleStatus = async (productId: string, currentStatus?: string) => {
+    const newStatus = currentStatus === 'active' ? 'draft' : 'active';
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ status: newStatus })
+        .eq('id', productId);
+      
+      if (error) throw error;
+      setProducts(prev => prev.map(p => p.id === productId ? { ...p, status: newStatus as any } : p));
+      toast.success(newStatus === 'active' ? 'Plant published live! Customers can now see it.' : 'Plant set to Draft (hidden from store).');
+    } catch (e: any) {
+      console.error('Error toggling product status:', e);
+      toast.error('Failed to change plant status: ' + (e?.message || 'Check database permissions'));
     }
   };
 
@@ -523,11 +547,15 @@ const AdminSales = () => {
         if (changes.scarcity_status && changes.scarcity_status !== 'none') currentTags.push(`urgent:${changes.scarcity_status}`);
         if (changes.scarcity_value && changes.scarcity_value > 0) currentTags.push(`hype:${changes.scarcity_value}`);
 
-        // Background update to products table
+        // Background update to products table (ensure status: 'active' so customers can see them)
+        const shouldActivate = isPromoActive || (chosenSalePrice !== null);
+        const targetStatus = shouldActivate ? 'active' : (product?.status || 'active');
+
         updatePromises.push(
           supabase
             .from('products')
             .update({
+              status: targetStatus,
               tags: currentTags,
               sale_price: chosenSalePrice,
             })
@@ -553,8 +581,10 @@ const AdminSales = () => {
         if (conf.promo_tag && conf.promo_tag !== 'none' && conf.promo_tag !== 'custom') {
           currentTags.push(`promo:${conf.promo_tag}`);
         }
+        const hasOffer = (conf.promo_tag && conf.promo_tag !== 'none') || (conf.sale_price !== null && conf.sale_price !== undefined);
         return {
           ...p,
+          status: hasOffer ? ('active' as any) : p.status,
           tags: currentTags,
           sale_price: conf.sale_price !== undefined ? conf.sale_price : p.sale_price,
           scarcity_status: conf.scarcity_status || p.scarcity_status,
@@ -1090,9 +1120,25 @@ const AdminSales = () => {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-xs sm:text-sm text-gray-900 truncate">
-                          {product.name}
-                        </h4>
+                        <div className="flex items-center justify-between gap-1.5">
+                          <h4 className="font-semibold text-xs sm:text-sm text-gray-900 truncate" title={product.name}>
+                            {product.name}
+                          </h4>
+                          {product.status === 'active' ? (
+                            <span className="flex-shrink-0 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                              🟢 Live
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleQuickToggleStatus(product.id, product.status)}
+                              title="Click to publish live so this plant appears on /sale and the website"
+                              className="flex-shrink-0 text-[10px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-1.5 py-0.5 rounded border border-amber-300 transition-colors"
+                            >
+                              ⚠️ {product.status === 'archived' ? 'Archived' : 'Draft'} (Publish)
+                            </button>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <span className="text-xs font-bold text-gray-800">₹{product.base_price}</span>
                           {product.sale_price && (

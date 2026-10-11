@@ -1,5 +1,5 @@
 // src/pages/admin/AdminSales.tsx
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase, getProxiedUrl } from '@/integrations/supabase/client';
 import { Product, CampaignSettings } from '@/types/database';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -24,10 +24,12 @@ import {
   Upload,
   Image as ImageIcon,
   X,
-  Eye
+  Eye,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { compressImage } from '@/utils/image';
+import { fetchPromoProductsConfig, savePromoProductsConfig, PromoProductsMap } from '@/utils/promoProductsConfig';
 
 const CAMPAIGN_ID = '00000000-0000-0000-0000-000000000001';
 const LOCAL_STORAGE_KEY = 'plantsmantra_campaign_settings';
@@ -120,10 +122,12 @@ const AdminSales = () => {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingCampaign, setLoadingCampaign] = useState(true);
   const [savingCampaign, setSavingCampaign] = useState(false);
+  const [savingAll, setSavingAll] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPromoOnly, setFilterPromoOnly] = useState(false);
   const [savingProductIds, setSavingProductIds] = useState<string[]>([]);
   const [showSqlHelper, setShowSqlHelper] = useState(false);
+  const promoConfigRef = useRef<PromoProductsMap>({});
 
   // Campaign settings state
   const [campaign, setCampaign] = useState<CampaignSettings>({
@@ -207,34 +211,48 @@ const AdminSales = () => {
   const fetchProducts = async () => {
     try {
       setLoadingProducts(true);
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('name', { ascending: true });
+      const [productsRes, savedConfig] = await Promise.all([
+        supabase
+          .from('products')
+          .select('*')
+          .order('name', { ascending: true }),
+        fetchPromoProductsConfig(),
+      ]);
 
-      if (error) throw error;
-      setProducts(data || []);
+      if (productsRes.error) throw productsRes.error;
+      const data = productsRes.data || [];
+      setProducts(data);
+      promoConfigRef.current = savedConfig;
 
       const initialChanges: typeof productChanges = {};
-      (data || []).forEach(p => {
-        // Extract promo tag from tags array if present (e.g. 'promo:B2G1') or check is_b1g1
-        const foundPromo = p.tags?.find(t => t.startsWith('promo:'))?.replace('promo:', '');
-        const currentPromo = foundPromo || (p.is_b1g1 ? 'B1G1' : 'none');
+      data.forEach(p => {
+        const configOverride = savedConfig[p.id];
+        
+        // Extract promo tag from promo config first, then tags array if present (e.g. 'promo:B2G1') or check is_b1g1
+        const foundPromo = configOverride?.promo_tag !== undefined
+          ? configOverride.promo_tag
+          : (p.tags?.find((t: string) => t.startsWith('promo:'))?.replace('promo:', '') || (p.is_b1g1 ? 'B1G1' : 'none'));
+        
+        const currentPromo = foundPromo || 'none';
         const normalizedPromo = currentPromo === 'B4G1+B6G2' ? 'B4G1, B6G2' : currentPromo;
         const isPredefined = PROMO_OPTIONS.some(opt => opt.value === normalizedPromo);
 
-        // Also extract fallback scarcity / hype from tags if dedicated columns are not present
-        const tagScarcity = p.tags?.find(t => t.startsWith('urgent:'))?.replace('urgent:', '');
-        const tagHype = p.tags?.find(t => t.startsWith('hype:'))?.replace('hype:', '');
-        const resolvedScarcity = (p.scarcity_status as any) || tagScarcity || 'none';
-        const resolvedHype = p.scarcity_value || (tagHype ? parseInt(tagHype) : 0);
+        const tagScarcity = p.tags?.find((t: string) => t.startsWith('urgent:'))?.replace('urgent:', '');
+        const tagHype = p.tags?.find((t: string) => t.startsWith('hype:'))?.replace('hype:', '');
+        
+        const resolvedScarcity = configOverride?.scarcity_status || (p.scarcity_status as any) || tagScarcity || 'none';
+        const resolvedHype = configOverride?.scarcity_value !== undefined ? configOverride.scarcity_value : (p.scarcity_value || (tagHype ? parseInt(tagHype) : 0));
+        
+        const resolvedSalePrice = configOverride?.sale_price !== undefined && configOverride?.sale_price !== null
+          ? String(configOverride.sale_price)
+          : (p.sale_price ? String(p.sale_price) : '');
 
         initialChanges[p.id] = {
           scarcity_status: resolvedScarcity,
           scarcity_value: resolvedHype,
           promo_tag: normalizedPromo,
-          sale_price_input: p.sale_price ? String(p.sale_price) : '',
-          is_on_sale: p.sale_price !== null && p.sale_price < p.base_price,
+          sale_price_input: resolvedSalePrice,
+          is_on_sale: resolvedSalePrice !== '' && parseFloat(resolvedSalePrice) < p.base_price,
           is_custom_promo: !isPredefined && normalizedPromo !== 'none',
         };
       });
@@ -390,6 +408,15 @@ const AdminSales = () => {
       const cleanPromo = (changes.promo_tag || '').trim();
       const isPromoActive = cleanPromo !== '' && cleanPromo !== 'none' && cleanPromo !== 'custom';
 
+      // Parse client-chosen sale price
+      let chosenSalePrice: number | null = null;
+      if (changes.sale_price_input && changes.sale_price_input.trim() !== '') {
+        const val = parseFloat(changes.sale_price_input.trim());
+        if (!isNaN(val) && val > 0) {
+          chosenSalePrice = val;
+        }
+      }
+
       // Update tags array: remove old promo, urgent, and hype tags
       const currentTags = (product?.tags || []).filter(t => 
         !t.startsWith('promo:') && 
@@ -407,19 +434,21 @@ const AdminSales = () => {
         currentTags.push(`hype:${changes.scarcity_value}`);
       }
 
-      // Parse client-chosen sale price
-      let chosenSalePrice: number | null = null;
-      if (changes.sale_price_input && changes.sale_price_input.trim() !== '') {
-        const val = parseFloat(changes.sale_price_input.trim());
-        if (!isNaN(val) && val > 0) {
-          chosenSalePrice = val;
+      // 1. Save to reliable promo config storage (campaign_settings & localStorage)
+      promoConfigRef.current = {
+        ...promoConfigRef.current,
+        [productId]: {
+          promo_tag: cleanPromo,
+          sale_price: chosenSalePrice,
+          scarcity_status: changes.scarcity_status,
+          scarcity_value: changes.scarcity_value,
         }
-      }
+      };
+      await savePromoProductsConfig(promoConfigRef.current);
 
-      // Attempt update with dedicated columns first
-      let updateError: any = null;
+      // 2. Also try update products table if permissions allow (best effort)
       try {
-        const { error } = await supabase
+        await supabase
           .from('products')
           .update({
             scarcity_status: changes.scarcity_status,
@@ -428,23 +457,17 @@ const AdminSales = () => {
             sale_price: chosenSalePrice,
           })
           .eq('id', productId);
-        updateError = error;
-      } catch (colErr: any) {
-        updateError = colErr;
-      }
-
-      // Fallback if scarcity_status column doesn't exist in Supabase schema (PGRST204)
-      if (updateError && (updateError.message?.includes('scarcity_status') || updateError.code === 'PGRST204')) {
-        const { error: fallbackError } = await supabase
-          .from('products')
-          .update({
-            tags: currentTags,
-            sale_price: chosenSalePrice,
-          })
-          .eq('id', productId);
-        if (fallbackError) throw fallbackError;
-      } else if (updateError) {
-        throw updateError;
+      } catch (prodErr) {
+        // Fallback without scarcity_status if column missing
+        try {
+          await supabase
+            .from('products')
+            .update({
+              tags: currentTags,
+              sale_price: chosenSalePrice,
+            })
+            .eq('id', productId);
+        } catch (_) {}
       }
 
       // Update local product state
@@ -462,6 +485,93 @@ const AdminSales = () => {
       toast.error(e?.message || 'Failed to update plant settings');
     } finally {
       setSavingProductIds(prev => prev.filter(id => id !== productId));
+    }
+  };
+
+  const handleSaveAllProductRows = async () => {
+    try {
+      setSavingAll(true);
+      const newConfig = { ...promoConfigRef.current };
+      const updatePromises: Promise<any>[] = [];
+
+      Object.entries(productChanges).forEach(([productId, changes]) => {
+        const product = products.find(p => p.id === productId);
+        const cleanPromo = (changes.promo_tag || '').trim();
+        const isPromoActive = cleanPromo !== '' && cleanPromo !== 'none' && cleanPromo !== 'custom';
+
+        let chosenSalePrice: number | null = null;
+        if (changes.sale_price_input && changes.sale_price_input.trim() !== '') {
+          const val = parseFloat(changes.sale_price_input.trim());
+          if (!isNaN(val) && val > 0) {
+            chosenSalePrice = val;
+          }
+        }
+
+        newConfig[productId] = {
+          promo_tag: cleanPromo,
+          sale_price: chosenSalePrice,
+          scarcity_status: changes.scarcity_status,
+          scarcity_value: changes.scarcity_value,
+        };
+
+        const currentTags = (product?.tags || []).filter(t => 
+          !t.startsWith('promo:') && 
+          !t.startsWith('urgent:') && 
+          !t.startsWith('hype:')
+        );
+        if (isPromoActive) currentTags.push(`promo:${cleanPromo}`);
+        if (changes.scarcity_status && changes.scarcity_status !== 'none') currentTags.push(`urgent:${changes.scarcity_status}`);
+        if (changes.scarcity_value && changes.scarcity_value > 0) currentTags.push(`hype:${changes.scarcity_value}`);
+
+        // Background update to products table
+        updatePromises.push(
+          supabase
+            .from('products')
+            .update({
+              tags: currentTags,
+              sale_price: chosenSalePrice,
+            })
+            .eq('id', productId)
+            .then(() => {})
+            .catch(() => {})
+        );
+      });
+
+      promoConfigRef.current = newConfig;
+      const success = await savePromoProductsConfig(newConfig);
+      await Promise.allSettled(updatePromises);
+
+      // Update local products state
+      setProducts(prev => prev.map(p => {
+        const conf = newConfig[p.id];
+        if (!conf) return p;
+        const currentTags = (p.tags || []).filter(t => 
+          !t.startsWith('promo:') && 
+          !t.startsWith('urgent:') && 
+          !t.startsWith('hype:')
+        );
+        if (conf.promo_tag && conf.promo_tag !== 'none' && conf.promo_tag !== 'custom') {
+          currentTags.push(`promo:${conf.promo_tag}`);
+        }
+        return {
+          ...p,
+          tags: currentTags,
+          sale_price: conf.sale_price !== undefined ? conf.sale_price : p.sale_price,
+          scarcity_status: conf.scarcity_status || p.scarcity_status,
+          scarcity_value: conf.scarcity_value !== undefined ? conf.scarcity_value : p.scarcity_value,
+        };
+      }));
+
+      if (success) {
+        toast.success(`Saved all ${products.length} plants! Changes are live on /sale.`);
+      } else {
+        toast.success('Changes saved locally.');
+      }
+    } catch (e: any) {
+      console.error('Error saving all products:', e);
+      toast.error('Failed to save all products');
+    } finally {
+      setSavingAll(false);
     }
   };
 
@@ -889,7 +999,7 @@ const AdminSales = () => {
             </CardDescription>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <button
               onClick={() => setFilterPromoOnly(!filterPromoOnly)}
               className={`text-xs px-2.5 py-1 rounded-md border font-medium transition-colors flex items-center gap-1 ${
@@ -905,19 +1015,41 @@ const AdminSales = () => {
             <Button variant="outline" size="sm" onClick={fetchProducts} className="h-8 text-xs gap-1">
               <RefreshCw className="w-3 h-3" /> Reload
             </Button>
+
+            <Button
+              size="sm"
+              onClick={handleSaveAllProductRows}
+              disabled={savingAll || loadingProducts}
+              className="h-8 text-xs gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-medium shadow-sm transition-all"
+            >
+              {savingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              {savingAll ? 'Saving All...' : 'Save All Plant Changes'}
+            </Button>
           </div>
         </CardHeader>
 
         <CardContent className="pt-4 space-y-4">
-          {/* Search bar */}
-          <div className="relative max-w-md">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search plants by name or botanical name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 text-xs h-8"
-            />
+          {/* Search bar & quick save */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="relative max-w-md w-full">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search plants by name or botanical name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 text-xs h-8"
+              />
+            </div>
+
+            <Button
+              size="sm"
+              onClick={handleSaveAllProductRows}
+              disabled={savingAll || loadingProducts}
+              className="sm:hidden h-8 text-xs gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-medium shadow-sm w-full"
+            >
+              {savingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              {savingAll ? 'Saving All...' : 'Save All Plant Changes'}
+            </Button>
           </div>
 
           {/* 2-Column Grid Layout: Shows 2 products side-by-side to drastically reduce scrolling */}

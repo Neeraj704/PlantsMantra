@@ -10,6 +10,7 @@ import { ShoppingCart, Sparkles, Clock, ArrowRight, ShieldCheck, Flame, ArrowDow
 import { toast } from 'sonner';
 import { getProductPricing } from '@/utils/pricing';
 import { getProductPromoRules } from '@/utils/promoDiscounts';
+import { fetchPromoProductsConfig } from '@/utils/promoProductsConfig';
 
 export const SaleCampaign = () => {
   const { slug } = useParams();
@@ -134,45 +135,76 @@ export const SaleCampaign = () => {
         }
       }
 
-      // 2. Fetch products safely without column crashes
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('status', 'active')
-        .order('priority', { ascending: true, nullsFirst: false })
-        .limit(60);
+      // 2. Fetch all products and active promo overrides
+      const [productsRes, promoConfig] = await Promise.all([
+        supabase
+          .from('products')
+          .select('*')
+          .eq('status', 'active')
+          .order('priority', { ascending: true, nullsFirst: false }),
+        fetchPromoProductsConfig(),
+      ]);
 
-      if (error) throw error;
+      if (productsRes.error) throw productsRes.error;
+      const allActive = productsRes.data || [];
 
-      if (data && data.length > 0) {
-        // 1. First check for products specifically chosen by the client with promo tags, urgency, or B1G1
-        const campaignSelectedItems = data.filter((p: any) => {
-          const hasPromoTag = p.tags && Array.isArray(p.tags) && p.tags.some((t: string) => t.startsWith('promo:'));
+      // Merge active promo overrides from promoConfig
+      const enrichedProducts = allActive.map((p: any) => {
+        const override = promoConfig[p.id];
+        if (!override) return p;
+
+        let updatedTags = (p.tags || []).filter(
+          (t: string) => !t.startsWith('promo:') && !t.startsWith('urgent:') && !t.startsWith('hype:')
+        );
+
+        if (override.promo_tag && override.promo_tag !== 'none') {
+          updatedTags.push(`promo:${override.promo_tag}`);
+        }
+        if (override.scarcity_status && override.scarcity_status !== 'none') {
+          updatedTags.push(`urgent:${override.scarcity_status}`);
+        }
+        if (override.scarcity_value && override.scarcity_value > 0) {
+          updatedTags.push(`hype:${override.scarcity_value}`);
+        }
+
+        return {
+          ...p,
+          tags: updatedTags,
+          sale_price: override.sale_price !== undefined && override.sale_price !== null ? override.sale_price : p.sale_price,
+          scarcity_status: override.scarcity_status || p.scarcity_status,
+          scarcity_value: override.scarcity_value !== undefined ? override.scarcity_value : p.scarcity_value,
+        };
+      });
+
+      if (enrichedProducts.length > 0) {
+        // First check for products specifically chosen by the client with promo tags, urgency, or B1G1
+        const campaignSelectedItems = enrichedProducts.filter((p: any) => {
+          const hasPromoTag = p.tags && Array.isArray(p.tags) && p.tags.some((t: string) => {
+            if (!t.startsWith('promo:')) return false;
+            const clean = t.replace('promo:', '').trim();
+            return clean !== '' && clean !== 'none';
+          });
           const isB1G1 = Boolean(p.is_b1g1);
           const isUrgent = p.scarcity_status === 'limited_stock' || (p.tags && Array.isArray(p.tags) && p.tags.includes('urgent:limited_stock'));
           return hasPromoTag || isB1G1 || isUrgent;
         });
 
         if (campaignSelectedItems.length > 0) {
-          // If the admin chose specific plants for this sale, display ONLY those selected plants!
           setProducts(campaignSelectedItems);
         } else {
-          // Fallback if no specific plants have been configured with promo tags yet
-          const generalSale = data.filter((p: any) => p.sale_price !== null && p.sale_price !== undefined && p.sale_price < p.base_price);
-          setProducts(generalSale.length > 0 ? generalSale : data);
+          const generalSale = enrichedProducts.filter((p: any) => p.sale_price !== null && p.sale_price !== undefined && p.sale_price < p.base_price);
+          setProducts(generalSale.length > 0 ? generalSale : enrichedProducts);
         }
       } else {
         setProducts([]);
       }
     } catch (e: any) {
       console.error('Error loading sale campaign products:', e);
-      // Resilient fallback: fetch minimal fields
       try {
         const { data: fallback } = await supabase
           .from('products')
           .select('id, name, slug, base_price, sale_price, main_image_url, tags')
-          .eq('status', 'active')
-          .limit(30);
+          .eq('status', 'active');
         setProducts(fallback || []);
       } catch (fallbackErr) {
         console.error('Fallback fetch failed:', fallbackErr);
@@ -189,7 +221,7 @@ export const SaleCampaign = () => {
     toast.success(`${product.name} added to cart!`);
   };
 
-  // Dynamic promo tags detection from loaded products
+  // Dynamic promo tags detection from loaded products (NO DUPLICATE PILLS!)
   const promoTagsMap = products.reduce((acc: Record<string, { count: number; label: string; icon: string }>, p) => {
     const rules = getProductPromoRules(p as any);
     
@@ -209,23 +241,25 @@ export const SaleCampaign = () => {
       }
     });
 
-    // Also include any raw custom tags (e.g. 'Combo Deal' or 'Special Offer') if not already parsed
-    (p.tags || []).forEach((t: string) => {
-      if (t.startsWith('promo:')) {
-        const raw = t.replace('promo:', '').trim();
-        if (raw && raw !== 'none' && !countedKeys.has(raw) && !rules.some(r => r.key.toLowerCase() === raw.toLowerCase())) {
-          if (!acc[raw]) {
-            acc[raw] = {
-              count: 0,
-              label: raw,
-              icon: '🏷️',
-            };
+    // ONLY add raw custom tag (e.g. 'Special Offer') if the product had NO structured BOGO rules parsed!
+    if (rules.length === 0) {
+      (p.tags || []).forEach((t: string) => {
+        if (t.startsWith('promo:')) {
+          const raw = t.replace('promo:', '').trim();
+          if (raw && raw !== 'none' && !countedKeys.has(raw)) {
+            if (!acc[raw]) {
+              acc[raw] = {
+                count: 0,
+                label: raw,
+                icon: '🏷️',
+              };
+            }
+            acc[raw].count += 1;
+            countedKeys.add(raw);
           }
-          acc[raw].count += 1;
-          countedKeys.add(raw);
         }
-      }
-    });
+      });
+    }
 
     return acc;
   }, {});
@@ -234,7 +268,7 @@ export const SaleCampaign = () => {
     (p) => (p.sale_price || p.base_price) <= 199
   ).length;
 
-  // Filtered items
+  // Filtered items: distinct products per offer pill!
   const filteredProducts = products.filter((p) => {
     if (filterType === 'all') return true;
     if (filterType === 'under199') {
@@ -242,10 +276,10 @@ export const SaleCampaign = () => {
       return price <= 199;
     }
     const rules = getProductPromoRules(p as any);
-    if (rules.some((r) => r.key === filterType)) {
+    if (rules.some((r) => r.key.toUpperCase() === filterType.toUpperCase())) {
       return true;
     }
-    const tags = (p.tags || []).map((t: string) => t.replace('promo:', '').toLowerCase());
+    const tags = (p.tags || []).map((t: string) => t.replace('promo:', '').trim().toLowerCase());
     return tags.includes(filterType.toLowerCase());
   });
 

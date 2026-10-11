@@ -190,11 +190,30 @@ export const SaleCampaign = () => {
           return hasPromoTag || isB1G1 || isUrgent || isOnSale;
         });
 
+        // Deduplicate plants with identical names in database (keeps best deal / lowest price)
+        const deduplicateList = (items: any[]) => {
+          const map = new Map<string, any>();
+          items.forEach((p) => {
+            const norm = (p.name || '').replace(/[\u201c\u201d\u2018\u2019"']/g, '').trim().toLowerCase();
+            if (!map.has(norm)) {
+              map.set(norm, p);
+            } else {
+              const existing = map.get(norm);
+              const existingPrice = existing.sale_price !== null && existing.sale_price !== undefined ? existing.sale_price : existing.base_price;
+              const currentPrice = p.sale_price !== null && p.sale_price !== undefined ? p.sale_price : p.base_price;
+              if (currentPrice < existingPrice) {
+                map.set(norm, p);
+              }
+            }
+          });
+          return Array.from(map.values());
+        };
+
         if (campaignSelectedItems.length > 0) {
-          setProducts(campaignSelectedItems);
+          setProducts(deduplicateList(campaignSelectedItems));
         } else {
           const generalSale = enrichedProducts.filter((p: any) => p.sale_price !== null && p.sale_price !== undefined && p.sale_price < p.base_price);
-          setProducts(generalSale.length > 0 ? generalSale : enrichedProducts);
+          setProducts(deduplicateList(generalSale.length > 0 ? generalSale : enrichedProducts));
         }
       } else {
         setProducts([]);

@@ -55,7 +55,7 @@ serve(async (req: Request) => {
       selling_price: Number(i.unit_price) // mapped from order_items (product_name, quantity, unit_price)
     }));
 
-    const channelId = Deno.env.get("SHIPROCKET_CHANNEL_ID");
+    const channelId = Deno.env.get("SHIPROCKET_CHANNEL_ID") || "44726174472617";
     if (!channelId) throw new Error("SHIPROCKET_CHANNEL_ID not set");
 
     const payload = {
@@ -125,6 +125,7 @@ serve(async (req: Request) => {
 
     const updates = {
       courier: "Shiprocket",
+      awb: awb || order.awb,
       shipment_status: "Pending",
       shiprocket_order_id: shiprocketOrderId,
       shiprocket_shipment_id: shipmentId,

@@ -162,14 +162,15 @@ const OrderDetail = () => {
                 </div>
 
                 <div className="mt-4 flex justify-end gap-2">
-                  {order.awb && (
+                  {(order.shiprocket_tracking_url || order.awb) && (
                     <Button
-                      onClick={() =>
-                        window.open(
-                          `https://www.delhivery.com/track/package/${order.awb}`,
-                          "_blank",
-                        )
-                      }
+                      onClick={() => {
+                        const trackUrl = order.shiprocket_tracking_url ||
+                          (order.courier === 'Delhivery'
+                            ? `https://www.delhivery.com/track/package/${order.awb}`
+                            : `https://shiprocket.co/tracking/${order.shiprocket_awb || order.awb}`);
+                        window.open(trackUrl, "_blank");
+                      }}
                       variant="outline"
                       size="sm"
                     >

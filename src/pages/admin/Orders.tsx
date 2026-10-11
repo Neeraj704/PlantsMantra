@@ -98,7 +98,7 @@ const Orders = () => {
   const handleDownloadLabel = async (orderId: string, awb: string | null) => {
     setDownloadingAwb(orderId);
     try {
-      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delhivery-get-label?orderId=${encodeURIComponent(orderId)}`;
+      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/shiprocket-get-label?orderId=${encodeURIComponent(orderId)}`;
 
       const res = await fetch(funcUrl, {
         method: "GET",
@@ -136,7 +136,7 @@ const Orders = () => {
   const handleCancelShipment = async (order: Order) => {
     setProcessingCancelId(order.id);
     try {
-      const resp = await supabase.functions.invoke("delhivery-cancel", {
+      const resp = await supabase.functions.invoke("shiprocket-cancel", {
         method: "POST",
         body: JSON.stringify({ orderId: order.id }),
       });

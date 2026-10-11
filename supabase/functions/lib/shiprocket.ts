@@ -3,11 +3,11 @@
 export const SHIPROCKET_BASE = 'https://apiv2.shiprocket.in/v1/external';
 
 export async function getToken(supabaseAdmin: any): Promise<string> {
-  const email = Deno.env.get("SHIPROCKET_EMAIL");
+  const email = Deno.env.get("SHIPROCKET_EMAIL") || "api@plantsmantra.com";
   const password = Deno.env.get("SHIPROCKET_PASSWORD");
   
   if (!email || !password) {
-    throw new Error("SHIPROCKET_EMAIL or SHIPROCKET_PASSWORD missing");
+    throw new Error("SHIPROCKET_EMAIL or SHIPROCKET_PASSWORD missing in Edge Function secrets");
   }
 
   // Check cache

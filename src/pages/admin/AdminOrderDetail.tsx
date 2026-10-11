@@ -83,7 +83,7 @@ const AdminOrderDetail = () => {
 
     setDownloadingLabel(true);
     try {
-      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delhivery-get-label?orderId=${encodeURIComponent(order.id)}`;
+      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/shiprocket-get-label?orderId=${encodeURIComponent(order.id)}`;
 
       const res = await fetch(funcUrl, {
         method: 'GET',
@@ -102,7 +102,7 @@ const AdminOrderDetail = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `label_${order.awb || order.id}.pdf`;
+      a.download = `label_${order.shiprocket_awb || order.awb || order.id}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -116,27 +116,28 @@ const AdminOrderDetail = () => {
     }
   };
 
-  const handleCreateDelhiveryShipment = async () => {
+  const handleCreateShipment = async () => {
     if (!order) return;
     try {
-      toast.info('Initiating Delhivery shipment...');
-      const { error: funcError } = await supabase.functions.invoke('delhivery-create', {
+      toast.info('Initiating Shiprocket shipment...');
+      const { data, error: funcError } = await supabase.functions.invoke('shiprocket-create', {
         method: 'POST',
         body: JSON.stringify({ orderId: order.id }),
       });
       if (funcError) throw funcError;
-      toast.success('Shipment created successfully.');
+      if (data?.error) throw new Error(data.error);
+      toast.success('Shiprocket shipment created successfully.');
       fetchOrderDetails();
     } catch (e: any) {
-      toast.error(e.message || 'Failed to create shipment');
+      toast.error(e.message || 'Failed to create Shiprocket shipment');
     }
   };
 
-  const handleResetDelhiveryData = async () => {
+  const handleResetShipmentData = async () => {
     if (!order) return;
 
     const confirmReset = window.confirm(
-      "Are you sure you want to reset Delhivery data? This will clear the AWB, shipment timestamp, and API response, allowing you to create a new shipment."
+      "Are you sure you want to reset shipment data? This will clear the AWB, shipment timestamp, and Shiprocket data, allowing you to create a new shipment."
     );
     if (!confirmReset) return;
 
@@ -145,7 +146,14 @@ const AdminOrderDetail = () => {
         .from('orders' as any)
         .update({
           awb: null,
+          courier: null,
           shipment_created_at: null,
+          shiprocket_order_id: null,
+          shiprocket_shipment_id: null,
+          shiprocket_awb: null,
+          shiprocket_label_url: null,
+          shiprocket_tracking_url: null,
+          shiprocket_response: null,
           delhivery_response: null,
           shipment_status: 'Pending'
         } as any)
@@ -153,11 +161,11 @@ const AdminOrderDetail = () => {
 
       if (error) throw error;
 
-      toast.success('Delhivery data reset successfully');
+      toast.success('Shipment data reset successfully');
       fetchOrderDetails();
     } catch (error) {
-      console.error('Error resetting Delhivery data:', error);
-      toast.error('Failed to reset Delhivery data');
+      console.error('Error resetting shipment data:', error);
+      toast.error('Failed to reset shipment data');
     }
   };
 
@@ -300,9 +308,9 @@ const AdminOrderDetail = () => {
 
       toast.success(`Call status updated to ${newStatus}`);
 
-      // Automatically trigger Delhivery shipment creation if confirmed
+      // Automatically trigger Shiprocket shipment creation if confirmed
       if (newStatus === 'confirmed') {
-        await handleCreateDelhiveryShipment();
+        await handleCreateShipment();
       } else {
         fetchOrderDetails();
       }
@@ -471,7 +479,7 @@ const AdminOrderDetail = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pending">🟡 Pending Call</SelectItem>
-                    <SelectItem value="confirmed">🟢 Confirmed (Send to Delhivery)</SelectItem>
+                    <SelectItem value="confirmed">🟢 Confirmed (Send to Shiprocket)</SelectItem>
                     <SelectItem value="no_answer">🟠 No Answer / Busy</SelectItem>
                     <SelectItem value="cancelled">🔴 Customer Cancelled</SelectItem>
                   </SelectContent>
@@ -489,16 +497,16 @@ const AdminOrderDetail = () => {
               <div className="pt-2 space-y-4">
                 <p className="text-sm text-muted-foreground">No shipment created yet.</p>
                 <div className="flex flex-col gap-2">
-                  <Button onClick={handleCreateDelhiveryShipment} className="w-full">
-                    Create Delhivery Shipment
+                  <Button onClick={handleCreateShipment} className="w-full">
+                    Create Shiprocket Shipment
                   </Button>
-                  {(order.shipment_created_at || order.delhivery_response) && (
+                  {(order.shipment_created_at || order.shiprocket_response || order.delhivery_response) && (
                     <Button
                       variant="outline"
-                      onClick={handleResetDelhiveryData}
+                      onClick={handleResetShipmentData}
                       className="w-full text-destructive border-destructive hover:bg-destructive/10"
                     >
-                      Reset Delhivery Data
+                      Reset Shipment Data
                     </Button>
                   )}
                 </div>
@@ -512,7 +520,7 @@ const AdminOrderDetail = () => {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">
-                    Paste AWB from Delhivery dashboard
+                    Paste AWB from Shiprocket dashboard
                   </p>
                   <div className="flex items-center gap-2">
                     <Input
@@ -537,7 +545,9 @@ const AdminOrderDetail = () => {
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <p className="text-sm text-muted-foreground">Tracking Number</p>
-                  <Badge variant="secondary" className="mt-1">Delhivery</Badge>
+                  <Badge variant="secondary" className="mt-1">
+                    {order.courier || (order.shiprocket_awb ? 'Shiprocket' : 'Delhivery')}
+                  </Badge>
                 </div>
                 {order.awb && (
                   <Button
@@ -596,21 +606,31 @@ const AdminOrderDetail = () => {
                     </Button>
                   </div>
                   {order.awb && (
-                    <a href={`https://www.delhivery.com/track/package/${order.awb}`} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">
-                      Track on Delhivery
+                    <a
+                      href={
+                        order.shiprocket_tracking_url ||
+                        (order.courier === 'Delhivery'
+                          ? `https://www.delhivery.com/track/package/${order.awb}`
+                          : `https://shiprocket.co/tracking/${order.shiprocket_awb || order.awb}`)
+                      }
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      Track on {order.courier || (order.shiprocket_awb ? 'Shiprocket' : 'Delhivery')}
                     </a>
                   )}
                 </div>
               )}
-              {(order.shipment_created_at || order.delhivery_response) && (
+              {(order.shipment_created_at || order.shiprocket_response || order.delhivery_response) && (
                 <div className="mt-4">
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={handleResetDelhiveryData}
+                    onClick={handleResetShipmentData}
                     className="w-full text-destructive text-xs h-8 hover:bg-destructive/10"
                   >
-                    Reset Delhivery Data
+                    Reset Shipment Data
                   </Button>
                 </div>
               )}

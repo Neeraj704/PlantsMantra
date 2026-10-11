@@ -534,7 +534,7 @@ const Checkout = () => {
 
       const order = await createOrderRecord(address, customerEmail, newUserId);
 
-      // Note: Delhivery shipment creation is now delayed until the admin manually confirms the COD order in the admin panel.
+      // Note: Shiprocket shipment creation is delayed until the admin manually confirms the COD order in the admin panel.
 
       if (isDirectBuy) {
         clearBuyNow();

@@ -3,9 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { Minus, Plus, Trash2, ShoppingBag, Truck, Gift, Percent, ShieldCheck, Tag, X } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, Truck, Gift, Percent, ShieldCheck, Tag, X, Sparkles } from 'lucide-react';
 import { getProxiedUrl, supabase } from '@/integrations/supabase/client';
 import { DrawerRecommendations } from './DrawerRecommendations';
 import { fireConfetti } from '@/utils/confetti';
@@ -21,6 +20,9 @@ export const CartDrawer = () => {
     removeItem, 
     updateQuantity, 
     getSubtotal, 
+    getRawSubtotal,
+    getPromoResult,
+    getPromoDiscount,
     isCartOpen, 
     setCartOpen,
     appliedCoupon,
@@ -34,7 +36,10 @@ export const CartDrawer = () => {
   const [showGiftNote, setShowGiftNote] = useState(false);
   const [giftNote, setGiftNote] = useState('');
 
-  const subtotal = getSubtotal();
+  const rawSubtotal = getRawSubtotal();
+  const promoDiscount = getPromoDiscount();
+  const promoResult = getPromoResult();
+  const subtotal = getSubtotal(); // rawSubtotal - promoDiscount
 
   // Milestone confetti tracking
   const previousMilestoneRef = useRef<number>(0);
@@ -69,15 +74,15 @@ export const CartDrawer = () => {
     };
   }, [isCartOpen, setCartOpen]);
 
-  // Calculate total original price vs current price to compute savings
+  // Calculate total original price vs current price to compute total savings
   const originalTotal = items.reduce((sum, item) => {
     const origPrice = item.product.base_price + (item.variant?.price_adjustment || 0);
     return sum + origPrice * item.quantity;
   }, 0);
 
-  const discountFromSale = Math.max(0, originalTotal - subtotal);
+  const discountFromSale = Math.max(0, originalTotal - rawSubtotal);
   const couponDiscount = appliedCoupon ? appliedCoupon.discountAmount : 0;
-  const totalSavings = discountFromSale + couponDiscount;
+  const totalSavings = discountFromSale + promoDiscount + couponDiscount;
 
   // Milestone Progress
   const progressPercent = Math.min(100, (subtotal / DISCOUNT_THRESHOLD) * 100);
@@ -179,13 +184,13 @@ export const CartDrawer = () => {
         ) : (
           <>
             {/* Gamified Milestone Progress Tracker */}
-            <div className="px-4 py-3 bg-emerald-50/70 border-b border-emerald-100/80">
-              <p className="text-xs font-semibold text-emerald-900 text-center mb-2">
+            <div className="px-4 py-2.5 bg-emerald-50/70 border-b border-emerald-100/80">
+              <p className="text-xs font-semibold text-emerald-900 text-center mb-1.5">
                 {milestoneText}
               </p>
               
               {/* Bar */}
-              <div className="relative w-full h-2 bg-emerald-200/60 rounded-full overflow-hidden mb-1.5">
+              <div className="relative w-full h-2 bg-emerald-200/60 rounded-full overflow-hidden mb-1">
                 <div 
                   className="h-full bg-gradient-to-r from-emerald-600 via-teal-500 to-amber-400 rounded-full transition-all duration-500"
                   style={{ width: `${Math.max(4, progressPercent)}%` }}
@@ -206,54 +211,123 @@ export const CartDrawer = () => {
               </div>
             </div>
 
-            {/* Cart Items List */}
-            <ScrollArea className="flex-1 px-4 py-2">
+            {/* Live Promo / BOGO Savings Banner */}
+            {promoResult.appliedPromos.length > 0 && (
+              <div className="px-4 py-2 bg-emerald-100/90 border-b border-emerald-300/80 text-emerald-950 space-y-1">
+                {promoResult.appliedPromos.map((ap, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs font-semibold">
+                    <span className="flex items-center gap-1.5 text-emerald-900">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-700 animate-pulse" />
+                      {ap.rule.label}: {ap.freeUnitsCount} Free Plant{ap.freeUnitsCount > 1 ? 's' : ''}!
+                    </span>
+                    <span className="text-emerald-800 font-bold bg-emerald-200/80 px-2 py-0.5 rounded text-[11px]">
+                      -₹{ap.discountAmount.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Upsell Banner: If close to unlocking next free plant */}
+            {promoResult.appliedPromos.some(p => p.nextTierNeeded > 0 && p.nextTierNeeded <= 2) && (
+              <div className="px-4 py-1.5 bg-amber-50 border-b border-amber-200 text-amber-900 text-[11px] flex items-center justify-between font-medium">
+                {(() => {
+                  const p = promoResult.appliedPromos.find(p => p.nextTierNeeded > 0 && p.nextTierNeeded <= 2)!;
+                  return (
+                    <>
+                      <span>
+                        ⚡ Add <strong>{p.nextTierNeeded} more</strong> qualifying plant to get <strong>1 MORE FREE</strong>!
+                      </span>
+                      <Link 
+                        to="/sale" 
+                        onClick={() => setCartOpen(false)}
+                        className="underline font-bold text-amber-900 hover:text-amber-950 ml-2 whitespace-nowrap"
+                      >
+                        Add Plant
+                      </Link>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Cart Items List Container with Clean Vertical Scrolling (No Table Stretching Bug!) */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-2 space-y-3">
               <div className="divide-y divide-gray-100">
                 {items.map((item) => {
                   const imgSrc = getProxiedUrl(item.product.main_image_url) || '/placeholder.svg';
                   const basePrice = item.product.base_price + (item.variant?.price_adjustment || 0);
-                  const salePrice = item.product.sale_price !== null ? item.product.sale_price + (item.variant?.price_adjustment || 0) : null;
+                  const salePrice = item.product.sale_price !== null && item.product.sale_price !== undefined 
+                    ? item.product.sale_price + (item.variant?.price_adjustment || 0) 
+                    : null;
                   const currentPrice = salePrice || basePrice;
 
+                  // Unique item key consistent with promo calculation
+                  const itemKey = `${item.product.id}-${item.variant?.id || 'default'}`;
+                  const freeUnits = promoResult.freeUnitsMap[itemKey] || 0;
+                  const paidUnits = Math.max(0, item.quantity - freeUnits);
+                  const effectiveItemTotal = currentPrice * paidUnits;
+                  const regularItemTotal = currentPrice * item.quantity;
+
                   return (
-                    <div key={`${item.product.id}-${item.variant?.id}`} className="py-3 flex gap-3 items-center">
-                      {/* Compact, fixed-width image container prevents blowing up on mobile */}
-                      <div className="w-16 h-16 min-w-[64px] max-w-[64px] rounded-lg overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-100">
+                    <div key={itemKey} className="py-3 flex gap-3 items-center">
+                      {/* Compact, fixed-width image container */}
+                      <div className="w-16 h-16 min-w-[64px] max-w-[64px] rounded-lg overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-100 relative">
                         <img 
                           src={imgSrc} 
                           alt={item.product.name} 
                           className="w-full h-full object-cover" 
                           loading="lazy"
                         />
+                        {freeUnits > 0 && (
+                          <div className="absolute top-0 right-0 bg-emerald-600 text-white text-[9px] font-extrabold px-1 rounded-bl">
+                            FREE
+                          </div>
+                        )}
                       </div>
                       
-                      <div className="flex-1 flex flex-col justify-between min-w-0">
-                        <div>
-                          <div className="flex justify-between items-start gap-1">
-                            <Link 
-                              to={`/product/${item.product.slug}`} 
-                              onClick={() => setCartOpen(false)}
-                              className="font-medium text-xs sm:text-sm text-gray-900 hover:text-emerald-700 transition-colors line-clamp-1 leading-snug"
-                            >
-                              {item.product.name}
-                            </Link>
-                            <button 
-                              aria-label="Remove item"
-                              className="text-gray-400 hover:text-red-500 transition-colors p-0.5 ml-1"
-                              onClick={() => removeItem(item.product.id, item.variant?.id)}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                          {item.variant && (
-                            <p className="text-[10px] text-muted-foreground mt-0.5">{item.variant.name}</p>
-                          )}
+                      <div className="flex-1 min-w-0">
+                        {/* Title and remove button */}
+                        <div className="flex justify-between items-start gap-1">
+                          <Link 
+                            to={`/product/${item.product.slug}`} 
+                            onClick={() => setCartOpen(false)}
+                            className="font-medium text-xs sm:text-sm text-gray-900 hover:text-emerald-700 transition-colors line-clamp-1 leading-snug flex-1"
+                          >
+                            {item.product.name}
+                          </Link>
+                          <button 
+                            type="button"
+                            aria-label="Remove item"
+                            className="text-gray-400 hover:text-red-500 transition-colors p-1 flex-shrink-0"
+                            onClick={() => removeItem(item.product.id, item.variant?.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
 
-                        <div className="flex justify-between items-end mt-2">
+                        {item.variant && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{item.variant.name}</p>
+                        )}
+
+                        {/* Free plant promo tag badge */}
+                        {freeUnits > 0 && (
+                          <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200">
+                            <span>🎉</span>
+                            <span>
+                              {freeUnits === item.quantity 
+                                ? '100% FREE (Offer Applied)' 
+                                : `${freeUnits} Free Plant${freeUnits > 1 ? 's' : ''} Applied`}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Quantity Counter and Price Display (Pinned & Guaranteed Visible!) */}
+                        <div className="flex justify-between items-end mt-2 pt-0.5">
                           {/* Quantity selector */}
-                          <div className="flex items-center border border-gray-200 rounded">
+                          <div className="flex items-center border border-gray-200 rounded bg-white">
                             <button 
+                              type="button"
                               className="h-6 w-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors"
                               onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.variant?.id)}
                             >
@@ -261,6 +335,7 @@ export const CartDrawer = () => {
                             </button>
                             <span className="w-6 text-center text-xs font-semibold text-gray-800">{item.quantity}</span>
                             <button 
+                              type="button"
                               className="h-6 w-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors"
                               onClick={() => updateQuantity(item.product.id, item.quantity + 1, item.variant?.id)}
                             >
@@ -268,14 +343,28 @@ export const CartDrawer = () => {
                             </button>
                           </div>
 
-                          <div className="text-right">
-                            <span className="font-bold text-xs sm:text-sm text-gray-900">
-                              ₹{(currentPrice * item.quantity).toFixed(2)}
-                            </span>
-                            {salePrice && (
-                              <span className="block text-[10px] text-muted-foreground line-through">
-                                ₹{(basePrice * item.quantity).toFixed(2)}
-                              </span>
+                          {/* Price Display */}
+                          <div className="text-right flex-shrink-0">
+                            {freeUnits > 0 ? (
+                              <div>
+                                <span className="font-extrabold text-xs sm:text-sm text-emerald-700">
+                                  ₹{effectiveItemTotal.toFixed(2)}
+                                </span>
+                                <span className="block text-[10px] text-muted-foreground line-through">
+                                  ₹{regularItemTotal.toFixed(2)}
+                                </span>
+                              </div>
+                            ) : (
+                              <div>
+                                <span className="font-bold text-xs sm:text-sm text-gray-900">
+                                  ₹{regularItemTotal.toFixed(2)}
+                                </span>
+                                {salePrice && (
+                                  <span className="block text-[10px] text-muted-foreground line-through">
+                                    ₹{(basePrice * item.quantity).toFixed(2)}
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -285,12 +374,15 @@ export const CartDrawer = () => {
                 })}
               </div>
 
-              {/* Recommendations moved right below cart items for high visibility */}
-              <DrawerRecommendations />
+              {/* Recommendations wrapped with safe overflow boundary */}
+              <div className="w-full max-w-full overflow-hidden pt-2 border-t border-gray-100">
+                <DrawerRecommendations />
+              </div>
 
               {/* Personalized Gift Note Option */}
               <div className="mt-3 py-2 border-t border-gray-100">
                 <button
+                  type="button"
                   onClick={() => setShowGiftNote(!showGiftNote)}
                   className="text-xs font-medium text-emerald-800 hover:text-emerald-950 flex items-center gap-1.5 transition-colors"
                 >
@@ -318,6 +410,7 @@ export const CartDrawer = () => {
                       <Tag className="w-3 h-3 text-emerald-600" /> Coupon "{appliedCoupon.code}" applied
                     </span>
                     <button 
+                      type="button"
                       onClick={removeCoupon}
                       className="text-[11px] text-red-600 hover:underline font-semibold"
                     >
@@ -344,27 +437,50 @@ export const CartDrawer = () => {
                   </div>
                 )}
               </div>
-            </ScrollArea>
+            </div>
 
             {/* Bottom Footer Section */}
             <div className="border-t p-4 bg-gray-50/70 space-y-3">
-              {/* Savings banner */}
+              {/* Overall Savings Banner */}
               {totalSavings > 0 && (
-                <div className="bg-emerald-100/80 border border-emerald-300/80 text-emerald-900 py-1 px-2.5 rounded text-center text-xs font-semibold flex items-center justify-center gap-1">
+                <div className="bg-emerald-100/90 border border-emerald-300 text-emerald-900 py-1.5 px-2.5 rounded-lg text-center text-xs font-bold flex items-center justify-center gap-1">
                   <span>🎉 You're saving ₹{totalSavings.toFixed(2)} on this order!</span>
                 </div>
               )}
 
-              {/* Subtotal */}
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600 font-medium">Subtotal</span>
-                <span className="font-bold text-base text-gray-950">₹{subtotal.toFixed(2)}</span>
+              {/* Subtotal & Discount Breakdown */}
+              <div className="space-y-1.5 text-xs text-gray-600">
+                <div className="flex justify-between items-center">
+                  <span>Items Total</span>
+                  <span className="font-semibold text-gray-900">₹{rawSubtotal.toFixed(2)}</span>
+                </div>
+
+                {promoDiscount > 0 && (
+                  <div className="flex justify-between items-center text-emerald-700 font-medium">
+                    <span className="flex items-center gap-1">
+                      <span>🎉</span> Sale Promo (Free Plant Discount)
+                    </span>
+                    <span className="font-bold">-₹{promoDiscount.toFixed(2)}</span>
+                  </div>
+                )}
+
+                {appliedCoupon && (
+                  <div className="flex justify-between items-center text-emerald-700 font-medium">
+                    <span>Coupon ({appliedCoupon.code})</span>
+                    <span className="font-bold">-₹{appliedCoupon.discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center text-sm pt-1 border-t border-gray-200">
+                  <span className="text-gray-900 font-bold">Subtotal</span>
+                  <span className="font-extrabold text-base text-gray-950">₹{subtotal.toFixed(2)}</span>
+                </div>
               </div>
 
               {/* Checkout CTA */}
-              <div className="space-y-2">
+              <div className="space-y-2 pt-1">
                 <Button 
-                  className="w-full gradient-hero text-sm font-semibold h-11 flex items-center justify-center gap-2 shadow-md"
+                  className="w-full gradient-hero text-sm font-semibold h-11 flex items-center justify-center gap-2 shadow-md cursor-pointer"
                   onClick={handleCheckout}
                 >
                   <span>Proceed to Checkout</span>
@@ -372,8 +488,8 @@ export const CartDrawer = () => {
                   <span>₹{subtotal.toFixed(2)}</span>
                 </Button>
 
-                {/* Trust Badges & Payment methods */}
-                <div className="flex items-center justify-center gap-3 text-[10px] text-gray-500 pt-1">
+                {/* Trust Badges */}
+                <div className="flex items-center justify-center gap-3 text-[10px] text-gray-500 pt-0.5">
                   <span className="flex items-center gap-1">
                     <ShieldCheck className="w-3 h-3 text-emerald-700" /> 100% Secure Checkout
                   </span>

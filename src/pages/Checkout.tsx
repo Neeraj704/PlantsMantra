@@ -30,6 +30,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { trackPixelEvent } from '@/utils/pixel';
+import { calculatePromoDiscounts } from '@/utils/promoDiscounts';
 
 declare global {
   interface Window {
@@ -142,7 +143,10 @@ const Checkout = () => {
     }, 0);
   };
 
-  const subtotal = getSubtotal();
+  const rawSubtotal = getSubtotal();
+  const promoResult = !isDirectBuy && items ? calculatePromoDiscounts(items) : { totalPromoDiscount: 0, appliedPromos: [], freeUnitsMap: {} };
+  const promoDiscount = promoResult.totalPromoDiscount;
+  const subtotal = Math.max(0, rawSubtotal - promoDiscount);
   const shippingCost = subtotal > 0 && subtotal < 599 ? 99 : 0;
   const couponDiscount = isDirectBuy ? 0 : cart.getDiscountAmount();
   
@@ -353,8 +357,8 @@ const Checkout = () => {
       customer_name: address.full_name,
       customer_phone: address.phone,
       shipping_address: shippingAddress,
-      subtotal,
-      discount_amount: couponDiscount + upiDiscount,
+      subtotal: rawSubtotal,
+      discount_amount: promoDiscount + couponDiscount + upiDiscount,
       shipping_cost: shippingCost,
       total,
       coupon_code: isDirectBuy ? null : cart.appliedCoupon?.code || null,
@@ -956,20 +960,30 @@ const Checkout = () => {
                         item.variant?.price_adjustment || 0;
                       const itemPrice = basePrice + variantAdjustment;
 
+                      const itemKey = `${product.id}-${item.variant?.id || 'default'}`;
+                      const freeUnits = promoResult.freeUnitsMap[itemKey] || 0;
+                      const paidUnits = Math.max(0, item.quantity - freeUnits);
+                      const effectivePrice = itemPrice * paidUnits;
+
                       return (
                         <div
                           key={`${product.id}-${item.variant?.id || 'base'}-${index}`}
                           className="flex gap-3"
                         >
-                          <div className="w-16 h-16 rounded-md overflow-hidden bg-muted/40">
+                          <div className="w-16 h-16 rounded-md overflow-hidden bg-muted/40 relative flex-shrink-0">
                             <img
                               src={productImg}
                               alt={product.main_image_alt || product.name}
                               className="w-full h-full object-cover"
                             />
+                            {freeUnits > 0 && (
+                              <div className="absolute top-0 right-0 bg-emerald-600 text-white text-[9px] font-extrabold px-1 rounded-bl">
+                                FREE
+                              </div>
+                            )}
                           </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium line-clamp-1">
                               {product.name}
                             </p>
                             {item.variant && (
@@ -977,18 +991,37 @@ const Checkout = () => {
                                 {item.variant.name}
                               </p>
                             )}
-                            <p className="text-xs text-muted-foreground">
+                            {freeUnits > 0 && (
+                              <div className="mt-0.5 inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                                <span>🎉</span>
+                                <span>{freeUnits === item.quantity ? '100% Free' : `${freeUnits} Free`}</span>
+                              </div>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-0.5">
                               Qty: {item.quantity}
                             </p>
                           </div>
-                          <div className="text-right">
-                            <p className="text-sm font-semibold">
-                              ₹{(itemPrice * item.quantity).toFixed(2)}
-                            </p>
-                            {product.sale_price && (
-                              <p className="text-xs text-muted-foreground line-through">
-                                ₹{(product.base_price * item.quantity).toFixed(2)}
-                              </p>
+                          <div className="text-right flex-shrink-0">
+                            {freeUnits > 0 ? (
+                              <div>
+                                <p className="text-sm font-bold text-emerald-700">
+                                  ₹{effectivePrice.toFixed(2)}
+                                </p>
+                                <p className="text-xs text-muted-foreground line-through">
+                                  ₹{(itemPrice * item.quantity).toFixed(2)}
+                                </p>
+                              </div>
+                            ) : (
+                              <div>
+                                <p className="text-sm font-semibold">
+                                  ₹{(itemPrice * item.quantity).toFixed(2)}
+                                </p>
+                                {product.sale_price && (
+                                  <p className="text-xs text-muted-foreground line-through">
+                                    ₹{(product.base_price * item.quantity).toFixed(2)}
+                                  </p>
+                                )}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -1000,9 +1033,17 @@ const Checkout = () => {
 
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span>Subtotal</span>
-                      <span>₹{subtotal.toFixed(2)}</span>
+                      <span>Items Total</span>
+                      <span>₹{rawSubtotal.toFixed(2)}</span>
                     </div>
+                    {promoDiscount > 0 && (
+                      <div className="flex justify-between text-emerald-600 font-semibold">
+                        <span className="flex items-center gap-1">
+                          <span>🎉</span> Sale Promo (Free Plant)
+                        </span>
+                        <span>-₹{promoDiscount.toFixed(2)}</span>
+                      </div>
+                    )}
                     {couponDiscount > 0 && (
                       <div className="flex justify-between text-emerald-600">
                         <span>Coupon Discount</span>

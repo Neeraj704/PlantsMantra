@@ -30,6 +30,8 @@ const safeLocalStorage = {
   }
 };
 
+import { calculatePromoDiscounts, PromoDiscountResult } from '@/utils/promoDiscounts';
+
 // Define the structure for applied coupon
 interface AppliedCoupon {
   code: string;
@@ -46,6 +48,9 @@ interface CartStore {
   removeItem: (productId: string, variantId?: string) => void;
   updateQuantity: (productId: string, quantity: number, variantId?: string) => void;
   clearCart: () => void;
+  getRawSubtotal: () => number;
+  getPromoDiscount: () => number;
+  getPromoResult: () => PromoDiscountResult;
   getSubtotal: () => number;
   getShippingCost: () => number;
   getDiscountAmount: () => number;
@@ -315,12 +320,26 @@ export const useCart = create<CartStore>()(
         }
       },
 
-      getSubtotal: () => {
+      getRawSubtotal: () => {
         return get().items.reduce((total, item) => {
           const price = item.product.sale_price || item.product.base_price;
           const variantAdjustment = item.variant?.price_adjustment || 0;
           return total + (price + variantAdjustment) * item.quantity;
         }, 0);
+      },
+
+      getPromoResult: () => {
+        return calculatePromoDiscounts(get().items);
+      },
+
+      getPromoDiscount: () => {
+        return get().getPromoResult().totalPromoDiscount;
+      },
+
+      getSubtotal: () => {
+        const raw = get().getRawSubtotal();
+        const promo = get().getPromoDiscount();
+        return Math.max(0, raw - promo);
       },
 
       getShippingCost: () => {

@@ -100,6 +100,9 @@ ALTER TABLE public.products ADD COLUMN IF NOT EXISTS scarcity_value INTEGER DEFA
 
 const PROMO_OPTIONS = [
   { value: 'none', label: 'None (No Promo)' },
+  { value: 'B4G1', label: 'B4G1 – Buy 4 Get 1 Free' },
+  { value: 'B6G2', label: 'B6G2 – Buy 6 Get 2 Free' },
+  { value: 'B4G1+B6G2', label: 'B4G1 & B6G2 – Tiered: Buy 4 Get 1, Buy 6 Get 2' },
   { value: 'B1G1', label: 'B1G1 – Buy 1 Get 1 Free' },
   { value: 'B2G1', label: 'B2G1 – Buy 2 Get 1 Free' },
   { value: 'B2G2', label: 'B2G2 – Buy 2 Get 2 Free' },

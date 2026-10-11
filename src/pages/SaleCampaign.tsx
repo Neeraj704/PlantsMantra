@@ -190,15 +190,26 @@ export const SaleCampaign = () => {
 
   // Dynamic promo tags detection from loaded products
   const promoTagsMap = products.reduce((acc: Record<string, number>, p) => {
-    const tags = (p.tags || [])
+    const rawTags = (p.tags || [])
       .filter((t: string) => t.startsWith('promo:'))
       .map((t: string) => t.replace('promo:', ''));
     
-    if (p.is_b1g1 && !tags.includes('B1G1')) {
-      tags.push('B1G1');
+    if (p.is_b1g1 && !rawTags.includes('B1G1')) {
+      rawTags.push('B1G1');
     }
-    
-    tags.forEach((t: string) => {
+
+    const expandedTags = new Set<string>();
+    rawTags.forEach(t => {
+      // If tagged as B4G1+B6G2, show both B4G1 and B6G2 pills so user can filter by either
+      if (t === 'B4G1+B6G2') {
+        expandedTags.add('B4G1');
+        expandedTags.add('B6G2');
+      } else {
+        expandedTags.add(t);
+      }
+    });
+
+    expandedTags.forEach((t) => {
       acc[t] = (acc[t] || 0) + 1;
     });
     return acc;
@@ -209,10 +220,14 @@ export const SaleCampaign = () => {
   ).length;
 
   const promoLabels: Record<string, { label: string; icon: string }> = {
+    'B4G1': { label: 'Buy 4 Get 1 Free', icon: '🎉' },
+    'B6G2': { label: 'Buy 6 Get 2 Free', icon: '🎊' },
+    'B4G1+B6G2': { label: 'Buy 4 Get 1 / Buy 6 Get 2', icon: '🔥' },
     'B1G1': { label: 'Buy 1 Get 1 Free', icon: '✨' },
     'B2G1': { label: 'Buy 2 Get 1 Free', icon: '🎁' },
     'B2G2': { label: 'Buy 2 Get 2 Free', icon: '🔥' },
     'B3G1': { label: 'Buy 3 Get 1 Free', icon: '🌿' },
+    'B3G2': { label: 'Buy 3 Get 2 Free', icon: '🍀' },
     'BOGO 50%': { label: 'Buy 1 Get 50% Off', icon: '🏷️' },
   };
 
@@ -226,6 +241,12 @@ export const SaleCampaign = () => {
     const tags = (p.tags || []).map((t: string) => t.replace('promo:', ''));
     if (filterType === 'B1G1') {
       return tags.includes('B1G1') || Boolean(p.is_b1g1);
+    }
+    if (filterType === 'B4G1') {
+      return tags.includes('B4G1') || tags.includes('B4G1+B6G2');
+    }
+    if (filterType === 'B6G2') {
+      return tags.includes('B6G2') || tags.includes('B4G1+B6G2');
     }
     return tags.includes(filterType);
   });

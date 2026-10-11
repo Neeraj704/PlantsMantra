@@ -102,7 +102,8 @@ const PROMO_OPTIONS = [
   { value: 'none', label: 'None (No Promo)' },
   { value: 'B4G1', label: 'B4G1 – Buy 4 Get 1 Free' },
   { value: 'B6G2', label: 'B6G2 – Buy 6 Get 2 Free' },
-  { value: 'B4G1+B6G2', label: 'B4G1 & B6G2 – Tiered: Buy 4 Get 1, Buy 6 Get 2' },
+  { value: 'B4G1, B6G2', label: 'B4G1 & B6G2 – Tiered: Buy 4 Get 1, Buy 6 Get 2' },
+  { value: 'B2G2, B4G1, B6G2', label: 'B2G2, B4G1, B6G2 – Multi-Tier (Best Deal Auto-Applied)' },
   { value: 'B1G1', label: 'B1G1 – Buy 1 Get 1 Free' },
   { value: 'B2G1', label: 'B2G1 – Buy 2 Get 1 Free' },
   { value: 'B2G2', label: 'B2G2 – Buy 2 Get 2 Free' },
@@ -111,7 +112,7 @@ const PROMO_OPTIONS = [
   { value: 'BOGO 50%', label: 'BOGO 50% – 50% Off 2nd' },
   { value: 'Combo Deal', label: 'Combo Deal' },
   { value: 'Special Offer', label: 'Special Offer' },
-  { value: 'custom', label: '✍️ Custom Offer...' },
+  { value: 'custom', label: '✍️ Custom Offer (e.g. B2G2, B4G1, B6G2)...' },
 ];
 
 const AdminSales = () => {
@@ -219,7 +220,8 @@ const AdminSales = () => {
         // Extract promo tag from tags array if present (e.g. 'promo:B2G1') or check is_b1g1
         const foundPromo = p.tags?.find(t => t.startsWith('promo:'))?.replace('promo:', '');
         const currentPromo = foundPromo || (p.is_b1g1 ? 'B1G1' : 'none');
-        const isPredefined = PROMO_OPTIONS.some(opt => opt.value === currentPromo);
+        const normalizedPromo = currentPromo === 'B4G1+B6G2' ? 'B4G1, B6G2' : currentPromo;
+        const isPredefined = PROMO_OPTIONS.some(opt => opt.value === normalizedPromo);
 
         // Also extract fallback scarcity / hype from tags if dedicated columns are not present
         const tagScarcity = p.tags?.find(t => t.startsWith('urgent:'))?.replace('urgent:', '');
@@ -230,10 +232,10 @@ const AdminSales = () => {
         initialChanges[p.id] = {
           scarcity_status: resolvedScarcity,
           scarcity_value: resolvedHype,
-          promo_tag: currentPromo,
+          promo_tag: normalizedPromo,
           sale_price_input: p.sale_price ? String(p.sale_price) : '',
           is_on_sale: p.sale_price !== null && p.sale_price < p.base_price,
-          is_custom_promo: !isPredefined && currentPromo !== 'none',
+          is_custom_promo: !isPredefined && normalizedPromo !== 'none',
         };
       });
       setProductChanges(initialChanges);

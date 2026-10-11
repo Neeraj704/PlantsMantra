@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, Sparkles, Clock, ArrowRight, ShieldCheck, Flame, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { getProductPricing } from '@/utils/pricing';
+import { getProductPromoRules } from '@/utils/promoDiscounts';
 
 export const SaleCampaign = () => {
   const { slug } = useParams();
@@ -189,47 +190,49 @@ export const SaleCampaign = () => {
   };
 
   // Dynamic promo tags detection from loaded products
-  const promoTagsMap = products.reduce((acc: Record<string, number>, p) => {
-    const rawTags = (p.tags || [])
-      .filter((t: string) => t.startsWith('promo:'))
-      .map((t: string) => t.replace('promo:', ''));
+  const promoTagsMap = products.reduce((acc: Record<string, { count: number; label: string; icon: string }>, p) => {
+    const rules = getProductPromoRules(p as any);
     
-    if (p.is_b1g1 && !rawTags.includes('B1G1')) {
-      rawTags.push('B1G1');
-    }
-
-    const expandedTags = new Set<string>();
-    rawTags.forEach(t => {
-      // If tagged as B4G1+B6G2, show both B4G1 and B6G2 pills so user can filter by either
-      if (t === 'B4G1+B6G2') {
-        expandedTags.add('B4G1');
-        expandedTags.add('B6G2');
-      } else {
-        expandedTags.add(t);
+    // Track unique rule keys on this product so we only count once per product
+    const countedKeys = new Set<string>();
+    rules.forEach((rule) => {
+      if (!countedKeys.has(rule.key)) {
+        if (!acc[rule.key]) {
+          acc[rule.key] = {
+            count: 0,
+            label: rule.label,
+            icon: rule.icon,
+          };
+        }
+        acc[rule.key].count += 1;
+        countedKeys.add(rule.key);
       }
     });
 
-    expandedTags.forEach((t) => {
-      acc[t] = (acc[t] || 0) + 1;
+    // Also include any raw custom tags (e.g. 'Combo Deal' or 'Special Offer') if not already parsed
+    (p.tags || []).forEach((t: string) => {
+      if (t.startsWith('promo:')) {
+        const raw = t.replace('promo:', '').trim();
+        if (raw && raw !== 'none' && !countedKeys.has(raw) && !rules.some(r => r.key.toLowerCase() === raw.toLowerCase())) {
+          if (!acc[raw]) {
+            acc[raw] = {
+              count: 0,
+              label: raw,
+              icon: '🏷️',
+            };
+          }
+          acc[raw].count += 1;
+          countedKeys.add(raw);
+        }
+      }
     });
+
     return acc;
   }, {});
 
   const under199Count = products.filter(
     (p) => (p.sale_price || p.base_price) <= 199
   ).length;
-
-  const promoLabels: Record<string, { label: string; icon: string }> = {
-    'B4G1': { label: 'Buy 4 Get 1 Free', icon: '🎉' },
-    'B6G2': { label: 'Buy 6 Get 2 Free', icon: '🎊' },
-    'B4G1+B6G2': { label: 'Buy 4 Get 1 / Buy 6 Get 2', icon: '🔥' },
-    'B1G1': { label: 'Buy 1 Get 1 Free', icon: '✨' },
-    'B2G1': { label: 'Buy 2 Get 1 Free', icon: '🎁' },
-    'B2G2': { label: 'Buy 2 Get 2 Free', icon: '🔥' },
-    'B3G1': { label: 'Buy 3 Get 1 Free', icon: '🌿' },
-    'B3G2': { label: 'Buy 3 Get 2 Free', icon: '🍀' },
-    'BOGO 50%': { label: 'Buy 1 Get 50% Off', icon: '🏷️' },
-  };
 
   // Filtered items
   const filteredProducts = products.filter((p) => {
@@ -238,17 +241,12 @@ export const SaleCampaign = () => {
       const price = p.sale_price || p.base_price;
       return price <= 199;
     }
-    const tags = (p.tags || []).map((t: string) => t.replace('promo:', ''));
-    if (filterType === 'B1G1') {
-      return tags.includes('B1G1') || Boolean(p.is_b1g1);
+    const rules = getProductPromoRules(p as any);
+    if (rules.some((r) => r.key === filterType)) {
+      return true;
     }
-    if (filterType === 'B4G1') {
-      return tags.includes('B4G1') || tags.includes('B4G1+B6G2');
-    }
-    if (filterType === 'B6G2') {
-      return tags.includes('B6G2') || tags.includes('B4G1+B6G2');
-    }
-    return tags.includes(filterType);
+    const tags = (p.tags || []).map((t: string) => t.replace('promo:', '').toLowerCase());
+    return tags.includes(filterType.toLowerCase());
   });
 
   return (
@@ -349,21 +347,20 @@ export const SaleCampaign = () => {
             All Sale Plants ({products.length})
           </button>
 
-          {/* Dynamically list buttons for each active promo tag (B1G1, B2G1, B2G2, etc.) */}
-          {Object.entries(promoTagsMap).map(([tag, count]) => {
-            const meta = promoLabels[tag] || { label: tag, icon: '🏷️' };
-            const isActive = filterType === tag;
+          {/* Dynamically list buttons for each active promo tag (B1G1, B2G1, B2G2, B4G1, B6G2, etc.) */}
+          {Object.entries(promoTagsMap).map(([tagKey, meta]) => {
+            const isActive = filterType === tagKey;
             return (
               <button
-                key={tag}
-                onClick={() => setFilterType(tag)}
+                key={tagKey}
+                onClick={() => setFilterType(tagKey)}
                 className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
                   isActive
                     ? 'bg-emerald-800 text-white shadow-sm'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                <span>{meta.icon}</span> {meta.label} ({count})
+                <span>{meta.icon}</span> {meta.label} ({meta.count})
               </button>
             );
           })}

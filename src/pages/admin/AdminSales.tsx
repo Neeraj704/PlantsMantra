@@ -177,12 +177,23 @@ const AdminSales = () => {
           setIsCustomName(true);
           setCustomNameInput(data.campaign_name);
         }
+        if (data.end_date) {
+          const diffMs = new Date(data.end_date).getTime() - Date.now();
+          const diffDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+          setDaysDuration(String(diffDays));
+        }
       }
     } catch (e: any) {
       setShowSqlHelper(true);
       const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (stored) {
-        setCampaign(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        setCampaign(parsed);
+        if (parsed.end_date) {
+          const diffMs = new Date(parsed.end_date).getTime() - Date.now();
+          const diffDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+          setDaysDuration(String(diffDays));
+        }
       }
     } finally {
       setLoadingCampaign(false);
@@ -647,7 +658,7 @@ const AdminSales = () => {
                         <Input
                           type="number"
                           min="1"
-                          max="90"
+                          max="365"
                           value={daysDuration}
                           onChange={(e) => setDaysDuration(e.target.value)}
                           placeholder="Days"

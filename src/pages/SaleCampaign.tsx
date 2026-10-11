@@ -68,15 +68,15 @@ export const SaleCampaign = () => {
           .eq('is_active', true)
           .maybeSingle();
 
-        if (campaignData) {
-          setCampaignTitle(campaignData.campaign_name || 'Festive Flash Sale');
-          if (campaignData.banner_text) setBannerText(campaignData.banner_text);
-          if (campaignData.banner_image_url) setBannerImageUrl(campaignData.banner_image_url);
-          if (campaignData.banner_overlay_opacity !== undefined && campaignData.banner_overlay_opacity !== null) {
-            setBannerOverlayOpacity(Number(campaignData.banner_overlay_opacity));
+        const applyCampaign = (campaignObj: any) => {
+          if (campaignObj.campaign_name) setCampaignTitle(campaignObj.campaign_name);
+          if (campaignObj.banner_text) setBannerText(campaignObj.banner_text);
+          if (campaignObj.banner_image_url) setBannerImageUrl(campaignObj.banner_image_url);
+          if (campaignObj.banner_overlay_opacity !== undefined && campaignObj.banner_overlay_opacity !== null) {
+            setBannerOverlayOpacity(Number(campaignObj.banner_overlay_opacity));
           }
-          if (campaignData.end_date) {
-            const end = new Date(campaignData.end_date).getTime();
+          if (campaignObj.end_date) {
+            const end = new Date(campaignObj.end_date).getTime();
             const now = Date.now();
             const diff = Math.max(0, end - now);
             const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -85,15 +85,28 @@ export const SaleCampaign = () => {
             const seconds = Math.floor((diff % (1000 * 60)) / 1000);
             setTimeLeft({ days, hours, minutes, seconds });
           }
+        };
+
+        let targetCampaign = campaignData;
+        if (!targetCampaign) {
+          const { data: latestRow } = await supabase
+            .from('campaign_settings' as any)
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          targetCampaign = latestRow;
+        }
+
+        if (targetCampaign) {
+          applyCampaign(targetCampaign);
         } else {
           // Check localStorage fallback
           const stored = localStorage.getItem('plantsmantra_campaign_settings');
           if (stored) {
-            const parsed = JSON.parse(stored);
-            if (parsed.campaign_name) setCampaignTitle(parsed.campaign_name);
-            if (parsed.banner_text) setBannerText(parsed.banner_text);
-            if (parsed.banner_image_url) setBannerImageUrl(parsed.banner_image_url);
-            if (parsed.banner_overlay_opacity !== undefined) setBannerOverlayOpacity(Number(parsed.banner_overlay_opacity));
+            try {
+              applyCampaign(JSON.parse(stored));
+            } catch (e) {}
           }
         }
       } catch (err) {
@@ -106,6 +119,16 @@ export const SaleCampaign = () => {
             if (parsed.banner_text) setBannerText(parsed.banner_text);
             if (parsed.banner_image_url) setBannerImageUrl(parsed.banner_image_url);
             if (parsed.banner_overlay_opacity !== undefined) setBannerOverlayOpacity(Number(parsed.banner_overlay_opacity));
+            if (parsed.end_date) {
+              const end = new Date(parsed.end_date).getTime();
+              const now = Date.now();
+              const diff = Math.max(0, end - now);
+              const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+              const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+              const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+              const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+              setTimeLeft({ days, hours, minutes, seconds });
+            }
           } catch (e) {}
         }
       }

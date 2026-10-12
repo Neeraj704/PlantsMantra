@@ -23,6 +23,9 @@ export const CampaignBanner = () => {
 
         if (!error && data) {
           setCampaign(data as CampaignSettings);
+          try {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+          } catch (e) {}
           return;
         }
       } catch (err) {

@@ -118,12 +118,14 @@ export function parsePromoRule(promoStr?: string | null, isB1G1?: boolean | null
 }
 
 /**
- * Extracts all active promo rules for a given product from its tags or flags.
+ * Extracts all active promo rules for a given product from its tags or flags,
+ * checking config and active campaign fallbacks.
  */
 export function getProductPromoRules(product: CartItem['product']): PromoRule[] {
   const rules: PromoRule[] = [];
   const seenKeys = new Set<string>();
 
+  // 1. Direct product flag
   if (product.is_b1g1) {
     const b1g1 = parseAllPromoRules(null, true);
     b1g1.forEach(r => {
@@ -134,6 +136,7 @@ export function getProductPromoRules(product: CartItem['product']): PromoRule[] 
     });
   }
 
+  // 2. Product tags in database
   if (product.tags && Array.isArray(product.tags)) {
     product.tags.forEach((t: string) => {
       if (t.startsWith('promo:')) {
@@ -149,7 +152,105 @@ export function getProductPromoRules(product: CartItem['product']): PromoRule[] 
     });
   }
 
+  // 3. Fallback to promo products config store (localStorage cache)
+  if (typeof window !== 'undefined' && product?.id) {
+    try {
+      const storedConfig = localStorage.getItem('plantsmantra_promo_products_config');
+      if (storedConfig) {
+        const parsedConfig = JSON.parse(storedConfig);
+        const override = parsedConfig[product.id];
+        if (override && override.promo_tag && override.promo_tag !== 'none') {
+          const parsedList = parseAllPromoRules(override.promo_tag);
+          parsedList.forEach(r => {
+            if (!seenKeys.has(r.key)) {
+              rules.push(r);
+              seenKeys.add(r.key);
+            }
+          });
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 4. Active Sale Campaign Fallback:
+  // If the product doesn't have an explicit promo tag assigned, but it's on sale
+  // (sale_price < base_price or active discount), it inherits the store's active campaign promo (e.g. B4G1)!
+  if (rules.length === 0 && typeof window !== 'undefined') {
+    try {
+      const storedCampaign = localStorage.getItem('plantsmantra_campaign_settings');
+      if (storedCampaign) {
+        const parsedCampaign = JSON.parse(storedCampaign);
+        if (parsedCampaign.is_active !== false) {
+          const isOnSale = (product.sale_price !== null && product.sale_price !== undefined && Number(product.sale_price) < Number(product.base_price)) ||
+                           (product.tags && product.tags.some((t: string) => t.startsWith('promo:') || t.startsWith('urgent:')));
+          if (isOnSale) {
+            const campaignRules = parseAllPromoRules(parsedCampaign.banner_text || parsedCampaign.campaign_name || 'B4G1');
+            campaignRules.forEach(r => {
+              if (!seenKeys.has(r.key)) {
+                rules.push(r);
+                seenKeys.add(r.key);
+              }
+            });
+          }
+        }
+      } else {
+        // Default active campaign fallback when campaign settings are running
+        const isOnSale = (product.sale_price !== null && product.sale_price !== undefined && Number(product.sale_price) < Number(product.base_price)) ||
+                         (product.tags && product.tags.some((t: string) => t.startsWith('promo:') || t.startsWith('urgent:')));
+        if (isOnSale) {
+          const defaultRules = parseAllPromoRules('B4G1');
+          defaultRules.forEach(r => {
+            if (!seenKeys.has(r.key)) {
+              rules.push(r);
+              seenKeys.add(r.key);
+            }
+          });
+        }
+      }
+    } catch (e) {}
+  }
+
   return rules;
+}
+
+/**
+ * Determines the promo family/pool key for a given set of rules.
+ * This ensures that items with B4G1, B4G1 & B6G2, and B2G2/B4G1/B6G2
+ * are all grouped into the same pool and combine together!
+ */
+function getPromoFamilyPool(rules: PromoRule[]): { poolKey: string; poolRules: PromoRule[] } {
+  const keys = new Set(rules.map(r => r.key.toUpperCase()));
+
+  // Standard tiered BOGO family (B4G1, B6G2, B2G2)
+  if (keys.has('B4G1') || keys.has('B6G2') || keys.has('B2G2')) {
+    const tieredRules = parseAllPromoRules('B2G2, B4G1, B6G2');
+    return {
+      poolKey: 'bogo_tiered_b4g1_b6g2',
+      poolRules: tieredRules.filter(r => keys.has(r.key) || r.key === 'B4G1' || r.key === 'B6G2'),
+    };
+  }
+
+  // Buy 1 Get 1 Free family
+  if (keys.has('B1G1')) {
+    return {
+      poolKey: 'bogo_b1g1',
+      poolRules: parseAllPromoRules('B1G1'),
+    };
+  }
+
+  // Buy 2 Get 1 Free family
+  if (keys.has('B2G1')) {
+    return {
+      poolKey: 'bogo_b2g1',
+      poolRules: parseAllPromoRules('B2G1'),
+    };
+  }
+
+  // Custom promo signature
+  return {
+    poolKey: rules.map(r => r.key).sort().join('_'),
+    poolRules: rules,
+  };
 }
 
 /**
@@ -246,18 +347,17 @@ export function calculatePromoDiscounts(items: CartItem[]): PromoDiscountResult 
     price: number;
   }
 
-  // 1. Group individual units by their shared promo rules signature
+  // 1. Group individual units into compatible promo pools
   const promoPools: Record<string, { rules: PromoRule[]; units: UnitEntry[] }> = {};
 
   items.forEach((item) => {
     const rules = getProductPromoRules(item.product);
     if (!rules || rules.length === 0) return;
 
-    // Create a canonical group key sorted by rule key
-    const poolKey = rules.map((r) => r.key).sort().join('_');
+    const { poolKey, poolRules } = getPromoFamilyPool(rules);
 
     if (!promoPools[poolKey]) {
-      promoPools[poolKey] = { rules, units: [] };
+      promoPools[poolKey] = { rules: poolRules, units: [] };
     }
 
     const price =

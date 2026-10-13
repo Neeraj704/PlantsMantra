@@ -122,10 +122,46 @@ export function parsePromoRule(promoStr?: string | null, isB1G1?: boolean | null
  * checking config and active campaign fallbacks.
  */
 export function getProductPromoRules(product: CartItem['product']): PromoRule[] {
+  if (!product) return [];
   const rules: PromoRule[] = [];
   const seenKeys = new Set<string>();
 
-  // 1. Direct product flag
+  // Check if explicitly configured as 'none' in local config or product tags
+  let isExplicitlyNone = false;
+  if (product.tags && Array.isArray(product.tags)) {
+    if (product.tags.includes('promo:none')) {
+      isExplicitlyNone = true;
+    }
+  }
+
+  // 1. Check promo products config store (localStorage cache)
+  if (typeof window !== 'undefined' && product?.id) {
+    try {
+      const storedConfig = localStorage.getItem('plantsmantra_promo_products_config');
+      if (storedConfig) {
+        const parsedConfig = JSON.parse(storedConfig);
+        const override = parsedConfig[product.id];
+        if (override) {
+          if (override.promo_tag === 'none') {
+            return []; // Explicitly excluded from promos by admin
+          } else if (override.promo_tag && override.promo_tag !== 'custom') {
+            const parsedList = parseAllPromoRules(override.promo_tag);
+            parsedList.forEach(r => {
+              if (!seenKeys.has(r.key)) {
+                rules.push(r);
+                seenKeys.add(r.key);
+              }
+            });
+            if (rules.length > 0) return rules;
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (isExplicitlyNone) return [];
+
+  // 2. Direct product flag
   if (product.is_b1g1) {
     const b1g1 = parseAllPromoRules(null, true);
     b1g1.forEach(r => {
@@ -136,31 +172,13 @@ export function getProductPromoRules(product: CartItem['product']): PromoRule[] 
     });
   }
 
-  // 2. Product tags in database
+  // 3. Product tags in database
   if (product.tags && Array.isArray(product.tags)) {
     product.tags.forEach((t: string) => {
       if (t.startsWith('promo:')) {
-        const clean = t.replace('promo:', '');
-        const parsedList = parseAllPromoRules(clean);
-        parsedList.forEach(r => {
-          if (!seenKeys.has(r.key)) {
-            rules.push(r);
-            seenKeys.add(r.key);
-          }
-        });
-      }
-    });
-  }
-
-  // 3. Fallback to promo products config store (localStorage cache)
-  if (typeof window !== 'undefined' && product?.id) {
-    try {
-      const storedConfig = localStorage.getItem('plantsmantra_promo_products_config');
-      if (storedConfig) {
-        const parsedConfig = JSON.parse(storedConfig);
-        const override = parsedConfig[product.id];
-        if (override && override.promo_tag && override.promo_tag !== 'none') {
-          const parsedList = parseAllPromoRules(override.promo_tag);
+        const clean = t.replace('promo:', '').trim();
+        if (clean && clean !== 'none') {
+          const parsedList = parseAllPromoRules(clean);
           parsedList.forEach(r => {
             if (!seenKeys.has(r.key)) {
               rules.push(r);
@@ -169,45 +187,7 @@ export function getProductPromoRules(product: CartItem['product']): PromoRule[] 
           });
         }
       }
-    } catch (e) {}
-  }
-
-  // 4. Active Sale Campaign Fallback:
-  // If the product doesn't have an explicit promo tag assigned, but it's on sale
-  // (sale_price < base_price or active discount), it inherits the store's active campaign promo (e.g. B4G1)!
-  if (rules.length === 0 && typeof window !== 'undefined') {
-    try {
-      const storedCampaign = localStorage.getItem('plantsmantra_campaign_settings');
-      if (storedCampaign) {
-        const parsedCampaign = JSON.parse(storedCampaign);
-        if (parsedCampaign.is_active !== false) {
-          const isOnSale = (product.sale_price !== null && product.sale_price !== undefined && Number(product.sale_price) < Number(product.base_price)) ||
-                           (product.tags && product.tags.some((t: string) => t.startsWith('promo:') || t.startsWith('urgent:')));
-          if (isOnSale) {
-            const campaignRules = parseAllPromoRules(parsedCampaign.banner_text || parsedCampaign.campaign_name || 'B4G1');
-            campaignRules.forEach(r => {
-              if (!seenKeys.has(r.key)) {
-                rules.push(r);
-                seenKeys.add(r.key);
-              }
-            });
-          }
-        }
-      } else {
-        // Default active campaign fallback when campaign settings are running
-        const isOnSale = (product.sale_price !== null && product.sale_price !== undefined && Number(product.sale_price) < Number(product.base_price)) ||
-                         (product.tags && product.tags.some((t: string) => t.startsWith('promo:') || t.startsWith('urgent:')));
-        if (isOnSale) {
-          const defaultRules = parseAllPromoRules('B4G1');
-          defaultRules.forEach(r => {
-            if (!seenKeys.has(r.key)) {
-              rules.push(r);
-              seenKeys.add(r.key);
-            }
-          });
-        }
-      }
-    } catch (e) {}
+    });
   }
 
   return rules;

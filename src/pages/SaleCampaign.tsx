@@ -177,7 +177,8 @@ export const SaleCampaign = () => {
       });
 
       if (enrichedProducts.length > 0) {
-        // First check for products specifically chosen by the client with promo tags, urgency, or active discount
+        // Only include products specifically assigned by the admin to promo offers, B1G1, or stock urgency
+        // Combos or plants with None (No Promo) are explicitly excluded!
         const campaignSelectedItems = enrichedProducts.filter((p: any) => {
           const hasPromoTag = p.tags && Array.isArray(p.tags) && p.tags.some((t: string) => {
             if (!t.startsWith('promo:')) return false;
@@ -186,8 +187,7 @@ export const SaleCampaign = () => {
           });
           const isB1G1 = Boolean(p.is_b1g1);
           const isUrgent = p.scarcity_status === 'limited_stock' || (p.tags && Array.isArray(p.tags) && p.tags.includes('urgent:limited_stock'));
-          const isOnSale = p.sale_price !== null && p.sale_price !== undefined && Number(p.sale_price) < Number(p.base_price);
-          return hasPromoTag || isB1G1 || isUrgent || isOnSale;
+          return hasPromoTag || isB1G1 || isUrgent;
         });
 
         // Deduplicate plants with identical names in database (keeps best deal / lowest price)
@@ -209,12 +209,7 @@ export const SaleCampaign = () => {
           return Array.from(map.values());
         };
 
-        if (campaignSelectedItems.length > 0) {
-          setProducts(deduplicateList(campaignSelectedItems));
-        } else {
-          const generalSale = enrichedProducts.filter((p: any) => p.sale_price !== null && p.sale_price !== undefined && p.sale_price < p.base_price);
-          setProducts(deduplicateList(generalSale.length > 0 ? generalSale : enrichedProducts));
-        }
+        setProducts(deduplicateList(campaignSelectedItems));
       } else {
         setProducts([]);
       }
@@ -225,7 +220,10 @@ export const SaleCampaign = () => {
           .from('products')
           .select('id, name, slug, base_price, sale_price, main_image_url, tags')
           .eq('status', 'active');
-        setProducts(fallback || []);
+        const promoFallback = (fallback || []).filter((p: any) => 
+          p.tags && Array.isArray(p.tags) && p.tags.some((t: string) => t.startsWith('promo:') && !t.includes('none'))
+        );
+        setProducts(promoFallback);
       } catch (fallbackErr) {
         console.error('Fallback fetch failed:', fallbackErr);
       }

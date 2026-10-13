@@ -125,6 +125,7 @@ const AdminSales = () => {
   const [savingAll, setSavingAll] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPromoOnly, setFilterPromoOnly] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'live' | 'archived' | 'combos' | 'promos'>('all');
   const [savingProductIds, setSavingProductIds] = useState<string[]>([]);
   const [showSqlHelper, setShowSqlHelper] = useState(false);
   const promoConfigRef = useRef<PromoProductsMap>({});
@@ -447,9 +448,8 @@ const AdminSales = () => {
       await savePromoProductsConfig(promoConfigRef.current);
 
       // 2. Also try update products table if permissions allow (best effort)
-      // If a product is given a promo or sale price, make sure it is 'active' so customers can see and buy it!
-      const shouldActivate = isPromoActive || (chosenSalePrice !== null);
-      const targetStatus = shouldActivate ? 'active' : (product?.status || 'active');
+      // Preserve the product's current status - only update sale/promo data, not status
+      const targetStatus = product?.status || 'active';
 
       try {
         await supabase
@@ -479,14 +479,13 @@ const AdminSales = () => {
       // Update local product state
       setProducts(prev => prev.map(p => p.id === productId ? { 
         ...p, 
-        status: targetStatus as any,
         tags: currentTags,
         sale_price: chosenSalePrice,
         scarcity_status: changes.scarcity_status,
         scarcity_value: changes.scarcity_value,
       } : p));
 
-      toast.success(`Saved "${product?.name}"! (Status: ${targetStatus.toUpperCase()})`);
+      toast.success(`Saved "${product?.name}"!`);
     } catch (e: any) {
       console.error('Error saving product sales settings:', e);
       toast.error(e?.message || 'Failed to update plant settings');
@@ -496,16 +495,37 @@ const AdminSales = () => {
   };
 
   const handleQuickToggleStatus = async (productId: string, currentStatus?: string) => {
-    const newStatus = currentStatus === 'active' ? 'draft' : 'active';
+    const newStatus = currentStatus === 'active' ? 'archived' : 'active';
     try {
+      const updatePayload: Record<string, any> = { status: newStatus };
+      // When archiving, clear the promo_tag in config
+      if (newStatus === 'archived') {
+        promoConfigRef.current = {
+          ...promoConfigRef.current,
+          [productId]: {
+            ...(promoConfigRef.current[productId] || {}),
+            promo_tag: 'none',
+          },
+        };
+        await savePromoProductsConfig(promoConfigRef.current);
+        // Also update productChanges UI
+        setProductChanges(prev => ({
+          ...prev,
+          [productId]: {
+            ...(prev[productId] || { scarcity_status: 'none', scarcity_value: 0, sale_price_input: '' }),
+            promo_tag: 'none',
+            is_custom_promo: false,
+          }
+        }));
+      }
       const { error } = await supabase
         .from('products')
-        .update({ status: newStatus })
+        .update(updatePayload)
         .eq('id', productId);
       
       if (error) throw error;
       setProducts(prev => prev.map(p => p.id === productId ? { ...p, status: newStatus as any } : p));
-      toast.success(newStatus === 'active' ? 'Plant published live! Customers can now see it.' : 'Plant set to Draft (hidden from store).');
+      toast.success(newStatus === 'active' ? '🟢 Plant is now Live on the website!' : '🔴 Plant archived – hidden from store & /sale.');
     } catch (e: any) {
       console.error('Error toggling product status:', e);
       toast.error('Failed to change plant status: ' + (e?.message || 'Check database permissions'));
@@ -547,9 +567,8 @@ const AdminSales = () => {
         if (changes.scarcity_status && changes.scarcity_status !== 'none') currentTags.push(`urgent:${changes.scarcity_status}`);
         if (changes.scarcity_value && changes.scarcity_value > 0) currentTags.push(`hype:${changes.scarcity_value}`);
 
-        // Background update to products table (ensure status: 'active' so customers can see them)
-        const shouldActivate = isPromoActive || (chosenSalePrice !== null);
-        const targetStatus = shouldActivate ? 'active' : (product?.status || 'active');
+        // Background update to products table (preserve current product status - don't forcibly activate)
+        const targetStatus = product?.status || 'active';
 
         updatePromises.push(
           supabase
@@ -581,10 +600,8 @@ const AdminSales = () => {
         if (conf.promo_tag && conf.promo_tag !== 'none' && conf.promo_tag !== 'custom') {
           currentTags.push(`promo:${conf.promo_tag}`);
         }
-        const hasOffer = (conf.promo_tag && conf.promo_tag !== 'none') || (conf.sale_price !== null && conf.sale_price !== undefined);
         return {
           ...p,
-          status: hasOffer ? ('active' as any) : p.status,
           tags: currentTags,
           sale_price: conf.sale_price !== undefined ? conf.sale_price : p.sale_price,
           scarcity_status: conf.scarcity_status || p.scarcity_status,
@@ -610,11 +627,27 @@ const AdminSales = () => {
     toast.success('SQL snippet copied to clipboard! Paste it into Supabase SQL Editor.');
   };
 
+  const COMBO_KEYWORDS = ['trio', 'collection', 'assortment', 'garden', 'dozen', 'bundle', 'combo', 'set', 'pack'];
+  const isCombo = (p: Product) => {
+    const nm = p.name?.toLowerCase() || '';
+    return COMBO_KEYWORDS.some(k => nm.includes(k));
+  };
+
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.botanical_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
     if (!matchesSearch) return false;
+    
+    // Status filter
+    if (statusFilter === 'live') return p.status === 'active';
+    if (statusFilter === 'archived') return p.status === 'archived' || p.status === 'draft';
+    if (statusFilter === 'combos') return isCombo(p);
+    if (statusFilter === 'promos') {
+      const changes = productChanges[p.id];
+      return changes && changes.promo_tag !== 'none' && changes.promo_tag !== '';
+    }
+    
     if (filterPromoOnly) {
       const changes = productChanges[p.id];
       return changes && changes.promo_tag !== 'none';
@@ -1030,17 +1063,29 @@ const AdminSales = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => setFilterPromoOnly(!filterPromoOnly)}
-              className={`text-xs px-2.5 py-1 rounded-md border font-medium transition-colors flex items-center gap-1 ${
-                filterPromoOnly 
-                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800' 
-                  : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <Tag className="w-3 h-3" />
-              {filterPromoOnly ? 'Showing Promo Only' : 'Filter Promos'}
-            </button>
+            {/* Quick Filter Tabs */}
+            <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden text-[11px] font-medium h-8">
+              {([
+                { key: 'all', label: 'All' },
+                { key: 'live', label: '🟢 Live' },
+                { key: 'archived', label: '🔴 Hidden' },
+                { key: 'combos', label: '📦 Combos' },
+                { key: 'promos', label: '🏷️ Promos' },
+              ] as const).map(tab => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => { setStatusFilter(tab.key); setFilterPromoOnly(false); }}
+                  className={`px-2.5 h-full border-r border-gray-200 last:border-r-0 transition-colors ${
+                    statusFilter === tab.key
+                      ? 'bg-emerald-700 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
 
             <Button variant="outline" size="sm" onClick={fetchProducts} className="h-8 text-xs gap-1">
               <RefreshCw className="w-3 h-3" /> Reload
@@ -1124,20 +1169,17 @@ const AdminSales = () => {
                           <h4 className="font-semibold text-xs sm:text-sm text-gray-900 truncate" title={product.name}>
                             {product.name}
                           </h4>
-                          {product.status === 'active' ? (
-                            <span className="flex-shrink-0 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                              🟢 Live
+                          {/* Live / Archived Toggle Switch */}
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <Switch
+                              checked={product.status === 'active'}
+                              onCheckedChange={() => handleQuickToggleStatus(product.id, product.status)}
+                              className={`h-4 w-7 data-[state=checked]:bg-emerald-600 data-[state=unchecked]:bg-red-300 [&>span]:h-3 [&>span]:w-3`}
+                            />
+                            <span className={`text-[10px] font-bold ${product.status === 'active' ? 'text-emerald-700' : 'text-red-600'}`}>
+                              {product.status === 'active' ? 'Live' : (product.status === 'archived' ? 'Archived' : 'Draft')}
                             </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleQuickToggleStatus(product.id, product.status)}
-                              title="Click to publish live so this plant appears on /sale and the website"
-                              className="flex-shrink-0 text-[10px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-1.5 py-0.5 rounded border border-amber-300 transition-colors"
-                            >
-                              ⚠️ {product.status === 'archived' ? 'Archived' : 'Draft'} (Publish)
-                            </button>
-                          )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <span className="text-xs font-bold text-gray-800">₹{product.base_price}</span>

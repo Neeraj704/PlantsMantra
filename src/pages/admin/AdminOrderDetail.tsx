@@ -546,7 +546,7 @@ const AdminOrderDetail = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Tracking Number</p>
                   <Badge variant="secondary" className="mt-1">
-                    {order.courier || (order.shiprocket_awb ? 'Shiprocket' : 'Delhivery')}
+                    {order.courier || (order.shiprocket_awb ? 'Shiprocket' : (order.delhivery_response ? 'Delhivery' : 'Shiprocket'))}
                   </Badge>
                 </div>
                 {order.awb && (

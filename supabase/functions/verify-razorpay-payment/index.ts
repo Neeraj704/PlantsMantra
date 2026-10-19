@@ -113,7 +113,7 @@ serve(async (req: Request) => {
     if (!hasPin || !shipping?.city || !shipping?.state || !order.customer_name || !order.customer_phone) {
       await supabaseAdmin
         .from("orders")
-        .update({ delhivery_response: { error: "Invalid address" } })
+        .update({ shiprocket_response: { error: "Invalid address" } })
         .eq("id", internalOrderId);
       return new Response(JSON.stringify({ error: "Invalid shipping address" }), {
         status: 400,

@@ -96,10 +96,11 @@ serve(async (req: Request) => {
     }
 
     const shipping = order.shipping_address;
-    if (!shipping?.pin || !shipping?.city || !shipping?.state || !order.customer_name || !order.customer_phone) {
+    const hasPin = shipping?.pin || shipping?.postal_code;
+    if (!hasPin || !shipping?.city || !shipping?.state || !order.customer_name || !order.customer_phone) {
       await supabaseAdmin
         .from("orders")
-        .update({ delhivery_response: { error: "Invalid address for shipment" } })
+        .update({ shiprocket_response: { error: "Invalid address for shipment" } })
         .eq("id", orderId);
 
       return new Response(JSON.stringify({ error: "Invalid shipping address" }), {
@@ -108,12 +109,12 @@ serve(async (req: Request) => {
       });
     }
 
-    const { data: shipRes, error: shipErr } = await supabaseAdmin.functions.invoke('delhivery-create', {
+    const { data: shipRes, error: shipErr } = await supabaseAdmin.functions.invoke('shiprocket-create', {
       body: { orderId }
     });
 
     if (shipErr || !shipRes?.ok) {
-      return new Response(JSON.stringify({ error: "Failed to create Delhivery shipment", details: shipRes || shipErr }), {
+      return new Response(JSON.stringify({ error: "Failed to create Shiprocket shipment", details: shipRes || shipErr }), {
         status: 502,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       });

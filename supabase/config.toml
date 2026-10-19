@@ -1,4 +1,4 @@
-project_id = "fuhpzltwbiblcxeixtsz"
+project_id = "wrkoyhjzgxyexyfmwnwb"
 
 [functions.validate-coupon]
 verify_jwt = false

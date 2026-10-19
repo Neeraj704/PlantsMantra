@@ -1,0 +1,7 @@
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS actual_price NUMERIC(10,2) DEFAULT NULL;
+ALTER TABLE public.campaign_settings ADD COLUMN IF NOT EXISTS banner_image_url TEXT DEFAULT NULL;
+ALTER TABLE public.campaign_settings ADD COLUMN IF NOT EXISTS banner_overlay_opacity NUMERIC DEFAULT 0.65;
+ALTER TABLE public.banners ADD COLUMN IF NOT EXISTS subtitle TEXT DEFAULT NULL;
+ALTER TABLE public.banners ADD COLUMN IF NOT EXISTS button_text TEXT DEFAULT NULL;
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS min_order_amount NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS max_discount_amount NUMERIC(10,2) DEFAULT NULL;

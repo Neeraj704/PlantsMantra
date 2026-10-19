@@ -2,8 +2,8 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-export const SUPABASE_URL = "https://fuhpzltwbiblcxeixtsz.supabase.co";
-export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1aHB6bHR3YmlibGN4ZWl4dHN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1NzA4ODAsImV4cCI6MjA3NTE0Njg4MH0.-azMtemB-mtIWaZpZd3dmsdOPvGAk7yDTKS95Ju33xk";
+export const SUPABASE_URL = "https://wrkoyhjzgxyexyfmwnwb.supabase.co";
+export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indya295aGp6Z3h5ZXh5Zm13bndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0Mjk2MTIsImV4cCI6MjEwODAwNTYxMn0.uExBRJfe2VESZUjXTG4e4BxXqHuoI5wTmPHbJDjgEMk";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
@@ -16,15 +16,22 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   }
 });
 
+export const CLOUDINARY_CLOUD_NAME = "xmz5iwmo";
+
 export const getProxiedUrl = (url: string | null | undefined, width = 600): string => {
   if (!url) return '';
-  // Route Supabase storage URLs through Cloudflare-backed Global Image CDN (wsrv.nl)
-  // Converts 3MB+ raw photos into ~30KB WebP images and caches them on Cloudflare edge
+  // If already hosted on Cloudinary, return as-is or ensure f_auto,q_auto
+  if (url.includes('res.cloudinary.com')) {
+    return url;
+  }
+  // Route Supabase storage URLs through Cloudinary / Global Image CDN
+  // Converts 3MB+ raw photos into ~30KB WebP images and caches them on global edge
   if (url.includes('supabase.co/storage') || url.startsWith('/storage/')) {
     const fullUrl = url.startsWith('http') 
       ? url 
-      : `https://fuhpzltwbiblcxeixtsz.supabase.co${url}`;
-    return `https://wsrv.nl/?url=${encodeURIComponent(fullUrl)}&w=${width}&output=webp&q=80`;
+      : `${SUPABASE_URL}${url}`;
+    // Route through Cloudinary image fetch with automatic WebP, auto quality, and width bounds
+    return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/fetch/f_auto,q_auto,w_${width}/${encodeURIComponent(fullUrl)}`;
   }
   return url;
 };

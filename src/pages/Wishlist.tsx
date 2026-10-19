@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Heart, ShoppingCart } from 'lucide-react';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useCart } from '@/hooks/useCart';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, getProxiedUrl } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { trackPixelEvent } from '@/utils/pixel';
 
@@ -108,7 +108,7 @@ const Wishlist = () => {
                     <div className="relative aspect-square overflow-hidden bg-muted/50">
                       {product.main_image_url ? (
                         <img
-                          src={product.main_image_url}
+                          src={getProxiedUrl(product.main_image_url)}
                           alt={product.name}
                           className="w-full h-full object-cover transition-smooth group-hover:scale-105"
                         />

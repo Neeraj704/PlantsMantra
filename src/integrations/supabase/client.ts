@@ -16,10 +16,15 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   }
 });
 
-export const getProxiedUrl = (url: string | null | undefined): string => {
+export const getProxiedUrl = (url: string | null | undefined, width = 600): string => {
   if (!url) return '';
-  if (url.includes('fuhpzltwbiblcxeixtsz.supabase.co/storage')) {
-    return url.replace('https://fuhpzltwbiblcxeixtsz.supabase.co', '');
+  // Route Supabase storage URLs through Cloudflare-backed Global Image CDN (wsrv.nl)
+  // Converts 3MB+ raw photos into ~30KB WebP images and caches them on Cloudflare edge
+  if (url.includes('supabase.co/storage') || url.startsWith('/storage/')) {
+    const fullUrl = url.startsWith('http') 
+      ? url 
+      : `https://fuhpzltwbiblcxeixtsz.supabase.co${url}`;
+    return `https://wsrv.nl/?url=${encodeURIComponent(fullUrl)}&w=${width}&output=webp&q=80`;
   }
   return url;
 };

@@ -386,11 +386,11 @@ export const SaleCampaign = () => {
       </section>
 
       {/* Filter Tabs & Products Grid */}
-      <div id="sale-plants" className="container mx-auto px-4 py-8 scroll-mt-20">
-        <div className="flex items-center justify-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+      <div id="sale-plants" className="container mx-auto px-3 sm:px-4 py-8 pb-28 scroll-mt-20">
+        <div className="flex items-center justify-start md:justify-center gap-2 overflow-x-auto pb-2 no-scrollbar px-1 sm:px-0">
           <button
             onClick={() => setFilterType('all')}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+            className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
               filterType === 'all'
                 ? 'bg-emerald-800 text-white shadow-sm'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -406,7 +406,7 @@ export const SaleCampaign = () => {
               <button
                 key={tagKey}
                 onClick={() => setFilterType(tagKey)}
-                className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex-shrink-0 flex items-center gap-1.5 ${
                   isActive
                     ? 'bg-emerald-800 text-white shadow-sm'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -420,7 +420,7 @@ export const SaleCampaign = () => {
           {under199Count > 0 && (
             <button
               onClick={() => setFilterType('under199')}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
                 filterType === 'under199'
                   ? 'bg-emerald-800 text-white shadow-sm'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -441,7 +441,7 @@ export const SaleCampaign = () => {
             No plants found for this offer filter.
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 mt-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-4 mt-6">
             {filteredProducts.map((product, index) => {
               const imgSrc = getProxiedUrl(product.main_image_url) || '/placeholder.svg';
               const pricing = getProductPricing(product);
@@ -508,7 +508,7 @@ export const SaleCampaign = () => {
                       })()}
                     </div>
 
-                    <div className="p-3 flex flex-col flex-1 justify-between">
+                    <div className="p-2.5 sm:p-3 flex flex-col flex-1 justify-between">
                       <div>
                         <h3 className="font-serif font-medium text-xs sm:text-sm text-gray-900 line-clamp-1 group-hover:text-emerald-700 transition-colors">
                           {product.name}
@@ -535,7 +535,7 @@ export const SaleCampaign = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="w-full h-8 text-xs font-semibold rounded-lg border-emerald-700 text-emerald-800 hover:bg-emerald-700 hover:text-white transition-all flex items-center justify-center gap-1"
+                          className="w-full h-8 text-[11px] sm:text-xs font-semibold rounded-lg border-emerald-700 text-emerald-800 hover:bg-emerald-700 hover:text-white transition-all flex items-center justify-center gap-1"
                           onClick={(e) => handleQuickAdd(e, product)}
                         >
                           <ShoppingCart className="w-3.5 h-3.5" />

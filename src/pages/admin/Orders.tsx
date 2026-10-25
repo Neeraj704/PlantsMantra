@@ -98,12 +98,12 @@ const Orders = () => {
   const handleDownloadLabel = async (orderId: string, awb: string | null) => {
     setDownloadingAwb(orderId);
     try {
-      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/shiprocket-get-label?orderId=${encodeURIComponent(orderId)}`;
+      const funcUrl = `${SUPABASE_URL}/functions/v1/shiprocket-get-label?orderId=${encodeURIComponent(orderId)}`;
 
       const res = await fetch(funcUrl, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
         },
       });
 

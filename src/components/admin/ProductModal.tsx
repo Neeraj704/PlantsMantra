@@ -147,9 +147,11 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
     let uploadFile = file;
     try {
       const compressedBlob = await compressImage(file);
-      const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
+      const isWebp = compressedBlob.type === "image/webp";
+      const extension = isWebp ? ".webp" : ".jpg";
+      const newFileName = file.name.replace(/\.[^/.]+$/, "") + extension;
       uploadFile = new File([compressedBlob], newFileName, {
-        type: 'image/jpeg',
+        type: compressedBlob.type || 'image/webp',
         lastModified: Date.now()
       });
     } catch (err) {

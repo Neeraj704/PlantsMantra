@@ -1,18 +1,18 @@
 // src/utils/image.ts
 
 /**
- * Compresses an image file on the client side using HTML5 Canvas
+ * Compresses an image file on the client side using HTML5 Canvas to WebP format
  * @param file The original image file
  * @param maxWidth The maximum width constraint
  * @param maxHeight The maximum height constraint
  * @param quality The compression quality (0 to 1)
- * @returns A Promise resolving to a compressed Blob
+ * @returns A Promise resolving to a compressed WebP Blob
  */
 export const compressImage = (
   file: File,
   maxWidth = 1200,
   maxHeight = 1200,
-  quality = 0.75
+  quality = 0.8
 ): Promise<Blob> => {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) {
@@ -53,16 +53,21 @@ export const compressImage = (
         // Draw image onto canvas with new dimensions
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Convert canvas drawing to Blob using jpeg format at set quality
+        // Convert canvas drawing to Blob using modern webp format at set quality
         canvas.toBlob(
           (blob) => {
             if (blob) {
               resolve(blob);
             } else {
-              resolve(file); // fallback to original file if blob conversion fails
+              // Fallback to jpeg if webp is somehow unsupported
+              canvas.toBlob(
+                (jpegBlob) => resolve(jpegBlob || file),
+                'image/jpeg',
+                quality
+              );
             }
           },
-          'image/jpeg',
+          'image/webp',
           quality
         );
       };

@@ -2,8 +2,8 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-export const SUPABASE_URL = "https://wrkoyhjzgxyexyfmwnwb.supabase.co";
-export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indya295aGp6Z3h5ZXh5Zm13bndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0Mjk2MTIsImV4cCI6MjEwODAwNTYxMn0.uExBRJfe2VESZUjXTG4e4BxXqHuoI5wTmPHbJDjgEMk";
+export const SUPABASE_URL = "https://fuhpzltwbiblcxeixtsz.supabase.co";
+export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1aHB6bHR3YmlibGN4ZWl4dHN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1NzA4ODAsImV4cCI6MjA3NTE0Njg4MH0.-azMtemB-mtIWaZpZd3dmsdOPvGAk7yDTKS95Ju33xk";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
@@ -20,11 +20,15 @@ export const CLOUDINARY_CLOUD_NAME = "xmz5iwmo";
 
 export const getProxiedUrl = (url: string | null | undefined, width = 600): string => {
   if (!url) return '';
-  // If already hosted on Cloudinary, return as-is or ensure f_auto,q_auto
+  // Data or blob URLs
+  if (url.startsWith('data:') || url.startsWith('blob:')) {
+    return url;
+  }
+  // If already hosted on Cloudinary, return as-is
   if (url.includes('res.cloudinary.com')) {
     return url;
   }
-  // Route Supabase storage URLs through Cloudinary / Global Image CDN
+  // Route Supabase storage URLs through Cloudinary CDN
   // Converts 3MB+ raw photos into ~30KB WebP images and caches them on global edge
   if (url.includes('supabase.co/storage') || url.startsWith('/storage/')) {
     const fullUrl = url.startsWith('http') 

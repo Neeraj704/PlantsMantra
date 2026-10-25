@@ -1,7 +1,7 @@
 // src/pages/admin/AdminOrderDetail.tsx
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { Order } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -83,12 +83,12 @@ const AdminOrderDetail = () => {
 
     setDownloadingLabel(true);
     try {
-      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/shiprocket-get-label?orderId=${encodeURIComponent(order.id)}`;
+      const funcUrl = `${SUPABASE_URL}/functions/v1/shiprocket-get-label?orderId=${encodeURIComponent(order.id)}`;
 
       const res = await fetch(funcUrl, {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
         },
       });
 

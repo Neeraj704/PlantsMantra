@@ -1,4 +1,4 @@
-project_id = "wrkoyhjzgxyexyfmwnwb"
+project_id = "fuhpzltwbiblcxeixtsz"
 
 [functions.validate-coupon]
 verify_jwt = false
@@ -15,13 +15,13 @@ verify_jwt = true
 [functions.verify-razorpay-payment]
 verify_jwt = true
 
-[functions.delhivery-create]
+[functions.shiprocket-create]
 verify_jwt = true
 
-[functions.delhivery-cancel]
+[functions.shiprocket-cancel]
 verify_jwt = true
 
-[functions.delhivery-get-label]
+[functions.shiprocket-get-label]
 verify_jwt = true
 
 [functions.create-order]

@@ -19,7 +19,7 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   try {
-    const { orderId } = await req.json().catch(() => ({}));
+    const { orderId, weight, length, breadth, height } = await req.json().catch(() => ({}));
     if (!orderId) {
       return new Response(JSON.stringify({ error: "orderId required" }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
     }
@@ -76,8 +76,10 @@ serve(async (req: Request) => {
       order_items: items,
       payment_method: isCOD ? "COD" : "Prepaid",
       sub_total: Number(order.subtotal),
-      length: 15, breadth: 15, height: 15,
-      weight: parseFloat(Deno.env.get("SHIPROCKET_DEFAULT_WEIGHT") || "0.5"),
+      length: Number(length) > 0 ? Number(length) : 15,
+      breadth: Number(breadth) > 0 ? Number(breadth) : 15,
+      height: Number(height) > 0 ? Number(height) : 15,
+      weight: Number(weight) > 0 ? Number(weight) : parseFloat(Deno.env.get("SHIPROCKET_DEFAULT_WEIGHT") || "0.5"),
       pickup_location: Deno.env.get("SHIPROCKET_PICKUP_LOCATION") || "plantsmn"
     };
 
@@ -124,7 +126,7 @@ serve(async (req: Request) => {
     }
 
     const updates = {
-      courier: "Shiprocket",
+      courier: courierName || "Shiprocket",
       awb: awb || order.awb,
       shipment_status: "Pending",
       shiprocket_order_id: shiprocketOrderId,
@@ -135,13 +137,21 @@ serve(async (req: Request) => {
       shiprocket_label_url: labelUrl,
       shiprocket_tracking_url: trackingUrl,
       shiprocket_created_at: new Date().toISOString(),
-      shiprocket_response: createRes || order.shiprocket_response,
+      shiprocket_response: {
+        ...(createRes || order.shiprocket_response || {}),
+        package_dimensions: {
+          length: Number(length) > 0 ? Number(length) : 15,
+          breadth: Number(breadth) > 0 ? Number(breadth) : 15,
+          height: Number(height) > 0 ? Number(height) : 15,
+          weight: Number(weight) > 0 ? Number(weight) : parseFloat(Deno.env.get("SHIPROCKET_DEFAULT_WEIGHT") || "0.5"),
+        }
+      },
       shipment_created_at: new Date().toISOString(),
     };
 
     await supabaseAdmin.from("orders").update(updates).eq("id", orderId);
 
-    return new Response(JSON.stringify({ ok: true, shiprocketOrderId, shipmentId, awb, courierName, labelUrl, trackingUrl }), {
+    return new Response(JSON.stringify({ ok: true, shiprocketOrderId, shipmentId, awb, courierName, labelUrl, trackingUrl, length: Number(length) > 0 ? Number(length) : 15, breadth: Number(breadth) > 0 ? Number(breadth) : 15, height: Number(height) > 0 ? Number(height) : 15, weight: Number(weight) > 0 ? Number(weight) : parseFloat(Deno.env.get("SHIPROCKET_DEFAULT_WEIGHT") || "0.5") }), {
         status: 200, headers: { ...cors, "Content-Type": "application/json" }
     });
   } catch (err: any) {

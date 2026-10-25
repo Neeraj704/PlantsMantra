@@ -95,32 +95,17 @@ serve(async (req: Request) => {
       });
     }
 
-    const shipping = order.shipping_address;
-    const hasPin = shipping?.pin || shipping?.postal_code;
-    if (!hasPin || !shipping?.city || !shipping?.state || !order.customer_name || !order.customer_phone) {
-      await supabaseAdmin
-        .from("orders")
-        .update({ shiprocket_response: { error: "Invalid address for shipment" } })
-        .eq("id", orderId);
+    // Option A: Mark order paid and processing; admin enters custom box dimensions in Admin Panel before Shiprocket push
+    await supabaseAdmin
+      .from("orders")
+      .update({
+        payment_status: "paid",
+        status: "processing",
+        payment_intent_id: paymentIntentId,
+      })
+      .eq("id", orderId);
 
-      return new Response(JSON.stringify({ error: "Invalid shipping address" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-      });
-    }
-
-    const { data: shipRes, error: shipErr } = await supabaseAdmin.functions.invoke('shiprocket-create', {
-      body: { orderId }
-    });
-
-    if (shipErr || !shipRes?.ok) {
-      return new Response(JSON.stringify({ error: "Failed to create Shiprocket shipment", details: shipRes || shipErr }), {
-        status: 502,
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-      });
-    }
-
-    return new Response(JSON.stringify({ ok: true, awb: shipRes.awb, shipmentRes: shipRes }), {
+    return new Response(JSON.stringify({ success: true, ok: true, message: "Payment verified successfully" }), {
       status: 200,
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });

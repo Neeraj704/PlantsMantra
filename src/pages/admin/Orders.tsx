@@ -389,9 +389,21 @@ const Orders = () => {
                       </Badge>
                     </td>
                     <td className="p-4">
-                      <div className="font-mono">
-                        {order.awb || "—"}
-                      </div>
+                      {order.awb || order.shiprocket_awb ? (
+                        <div className="space-y-0.5">
+                          <div className="font-mono text-xs font-semibold">
+                            {order.shiprocket_awb || order.awb}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            {order.shiprocket_courier_name
+                              ? order.shiprocket_courier_name
+                              : (order.courier || 'Shiprocket')}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">

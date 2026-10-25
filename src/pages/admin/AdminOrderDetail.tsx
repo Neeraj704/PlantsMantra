@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ChevronLeft, Package, MapPin, CreditCard, Edit2, Check, X, Download, Loader2, Phone, Coins } from 'lucide-react';
+import { ChevronLeft, Package, MapPin, CreditCard, Edit2, Check, X, Download, Loader2, Phone, Coins, ExternalLink, Scale } from 'lucide-react';
 
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -43,6 +43,11 @@ const AdminOrderDetail = () => {
   const [isEditingAwb, setIsEditingAwb] = useState(false);
   const [newAwb, setNewAwb] = useState('');
   const [downloadingLabel, setDownloadingLabel] = useState(false);
+  const [packageWeight, setPackageWeight] = useState<string>('0.5');
+  const [packageLength, setPackageLength] = useState<string>('15');
+  const [packageBreadth, setPackageBreadth] = useState<string>('15');
+  const [packageHeight, setPackageHeight] = useState<string>('15');
+  const [creatingShipment, setCreatingShipment] = useState<boolean>(false);
 
   useEffect(() => {
     if (order) {
@@ -118,18 +123,46 @@ const AdminOrderDetail = () => {
 
   const handleCreateShipment = async () => {
     if (!order) return;
+    const w = parseFloat(packageWeight);
+    const l = parseFloat(packageLength);
+    const b = parseFloat(packageBreadth);
+    const h = parseFloat(packageHeight);
+
+    if (isNaN(w) || w <= 0) {
+      toast.error('Please enter a valid package weight (kg)');
+      return;
+    }
+    if (isNaN(l) || l <= 0 || isNaN(b) || b <= 0 || isNaN(h) || h <= 0) {
+      toast.error('Please enter valid package dimensions (L x B x H in cm)');
+      return;
+    }
+
+    setCreatingShipment(true);
     try {
-      toast.info('Initiating Shiprocket shipment...');
+      toast.info('Sending custom dimensions to Shiprocket...');
       const { data, error: funcError } = await supabase.functions.invoke('shiprocket-create', {
         method: 'POST',
-        body: JSON.stringify({ orderId: order.id }),
+        body: JSON.stringify({
+          orderId: order.id,
+          weight: w,
+          length: l,
+          breadth: b,
+          height: h,
+        }),
       });
       if (funcError) throw funcError;
       if (data?.error) throw new Error(data.error);
-      toast.success('Shiprocket shipment created successfully.');
+
+      toast.success('Shiprocket shipment created successfully! Opening dashboard...');
+      
+      // Open Shiprocket Seller Orders Dashboard in a new tab
+      window.open('https://app.shiprocket.in/seller/orders', '_blank');
+
       fetchOrderDetails();
     } catch (e: any) {
       toast.error(e.message || 'Failed to create Shiprocket shipment');
+    } finally {
+      setCreatingShipment(false);
     }
   };
 
@@ -308,12 +341,8 @@ const AdminOrderDetail = () => {
 
       toast.success(`Call status updated to ${newStatus}`);
 
-      // Automatically trigger Shiprocket shipment creation if confirmed
-      if (newStatus === 'confirmed') {
-        await handleCreateShipment();
-      } else {
-        fetchOrderDetails();
-      }
+      // Option A: Confirmed status allows admin to review and input exact box dimensions before push
+      fetchOrderDetails();
     } catch (e: any) {
       console.error('Failed to update call status:', e);
       toast.error('Failed to update call status');
@@ -495,10 +524,93 @@ const AdminOrderDetail = () => {
             <Separator />
             {!order.awb ? (
               <div className="pt-2 space-y-4">
-                <p className="text-sm text-muted-foreground">No shipment created yet.</p>
+                <div className="rounded-lg border border-border/80 bg-muted/30 p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Scale className="w-3.5 h-3.5 text-primary" /> Package Dimensions & Weight
+                    </p>
+                    <span className="text-[11px] text-muted-foreground font-mono">
+                      Vol: {((parseFloat(packageLength) || 0) * (parseFloat(packageBreadth) || 0) * (parseFloat(packageHeight) || 0) / 5000).toFixed(2)} kg
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <label className="text-[11px] text-muted-foreground block mb-1">
+                        Weight (kg)
+                      </label>
+                      <Input
+                        type="number"
+                        step="0.05"
+                        min="0.05"
+                        value={packageWeight}
+                        onChange={(e) => setPackageWeight(e.target.value)}
+                        placeholder="0.5"
+                        className="h-8 text-xs font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-muted-foreground block mb-1">
+                        Length (cm)
+                      </label>
+                      <Input
+                        type="number"
+                        step="1"
+                        min="1"
+                        value={packageLength}
+                        onChange={(e) => setPackageLength(e.target.value)}
+                        placeholder="15"
+                        className="h-8 text-xs font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-muted-foreground block mb-1">
+                        Breadth (cm)
+                      </label>
+                      <Input
+                        type="number"
+                        step="1"
+                        min="1"
+                        value={packageBreadth}
+                        onChange={(e) => setPackageBreadth(e.target.value)}
+                        placeholder="15"
+                        className="h-8 text-xs font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-muted-foreground block mb-1">
+                        Height (cm)
+                      </label>
+                      <Input
+                        type="number"
+                        step="1"
+                        min="1"
+                        value={packageHeight}
+                        onChange={(e) => setPackageHeight(e.target.value)}
+                        placeholder="15"
+                        className="h-8 text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex flex-col gap-2">
-                  <Button onClick={handleCreateShipment} className="w-full">
-                    Create Shiprocket Shipment
+                  <Button 
+                    onClick={handleCreateShipment} 
+                    disabled={creatingShipment}
+                    className="w-full flex items-center justify-center gap-1.5"
+                  >
+                    {creatingShipment ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                        Pushing to Shiprocket...
+                      </>
+                    ) : (
+                      <>
+                        <Package className="w-4 h-4 mr-1" />
+                        Create & Push to Shiprocket
+                      </>
+                    )}
                   </Button>
                   {(order.shipment_created_at || order.shiprocket_response || order.delhivery_response) && (
                     <Button
@@ -544,9 +656,11 @@ const AdminOrderDetail = () => {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div>
-                  <p className="text-sm text-muted-foreground">Tracking Number</p>
-                  <Badge variant="secondary" className="mt-1">
-                    {order.courier || (order.shiprocket_awb ? 'Shiprocket' : (order.delhivery_response ? 'Delhivery' : 'Shiprocket'))}
+                  <p className="text-sm text-muted-foreground">Courier & Tracking</p>
+                  <Badge variant="secondary" className="mt-1 font-medium">
+                    {order.shiprocket_courier_name
+                      ? `${order.shiprocket_courier_name} (via Shiprocket)`
+                      : (order.courier || (order.shiprocket_awb ? 'Shiprocket' : (order.delhivery_response ? 'Delhivery' : 'Shiprocket')))}
                   </Badge>
                 </div>
                 {order.awb && (
@@ -566,6 +680,19 @@ const AdminOrderDetail = () => {
                   </Button>
                 )}
               </div>
+
+              {/* Saved package dimensions info */}
+              {(() => {
+                const pkg = (order.shiprocket_response as any)?.package_dimensions;
+                if (!pkg) return null;
+                const vol = ((pkg.length * pkg.breadth * pkg.height) / 5000).toFixed(2);
+                return (
+                  <div className="mb-2 p-2 rounded bg-muted/40 text-[11px] text-muted-foreground font-mono flex items-center justify-between">
+                    <span>Box: {pkg.weight} kg ({pkg.length}×{pkg.breadth}×{pkg.height} cm)</span>
+                    <span>Vol: {vol} kg</span>
+                  </div>
+                );
+              })()}
 
               {isEditingAwb ? (
                 <div className="flex items-center gap-2">
@@ -591,7 +718,7 @@ const AdminOrderDetail = () => {
                   </Button>
                 </div>
               ) : (
-                <div className="flex flex-col gap-1 group">
+                <div className="flex flex-col gap-1.5 group">
                   <div className="flex items-center justify-between">
                     <p className="font-medium font-mono">
                       {order.awb || 'Not assigned'}
@@ -605,21 +732,31 @@ const AdminOrderDetail = () => {
                       <Edit2 className="w-3 h-3" />
                     </Button>
                   </div>
-                  {order.awb && (
+                  <div className="flex items-center justify-between text-xs pt-0.5">
+                    {order.awb && (
+                      <a
+                        href={
+                          order.shiprocket_tracking_url ||
+                          (order.courier === 'Delhivery'
+                            ? `https://www.delhivery.com/track/package/${order.awb}`
+                            : `https://shiprocket.co/tracking/${order.shiprocket_awb || order.awb}`)
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-emerald-700 hover:underline flex items-center gap-1 font-medium"
+                      >
+                        Track Shipment <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
                     <a
-                      href={
-                        order.shiprocket_tracking_url ||
-                        (order.courier === 'Delhivery'
-                          ? `https://www.delhivery.com/track/package/${order.awb}`
-                          : `https://shiprocket.co/tracking/${order.shiprocket_awb || order.awb}`)
-                      }
+                      href="https://app.shiprocket.in/seller/orders"
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs text-blue-600 hover:underline"
+                      className="text-blue-600 hover:underline flex items-center gap-1"
                     >
-                      Track on {order.courier || (order.shiprocket_awb ? 'Shiprocket' : 'Delhivery')}
+                      Shiprocket Dashboard <ExternalLink className="w-3 h-3" />
                     </a>
-                  )}
+                  </div>
                 </div>
               )}
               {(order.shipment_created_at || order.shiprocket_response || order.delhivery_response) && (

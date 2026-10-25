@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { compressImage } from '@/utils/image';
+import { compressImage, uploadToCloudinary } from '@/utils/image';
 import {
   Dialog,
   DialogContent,
@@ -49,18 +49,17 @@ const BannerModal = ({ open, onClose, banner }: BannerModalProps) => {
           console.warn("Failed to compress banner image:", err);
         }
 
-        const fileName = `${Math.random()}.jpg`;
-        const { error: uploadError } = await supabase.storage
-          .from('banners')
-          .upload(fileName, uploadFile);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('banners')
-          .getPublicUrl(fileName);
-
-        imageUrl = publicUrl;
+        imageUrl = await uploadToCloudinary(uploadFile, async () => {
+          const fileName = `${Math.random()}.webp`;
+          const { error: uploadError } = await supabase.storage
+            .from('banners')
+            .upload(fileName, uploadFile);
+          if (uploadError) throw uploadError;
+          const { data: { publicUrl } } = supabase.storage
+            .from('banners')
+            .getPublicUrl(fileName);
+          return publicUrl;
+        });
       }
 
       if (!imageUrl) {

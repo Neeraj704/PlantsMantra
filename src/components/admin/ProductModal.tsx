@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Product, Category } from '@/types/database';
 import { toast } from 'sonner';
 import { Upload, X } from 'lucide-react';
-import { compressImage } from '@/utils/image';
+import { compressImage, uploadToCloudinary } from '@/utils/image';
 
 interface ProductModalProps {
   open: boolean;
@@ -144,31 +144,27 @@ export const ProductModal = ({ open, onClose, product, onSuccess }: ProductModal
   };
 
   const uploadImage = async (file: File, path: string): Promise<string> => {
-    let uploadFile = file;
+    let uploadFile: Blob = file;
     try {
-      const compressedBlob = await compressImage(file);
-      const isWebp = compressedBlob.type === "image/webp";
-      const extension = isWebp ? ".webp" : ".jpg";
-      const newFileName = file.name.replace(/\.[^/.]+$/, "") + extension;
-      uploadFile = new File([compressedBlob], newFileName, {
-        type: compressedBlob.type || 'image/webp',
-        lastModified: Date.now()
-      });
+      uploadFile = await compressImage(file);
     } catch (err) {
       console.warn("Failed to compress image, uploading original:", err);
     }
 
-    const { data, error } = await supabase.storage
-      .from('product-images')
-      .upload(path, uploadFile, { upsert: true });
+    // Upload directly to Cloudinary (0 GB Supabase Storage Egress!)
+    return await uploadToCloudinary(uploadFile, async () => {
+      const { data, error } = await supabase.storage
+        .from('product-images')
+        .upload(path, uploadFile, { upsert: true });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('product-images')
-      .getPublicUrl(data.path);
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(data.path);
 
-    return publicUrl;
+      return publicUrl;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -1,5 +1,8 @@
 // src/utils/image.ts
 
+export const CLOUDINARY_CLOUD_NAME = "xmz5iwmo";
+export const CLOUDINARY_UPLOAD_PRESET = "plantsmantra_uploads";
+
 /**
  * Compresses an image file on the client side using HTML5 Canvas to WebP format
  * @param file The original image file
@@ -75,4 +78,37 @@ export const compressImage = (
     };
     reader.onerror = (err) => reject(err);
   });
+};
+
+/**
+ * Uploads an image directly to Cloudinary Media Library using the unsigned upload preset
+ * Bypasses Supabase Storage completely, ensuring 0 GB Supabase storage bandwidth.
+ */
+export const uploadToCloudinary = async (
+  file: File | Blob,
+  fallbackUpload?: () => Promise<string>
+): Promise<string> => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.warn('Cloudinary upload warning:', err);
+      if (fallbackUpload) return await fallbackUpload();
+      throw new Error(err?.error?.message || 'Cloudinary upload failed');
+    }
+
+    const data = await res.json();
+    return data.secure_url;
+  } catch (error) {
+    if (fallbackUpload) return await fallbackUpload();
+    throw error;
+  }
 };

@@ -103,7 +103,7 @@ export async function generateLabel(token: string, shipmentId: string): Promise<
   return body;
 }
 
-export async function cancelOrder(token: string, ids: string[]): Promise<any> {
+export async function cancelOrder(token: string, ids: (string | number)[]): Promise<any> {
   const res = await fetch(`${SHIPROCKET_BASE}/orders/cancel`, {
     method: "POST",
     headers: {
@@ -116,6 +116,36 @@ export async function cancelOrder(token: string, ids: string[]): Promise<any> {
   const body = await res.json();
   if (!res.ok) {
      throw new Error(`Shiprocket cancel failed: ${JSON.stringify(body)}`);
+  }
+  return body;
+}
+
+export async function cancelShipmentAwb(token: string, awbs: string[]): Promise<any> {
+  const res = await fetch(`${SHIPROCKET_BASE}/orders/cancel/shipment/awbs`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ awbs }),
+  });
+  
+  const body = await res.json();
+  return body;
+}
+
+export async function searchOrders(token: string, query: string): Promise<any> {
+  const res = await fetch(`${SHIPROCKET_BASE}/orders?search=${encodeURIComponent(query)}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  
+  const body = await res.json();
+  if (!res.ok) {
+    throw new Error(`Shiprocket searchOrders failed: ${JSON.stringify(body)}`);
   }
   return body;
 }

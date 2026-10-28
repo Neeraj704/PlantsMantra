@@ -173,13 +173,28 @@ const Orders = () => {
   const handleDeleteSelected = async () => {
     if (selectedOrders.length === 0) return;
     
-    if (!window.confirm(`Are you sure you want to delete ${selectedOrders.length} selected orders?`)) {
+    if (!window.confirm(`Are you sure you want to delete ${selectedOrders.length} selected orders? If any have active shipments on Shiprocket, they will also be cancelled.`)) {
       return;
     }
 
     setIsDeleting(true);
     try {
-      // First, delete related order_items to avoid foreign key constraint violations
+      // 1. Cancel any associated shipments in Shiprocket/Delhivery before deleting from database
+      const ordersToDelete = orders.filter((o) => selectedOrders.includes(o.id));
+      await Promise.allSettled(
+        ordersToDelete.map((o) =>
+          supabase.functions.invoke("shiprocket-cancel", {
+            body: {
+              orderId: o.id,
+              shiprocketOrderId: o.shiprocket_order_id || undefined,
+              channelOrderId: o.id.replace(/-/g, "").substring(0, 30),
+              awb: o.shiprocket_awb || o.awb || undefined,
+            },
+          })
+        )
+      );
+
+      // 2. Delete related order_items to avoid foreign key constraint violations
       const { error: itemsError } = await supabase
         .from("order_items" as any)
         .delete()
@@ -192,7 +207,7 @@ const Orders = () => {
         return;
       }
 
-      // Then delete the orders
+      // 3. Delete the orders
       const { error } = await supabase
         .from("orders" as any)
         .delete()
@@ -202,7 +217,7 @@ const Orders = () => {
         toast.error("Failed to delete selected orders");
         console.error("Delete error:", error);
       } else {
-        toast.success(`Successfully deleted ${selectedOrders.length} orders`);
+        toast.success(`Successfully deleted ${selectedOrders.length} orders (synced with Shiprocket)`);
         setSelectedOrders([]);
         fetchOrders();
       }

@@ -200,11 +200,27 @@ const AdminOrderDetail = () => {
     if (!order) return;
 
     const confirmReset = window.confirm(
-      "Are you sure you want to reset shipment data? This will clear the AWB, shipment timestamp, and Shiprocket data, allowing you to create a new shipment."
+      "Are you sure you want to reset shipment data? This will cancel the active shipment on Shiprocket/courier and clear the local AWB, allowing you to re-create a new shipment."
     );
     if (!confirmReset) return;
 
     try {
+      if (order.shiprocket_order_id || order.awb) {
+        toast.info("Cancelling shipment on Shiprocket/courier...");
+        try {
+          await supabase.functions.invoke("shiprocket-cancel", {
+            body: {
+              orderId: order.id,
+              shiprocketOrderId: order.shiprocket_order_id || undefined,
+              channelOrderId: order.id.replace(/-/g, "").substring(0, 30),
+              awb: order.shiprocket_awb || order.awb || undefined,
+            },
+          });
+        } catch (cancelErr) {
+          console.warn("Shiprocket cancellation notice:", cancelErr);
+        }
+      }
+
       const { error } = await supabase
         .from('orders' as any)
         .update({
@@ -224,7 +240,7 @@ const AdminOrderDetail = () => {
 
       if (error) throw error;
 
-      toast.success('Shipment data reset successfully');
+      toast.success('Shipment cancelled on courier and reset successfully');
       fetchOrderDetails();
     } catch (error) {
       console.error('Error resetting shipment data:', error);
@@ -319,6 +335,22 @@ const AdminOrderDetail = () => {
 
   const handleStatusUpdate = async (newStatus: string) => {
     if (!order) return;
+
+    if (newStatus === 'cancelled' && (order.shiprocket_order_id || order.awb)) {
+      toast.info("Syncing cancellation with Shiprocket...");
+      try {
+        await supabase.functions.invoke("shiprocket-cancel", {
+          body: {
+            orderId: order.id,
+            shiprocketOrderId: order.shiprocket_order_id || undefined,
+            channelOrderId: order.id.replace(/-/g, "").substring(0, 30),
+            awb: order.shiprocket_awb || order.awb || undefined,
+          },
+        });
+      } catch (cancelErr) {
+        console.warn("Shiprocket cancel error:", cancelErr);
+      }
+    }
 
     const { error } = await supabase
       .from('orders' as any)

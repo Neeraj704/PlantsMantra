@@ -119,3 +119,19 @@ export async function cancelOrder(token: string, ids: string[]): Promise<any> {
   }
   return body;
 }
+
+export async function getOrder(token: string, orderId: string): Promise<any> {
+  const res = await fetch(`${SHIPROCKET_BASE}/orders/show/${orderId}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  
+  const body = await res.json();
+  if (!res.ok) {
+    throw new Error(`Shiprocket getOrder failed: ${JSON.stringify(body)}`);
+  }
+  return body;
+}

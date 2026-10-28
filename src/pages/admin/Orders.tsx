@@ -365,21 +365,34 @@ const Orders = () => {
                     </td>
                     <td className="p-4">₹{Number(order.total).toFixed(2)}</td>
                     <td className="p-4">
-                      <Select
-                        defaultValue={order.payment_status || "checking"}
-                        onValueChange={(val) =>
-                          handlePaymentStatusUpdate(order.id, val)
-                        }
-                      >
-                        <SelectTrigger className="w-32 h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="checking">Checking</SelectItem>
-                          <SelectItem value="paid">Paid</SelectItem>
-                          <SelectItem value="unpaid">Unpaid</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="space-y-1.5">
+                        <div>
+                          {order.payment_method === 'cod' ? (
+                            <Badge variant="outline" className="text-[10px] font-semibold bg-amber-50 text-amber-800 border-amber-200">
+                              💵 COD
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] font-semibold bg-emerald-50 text-emerald-800 border-emerald-200">
+                              ⚡ Online (Razorpay)
+                            </Badge>
+                          )}
+                        </div>
+                        <Select
+                          defaultValue={order.payment_status || (order.payment_method === 'cod' ? 'unpaid' : 'checking')}
+                          onValueChange={(val) =>
+                            handlePaymentStatusUpdate(order.id, val)
+                          }
+                        >
+                          <SelectTrigger className="w-28 h-7 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="paid">🟢 Paid</SelectItem>
+                            <SelectItem value="unpaid">🟠 Unpaid</SelectItem>
+                            <SelectItem value="checking">🟡 Checking</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </td>
                     <td className="p-4">
                       <Badge

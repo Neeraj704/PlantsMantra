@@ -109,7 +109,7 @@ serve(async (req: Request) => {
         coupon_code: coupon_code || null,
         payment_method,
         status: "pending",
-        payment_status: "checking",
+        payment_status: payment_method?.toLowerCase() === "cod" ? "unpaid" : "checking",
       } as any)
       .select("*")
       .single();

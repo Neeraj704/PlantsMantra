@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ChevronLeft, Package, MapPin, CreditCard, Edit2, Check, X, Download, Loader2, Phone, Coins, ExternalLink, Scale } from 'lucide-react';
+import { ChevronLeft, Package, MapPin, CreditCard, Edit2, Check, X, Download, Loader2, Phone, Coins, ExternalLink, Scale, RefreshCw } from 'lucide-react';
 
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -48,6 +48,7 @@ const AdminOrderDetail = () => {
   const [packageBreadth, setPackageBreadth] = useState<string>('15');
   const [packageHeight, setPackageHeight] = useState<string>('15');
   const [creatingShipment, setCreatingShipment] = useState<boolean>(false);
+  const [syncingAwb, setSyncingAwb] = useState<boolean>(false);
 
   useEffect(() => {
     if (order) {
@@ -139,7 +140,7 @@ const AdminOrderDetail = () => {
 
     setCreatingShipment(true);
     try {
-      toast.info('Sending custom dimensions to Shiprocket...');
+      toast.info('Pushing draft order with custom dimensions to Shiprocket...');
       const { data, error: funcError } = await supabase.functions.invoke('shiprocket-create', {
         method: 'POST',
         body: JSON.stringify({
@@ -148,21 +149,50 @@ const AdminOrderDetail = () => {
           length: l,
           breadth: b,
           height: h,
+          action: 'create_draft',
         }),
       });
       if (funcError) throw funcError;
       if (data?.error) throw new Error(data.error);
 
-      toast.success('Shiprocket shipment created successfully! Opening dashboard...');
+      toast.success('Order pushed to Shiprocket in NEW status! Opening Shiprocket to choose courier...');
       
       // Open Shiprocket Seller Orders Dashboard in a new tab
       window.open('https://app.shiprocket.in/seller/orders', '_blank');
 
       fetchOrderDetails();
     } catch (e: any) {
-      toast.error(e.message || 'Failed to create Shiprocket shipment');
+      toast.error(e.message || 'Failed to push order to Shiprocket');
     } finally {
       setCreatingShipment(false);
+    }
+  };
+
+  const handleSyncAwb = async () => {
+    if (!order) return;
+    setSyncingAwb(true);
+    try {
+      toast.info('Checking Shiprocket for assigned courier and AWB...');
+      const { data, error: funcError } = await supabase.functions.invoke('shiprocket-create', {
+        method: 'POST',
+        body: JSON.stringify({
+          orderId: order.id,
+          action: 'sync_awb',
+        }),
+      });
+      if (funcError) throw funcError;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.synced) {
+        toast.success(`Synced from Shiprocket! AWB: ${data.awb} (${data.courierName || 'Courier Assigned'})`);
+      } else {
+        toast.info(`Shiprocket status: ${data?.status || 'NEW'}. Courier not assigned yet in Shiprocket. Click 'Open in Shiprocket' to select courier and ship.`);
+      }
+      fetchOrderDetails();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to sync with Shiprocket');
+    } finally {
+      setSyncingAwb(false);
     }
   };
 
@@ -479,6 +509,18 @@ const AdminOrderDetail = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
+              <p className="text-sm text-muted-foreground mb-1">Payment Method</p>
+              {order.payment_method === 'cod' ? (
+                <Badge variant="outline" className="text-xs font-semibold bg-amber-50 text-amber-800 border-amber-300">
+                  💵 Cash on Delivery (COD)
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs font-semibold bg-emerald-50 text-emerald-800 border-emerald-300">
+                  ⚡ Online Payment (Razorpay)
+                </Badge>
+              )}
+            </div>
+            <div>
               <p className="text-sm text-muted-foreground mb-1">Payment Status</p>
               <Select
                 value={order.payment_status || 'checking'}
@@ -488,9 +530,9 @@ const AdminOrderDetail = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="checking">Checking</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="unpaid">Unpaid</SelectItem>
+                  <SelectItem value="paid">🟢 Paid</SelectItem>
+                  <SelectItem value="unpaid">🟠 Unpaid / COD</SelectItem>
+                  <SelectItem value="checking">🟡 Checking</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -524,110 +566,157 @@ const AdminOrderDetail = () => {
             <Separator />
             {!order.awb ? (
               <div className="pt-2 space-y-4">
-                <div className="rounded-lg border border-border/80 bg-muted/30 p-3 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                      <Scale className="w-3.5 h-3.5 text-primary" /> Package Dimensions & Weight
+                {order.shiprocket_order_id ? (
+                  /* State A: Pushed to Shiprocket, awaiting seller to click 'Ship Now' in Shiprocket */
+                  <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3.5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                        <p className="text-xs font-semibold text-blue-900 uppercase tracking-wider">
+                          Pushed to Shiprocket
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="text-[10px] bg-white text-blue-800 border-blue-300">
+                        Order #{order.shiprocket_order_id}
+                      </Badge>
+                    </div>
+
+                    <p className="text-xs text-blue-800">
+                      Order is in <strong>NEW</strong> status on Shiprocket. Open Shiprocket to choose your preferred courier (Air/Surface) & pickup date.
                     </p>
-                    <span className="text-[11px] text-muted-foreground font-mono">
-                      Vol: {((parseFloat(packageLength) || 0) * (parseFloat(packageBreadth) || 0) * (parseFloat(packageHeight) || 0) / 5000).toFixed(2)} kg
-                    </span>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <label className="text-[11px] text-muted-foreground block mb-1">
-                        Weight (kg)
-                      </label>
-                      <Input
-                        type="number"
-                        step="0.05"
-                        min="0.05"
-                        value={packageWeight}
-                        onChange={(e) => setPackageWeight(e.target.value)}
-                        placeholder="0.5"
-                        className="h-8 text-xs font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] text-muted-foreground block mb-1">
-                        Length (cm)
-                      </label>
-                      <Input
-                        type="number"
-                        step="1"
-                        min="1"
-                        value={packageLength}
-                        onChange={(e) => setPackageLength(e.target.value)}
-                        placeholder="15"
-                        className="h-8 text-xs font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] text-muted-foreground block mb-1">
-                        Breadth (cm)
-                      </label>
-                      <Input
-                        type="number"
-                        step="1"
-                        min="1"
-                        value={packageBreadth}
-                        onChange={(e) => setPackageBreadth(e.target.value)}
-                        placeholder="15"
-                        className="h-8 text-xs font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] text-muted-foreground block mb-1">
-                        Height (cm)
-                      </label>
-                      <Input
-                        type="number"
-                        step="1"
-                        min="1"
-                        value={packageHeight}
-                        onChange={(e) => setPackageHeight(e.target.value)}
-                        placeholder="15"
-                        className="h-8 text-xs font-mono"
-                      />
+                    <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                      <Button
+                        size="sm"
+                        onClick={() => window.open('https://app.shiprocket.in/seller/orders', '_blank')}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs h-9 flex items-center justify-center gap-1.5"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Ship on Shiprocket
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleSyncAwb}
+                        disabled={syncingAwb}
+                        className="flex-1 text-xs h-9 border-blue-300 text-blue-900 hover:bg-blue-100 flex items-center justify-center gap-1.5"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${syncingAwb ? 'animate-spin' : ''}`} />
+                        {syncingAwb ? 'Syncing...' : 'Sync AWB'}
+                      </Button>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  /* State B: Not yet pushed to Shiprocket */
+                  <>
+                    <div className="rounded-lg border border-border/80 bg-muted/30 p-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                          <Scale className="w-3.5 h-3.5 text-primary" /> Package Dimensions & Weight
+                        </p>
+                        <span className="text-[11px] text-muted-foreground font-mono">
+                          Vol: {((parseFloat(packageLength) || 0) * (parseFloat(packageBreadth) || 0) * (parseFloat(packageHeight) || 0) / 5000).toFixed(2)} kg
+                        </span>
+                      </div>
 
-                <div className="flex flex-col gap-2">
-                  <Button 
-                    onClick={handleCreateShipment} 
-                    disabled={creatingShipment}
-                    className="w-full flex items-center justify-center gap-1.5"
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <label className="text-[11px] text-muted-foreground block mb-1">
+                            Weight (kg)
+                          </label>
+                          <Input
+                            type="number"
+                            step="0.05"
+                            min="0.05"
+                            value={packageWeight}
+                            onChange={(e) => setPackageWeight(e.target.value)}
+                            placeholder="0.5"
+                            className="h-8 text-xs font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-muted-foreground block mb-1">
+                            Length (cm)
+                          </label>
+                          <Input
+                            type="number"
+                            step="1"
+                            min="1"
+                            value={packageLength}
+                            onChange={(e) => setPackageLength(e.target.value)}
+                            placeholder="15"
+                            className="h-8 text-xs font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-muted-foreground block mb-1">
+                            Breadth (cm)
+                          </label>
+                          <Input
+                            type="number"
+                            step="1"
+                            min="1"
+                            value={packageBreadth}
+                            onChange={(e) => setPackageBreadth(e.target.value)}
+                            placeholder="15"
+                            className="h-8 text-xs font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-muted-foreground block mb-1">
+                            Height (cm)
+                          </label>
+                          <Input
+                            type="number"
+                            step="1"
+                            min="1"
+                            value={packageHeight}
+                            onChange={(e) => setPackageHeight(e.target.value)}
+                            placeholder="15"
+                            className="h-8 text-xs font-mono"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <Button 
+                        onClick={handleCreateShipment} 
+                        disabled={creatingShipment}
+                        className="w-full flex items-center justify-center gap-1.5"
+                      >
+                        {creatingShipment ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                            Pushing to Shiprocket...
+                          </>
+                        ) : (
+                          <>
+                            <Package className="w-4 h-4 mr-1" />
+                            Push to Shiprocket (Draft Order)
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                )}
+
+                {(order.shipment_created_at || order.shiprocket_order_id || order.shiprocket_response || order.delhivery_response) && (
+                  <Button
+                    variant="outline"
+                    onClick={handleResetShipmentData}
+                    className="w-full text-destructive border-destructive hover:bg-destructive/10 text-xs h-8"
                   >
-                    {creatingShipment ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                        Pushing to Shiprocket...
-                      </>
-                    ) : (
-                      <>
-                        <Package className="w-4 h-4 mr-1" />
-                        Create & Push to Shiprocket
-                      </>
-                    )}
+                    Reset Shipment Data
                   </Button>
-                  {(order.shipment_created_at || order.shiprocket_response || order.delhivery_response) && (
-                    <Button
-                      variant="outline"
-                      onClick={handleResetShipmentData}
-                      className="w-full text-destructive border-destructive hover:bg-destructive/10"
-                    >
-                      Reset Shipment Data
-                    </Button>
-                  )}
-                </div>
+                )}
+
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">or enter manually</span>
+                    <span className="bg-card px-2 text-muted-foreground">or enter AWB manually</span>
                   </div>
                 </div>
                 <div>

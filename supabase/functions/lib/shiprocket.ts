@@ -150,6 +150,23 @@ export async function searchOrders(token: string, query: string): Promise<any> {
   return body;
 }
 
+export async function updateOrder(token: string, payload: any): Promise<any> {
+  const res = await fetch(`${SHIPROCKET_BASE}/orders/update/adhoc`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  
+  const body = await res.json();
+  if (!res.ok) {
+     throw new Error(`Shiprocket updateOrder failed: ${JSON.stringify(body)}`);
+  }
+  return body;
+}
+
 export async function getOrder(token: string, orderId: string): Promise<any> {
   const res = await fetch(`${SHIPROCKET_BASE}/orders/show/${orderId}`, {
     method: "GET",

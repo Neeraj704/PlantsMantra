@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getToken, createOrder, assignAWB, generateLabel, getOrder } from "../lib/shiprocket.ts";
+import { getToken, createOrder, updateOrder, assignAWB, generateLabel, getOrder } from "../lib/shiprocket.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -30,6 +30,35 @@ serve(async (req: Request) => {
     }
 
     const token = await getToken(supabaseAdmin);
+
+    // ACTION: RESET SHIPMENT (Cleanly cancels on Shiprocket and resets DB columns with service role privileges)
+    if (action === 'reset_shipment') {
+      if (order.shiprocket_order_id) {
+        try {
+          await cancelOrder(token, [order.shiprocket_order_id]);
+        } catch (cErr) {
+          console.warn("Cancel in reset_shipment notice:", cErr);
+        }
+      }
+      await supabaseAdmin.from("orders").update({
+        awb: null,
+        courier: null,
+        shipment_created_at: null,
+        shiprocket_order_id: null,
+        shiprocket_shipment_id: null,
+        shiprocket_awb: null,
+        shiprocket_label_url: null,
+        shiprocket_tracking_url: null,
+        shiprocket_response: null,
+        delhivery_response: null,
+        shipment_status: "Pending"
+      }).eq("id", orderId);
+
+      return new Response(JSON.stringify({ ok: true, message: "Shipment reset successfully" }), {
+        status: 200,
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
 
     // ACTION: SYNC AWB & COURIER FROM SHIPROCKET (After seller clicks 'Ship Now' in Shiprocket)
     if (action === 'sync_awb') {
@@ -68,11 +97,14 @@ serve(async (req: Request) => {
         courierName,
         status,
         shiprocketOrderId: srOrderId,
+        srData,
       }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     // Check if already created on Shiprocket
-    if (order.shiprocket_order_id && !action.includes('recreate')) {
+    const isCancelled = order.shipment_status === 'Cancelled' || order.shipment_status === 'CANCELED';
+    const isUpdateAction = action === 'update_pricing' || action === 'recreate_draft' || isCancelled;
+    if (order.shiprocket_order_id && !isUpdateAction) {
        return new Response(JSON.stringify({ 
          ok: true, 
          message: "already_pushed", 
@@ -98,12 +130,38 @@ serve(async (req: Request) => {
     }
 
     const itemsRaw = (await supabaseAdmin.from("order_items").select("*").eq("order_id", orderId)).data || [];
-    const items = itemsRaw.map((i: any) => ({
-      name: i.product_name,
-      sku: i.product_id ? String(i.product_id).substring(0, 8) : "ITEM",
-      units: i.quantity,
-      selling_price: Number(i.unit_price)
-    }));
+    
+    // Distribute order-level discounts proportionally across items so Shiprocket invoice matches website
+    const orderGrossSubtotal = Number(order.subtotal) || 1;
+    const orderDiscountTotal = Number(order.discount_amount || 0);
+    let allocatedDiscount = 0;
+
+    const items = itemsRaw.map((i: any, idx: number) => {
+      const lineGross = Number(i.unit_price) * Number(i.quantity);
+      let itemDiscount = 0;
+
+      if (orderDiscountTotal > 0) {
+        if (idx === itemsRaw.length - 1) {
+          // Last item absorbs any rounding remainder
+          itemDiscount = Math.round((orderDiscountTotal - allocatedDiscount) * 100) / 100;
+        } else {
+          itemDiscount = Math.round(((lineGross / orderGrossSubtotal) * orderDiscountTotal) * 100) / 100;
+          allocatedDiscount += itemDiscount;
+        }
+      }
+
+      // Net selling price per unit
+      const netPerUnit = Math.round(((lineGross - itemDiscount) / Number(i.quantity)) * 100) / 100;
+
+      return {
+        name: i.product_name,
+        sku: i.product_id ? String(i.product_id).substring(0, 8) : "ITEM",
+        units: Number(i.quantity),
+        selling_price: netPerUnit,
+        discount: 0,
+        tax: 0
+      };
+    });
 
     const channelId = Deno.env.get("SHIPROCKET_CHANNEL_ID") || "44726174472617";
     if (!channelId) throw new Error("SHIPROCKET_CHANNEL_ID not set");
@@ -113,8 +171,19 @@ serve(async (req: Request) => {
     const parsedHeight = Number(height) > 0 ? Number(height) : 15;
     const parsedWeight = Number(weight) > 0 ? Number(weight) : parseFloat(Deno.env.get("SHIPROCKET_DEFAULT_WEIGHT") || "0.5");
 
+    // sub_total should match net total product value after discounts
+    const netBillableTotal = Number(order.total);
+    const shippingCost = Number(order.shipping_cost || 0);
+    const netItemsSubtotal = Math.max(0, Math.round((netBillableTotal - shippingCost) * 100) / 100);
+
+    // Generate a unique order_id string. If recreations happen, allow suffixing to avoid duplicate key rejection by Shiprocket
+    const cleanId = String(order.id).replace(/-/g, '').substring(0, 24);
+    const shiprocketOrderRef = (order.shipment_status === 'Pending' || action === 'recreate_draft' || isUpdateAction)
+      ? `${cleanId}_${Date.now().toString().slice(-4)}`
+      : cleanId;
+
     const payload = {
-      order_id: String(order.id).replace(/-/g, '').substring(0, 30),
+      order_id: shiprocketOrderRef,
       order_date: new Date(order.created_at).toISOString().replace("T", " ").substring(0, 16),
       channel_id: channelId,
       billing_customer_name: order.customer_name,
@@ -130,7 +199,9 @@ serve(async (req: Request) => {
       shipping_is_billing: true,
       order_items: items,
       payment_method: isCOD ? "COD" : "Prepaid",
-      sub_total: Number(order.subtotal),
+      sub_total: netItemsSubtotal,
+      shipping_charges: shippingCost,
+      total_discount: 0, // already applied into net item selling_price to guarantee Shiprocket invoice matches
       length: parsedLength,
       breadth: parsedBreadth,
       height: parsedHeight,
@@ -142,7 +213,24 @@ serve(async (req: Request) => {
     let shipmentId = order.shiprocket_shipment_id;
     let createRes = null;
 
-    if (!shiprocketOrderId) {
+    if (order.shiprocket_order_id && isUpdateAction) {
+      try {
+        const updatePayload = {
+          ...payload,
+          order_id: order.shiprocket_order_id
+        };
+        createRes = await updateOrder(token, updatePayload);
+      } catch (updateErr) {
+        console.warn("Shiprocket updateOrder failed, proceeding to recreate draft:", updateErr);
+        // If updating is rejected by Shiprocket, cancel and create fresh
+        try {
+          await cancelOrder(token, [order.shiprocket_order_id]);
+        } catch (_) {}
+        createRes = await createOrder(token, payload);
+        shiprocketOrderId = String(createRes.order_id);
+        shipmentId = String(createRes.shipment_id);
+      }
+    } else if (!shiprocketOrderId) {
       createRes = await createOrder(token, payload);
       if (!createRes.order_id) {
         return new Response(JSON.stringify({ error: "Shiprocket order creation failed", details: createRes }), { 

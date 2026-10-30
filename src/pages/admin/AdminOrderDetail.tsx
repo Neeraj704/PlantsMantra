@@ -205,46 +205,22 @@ const AdminOrderDetail = () => {
     if (!confirmReset) return;
 
     try {
-      if (order.shiprocket_order_id || order.awb) {
-        toast.info("Cancelling shipment on Shiprocket/courier...");
-        try {
-          await supabase.functions.invoke("shiprocket-cancel", {
-            body: {
-              orderId: order.id,
-              shiprocketOrderId: order.shiprocket_order_id || undefined,
-              channelOrderId: order.id.replace(/-/g, "").substring(0, 30),
-              awb: order.shiprocket_awb || order.awb || undefined,
-            },
-          });
-        } catch (cancelErr) {
-          console.warn("Shiprocket cancellation notice:", cancelErr);
-        }
-      }
+      toast.info("Cancelling on Shiprocket and resetting shipment data...");
+      const { data, error: funcError } = await supabase.functions.invoke("shiprocket-create", {
+        body: {
+          orderId: order.id,
+          action: "reset_shipment",
+        },
+      });
 
-      const { error } = await supabase
-        .from('orders' as any)
-        .update({
-          awb: null,
-          courier: null,
-          shipment_created_at: null,
-          shiprocket_order_id: null,
-          shiprocket_shipment_id: null,
-          shiprocket_awb: null,
-          shiprocket_label_url: null,
-          shiprocket_tracking_url: null,
-          shiprocket_response: null,
-          delhivery_response: null,
-          shipment_status: 'Pending'
-        } as any)
-        .eq('id', order.id);
-
-      if (error) throw error;
+      if (funcError) throw funcError;
+      if (data?.error) throw new Error(data.error);
 
       toast.success('Shipment cancelled on courier and reset successfully');
       fetchOrderDetails();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error resetting shipment data:', error);
-      toast.error('Failed to reset shipment data');
+      toast.error(error?.message || 'Failed to reset shipment data');
     }
   };
 
@@ -621,7 +597,7 @@ const AdminOrderDetail = () => {
                     </div>
 
                     <p className="text-xs text-blue-800">
-                      Order is in <strong>NEW</strong> status on Shiprocket. Open Shiprocket to choose your preferred courier (Air/Surface) & pickup date.
+                      Order is in <strong>NEW</strong> status on Shiprocket. Net Billable COD Total: <strong>₹{Number(order.total).toFixed(2)}</strong> (Discounts included).
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-2 pt-1">

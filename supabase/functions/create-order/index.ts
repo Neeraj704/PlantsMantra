@@ -84,6 +84,44 @@ serve(async (req: Request) => {
       );
     }
 
+    // STRICT STOCK VERIFICATION: Query database for current stock status
+    const productIds = (items as any[]).map((item) => item.product_id).filter(Boolean);
+    const { data: dbProducts, error: dbProductsError } = await supabaseAdmin
+      .from("products")
+      .select("id, name, stock_status, scarcity_status, actual_price")
+      .in("id", productIds);
+
+    if (dbProductsError) {
+      console.error("Error fetching products for stock check:", dbProductsError);
+      return new Response(
+        JSON.stringify({ error: "Failed to verify product availability" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const productMap = new Map((dbProducts ?? []).map((p) => [p.id, p]));
+
+    for (const item of items as any[]) {
+      const product = productMap.get(item.product_id);
+      if (!product) {
+        return new Response(
+          JSON.stringify({ error: `Product "${item.product_name || 'Item'}" does not exist.` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      if (
+        product.stock_status === "out_of_stock" ||
+        product.scarcity_status === "sold_out"
+      ) {
+        return new Response(
+          JSON.stringify({
+            error: `"${product.name}" is currently out of stock and cannot be ordered.`,
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
+
     // Ensure pin is present for Delhivery integration (uses shipping_address.pin)
     const shippingWithPin = {
       ...shipping_address,
@@ -93,6 +131,10 @@ serve(async (req: Request) => {
         shipping_address.pincode ||
         null,
     };
+
+    const isCOD = payment_method?.toLowerCase() === "cod";
+    const initialPaymentStatus = isCOD ? "unpaid" : (body.payment_status || "abandoned_checkout");
+    const initialStatus = isCOD ? "pending" : (body.status || "pending");
 
     const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
@@ -108,8 +150,9 @@ serve(async (req: Request) => {
         total,
         coupon_code: coupon_code || null,
         payment_method,
-        status: "pending",
-        payment_status: payment_method?.toLowerCase() === "cod" ? "unpaid" : "checking",
+        status: initialStatus,
+        payment_status: initialPaymentStatus,
+        payment_intent_id: body.payment_intent_id || null,
       } as any)
       .select("*")
       .single();
@@ -120,17 +163,6 @@ serve(async (req: Request) => {
         JSON.stringify({ error: "Failed to create order" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
-    }
-
-    // Fetch actual_price from products
-    const productIds = (items as any[]).map((item) => item.product_id).filter(Boolean);
-    const { data: dbProducts, error: dbProductsError } = await supabaseAdmin
-      .from("products")
-      .select("id, actual_price")
-      .in("id", productIds);
-
-    if (dbProductsError) {
-      console.error("Error fetching actual_prices:", dbProductsError);
     }
 
     const priceMap = new Map((dbProducts ?? []).map(p => [p.id, Number(p.actual_price || 0)]));

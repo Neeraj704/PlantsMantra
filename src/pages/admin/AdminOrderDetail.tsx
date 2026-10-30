@@ -562,12 +562,19 @@ const AdminOrderDetail = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="paid">🟢 Paid</SelectItem>
+                  <SelectItem value="paid">🟢 Paid (Payment Captured)</SelectItem>
                   <SelectItem value="unpaid">🟠 Unpaid / COD</SelectItem>
                   <SelectItem value="checking">🟡 Checking</SelectItem>
+                  <SelectItem value="abandoned_checkout">⚠️ Abandoned (Customer Left Gateway)</SelectItem>
+                  <SelectItem value="failed">🔴 Failed / Declined</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            {order.payment_method === 'razorpay' && !order.payment_intent_id && (
+              <div className="p-2.5 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-900">
+                <span className="font-semibold">⚠️ Note:</span> Customer initiated online checkout but did not complete payment on Razorpay. No funds were transferred to Razorpay account.
+              </div>
+            )}
             {order.payment_method === 'cod' && (
               <div>
                 <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">

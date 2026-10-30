@@ -34,6 +34,7 @@ export const DrawerRecommendations = () => {
         .from('products')
         .select('id, name, slug, base_price, sale_price, main_image_url, category_id')
         .eq('status', 'active')
+        .neq('stock_status', 'out_of_stock')
         .limit(24);
 
       if (!error && data) {

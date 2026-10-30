@@ -294,22 +294,46 @@ const Checkout = () => {
         },
         theme: { color: '#4ADE80' },
         modal: {
-          ondismiss: () => {
+          ondismiss: async () => {
             setProcessing(false);
-            toast.info('Payment was cancelled.');
+            toast.info('Payment window was closed. If money was not deducted, no order was placed.');
+            // Mark the order record as abandoned_checkout so admin knows no money was received
+            try {
+              await supabase
+                .from('orders')
+                .update({
+                  payment_status: 'abandoned_checkout',
+                  status: 'cancelled',
+                  cancellation_reason: 'Customer closed Razorpay window without completing payment',
+                } as any)
+                .eq('id', orderId);
+            } catch (err) {
+              console.warn('Failed to update abandoned status:', err);
+            }
           },
         },
       };
 
       const rzp = new window.Razorpay(options);
 
-      rzp.on('payment.failed', (response: any) => {
+      rzp.on('payment.failed', async (response: any) => {
         console.error('Payment failed:', response.error);
         toast.error(
-          `Payment failed: ${response.error?.description || 'Unknown error'
-          }`,
+          `Payment failed: ${response.error?.description || 'Transaction declined'}`
         );
         setProcessing(false);
+        try {
+          await supabase
+            .from('orders')
+            .update({
+              payment_status: 'failed',
+              status: 'cancelled',
+              cancellation_reason: `Payment failed on Razorpay: ${response.error?.description || 'Declined'}`,
+            } as any)
+            .eq('id', orderId);
+        } catch (err) {
+          console.warn('Failed to update failed payment status:', err);
+        }
       });
 
       rzp.open();
@@ -509,9 +533,41 @@ const Checkout = () => {
     }
   };
 
+  const validateCartStock = async (): Promise<boolean> => {
+    if (!items || items.length === 0) return true;
+    try {
+      const pIds = items.map((i) => i.product.id);
+      const { data: dbProducts, error } = await supabase
+        .from('products')
+        .select('id, name, stock_status, scarcity_status')
+        .in('id', pIds);
+
+      if (error || !dbProducts) return true;
+
+      const outOfStockItems = dbProducts.filter(
+        (p) => p.stock_status === 'out_of_stock' || p.scarcity_status === 'sold_out'
+      );
+
+      if (outOfStockItems.length > 0) {
+        const names = outOfStockItems.map((p) => `"${p.name}"`).join(', ');
+        toast.error(`Cannot proceed: ${names} is currently out of stock. Please remove it from your cart.`);
+        return false;
+      }
+    } catch (e) {
+      console.warn('Pre-flight stock check exception:', e);
+    }
+    return true;
+  };
+
   const handleOnlinePaymentFlow = async () => {
     setProcessing(true);
     try {
+      const stockOk = await validateCartStock();
+      if (!stockOk) {
+        setProcessing(false);
+        return;
+      }
+
       const address = getCheckoutAddress();
       const customerEmail = user?.email ?? (guestEmail || null);
 
@@ -530,6 +586,12 @@ const Checkout = () => {
   const handleConfirmCOD = async () => {
     setProcessing(true);
     try {
+      const stockOk = await validateCartStock();
+      if (!stockOk) {
+        setProcessing(false);
+        return;
+      }
+
       const address = getCheckoutAddress();
       const customerEmail = user?.email ?? (guestEmail || null);
 

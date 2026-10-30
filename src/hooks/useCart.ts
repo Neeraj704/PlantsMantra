@@ -152,6 +152,14 @@ export const useCart = create<CartStore>()(
       },
 
       addItem: async (product, variant, quantity = 1) => {
+        if (
+          product.stock_status === 'out_of_stock' ||
+          (product as any).scarcity_status === 'sold_out'
+        ) {
+          toast.error(`Sorry, "${product.name}" is currently out of stock.`);
+          return;
+        }
+
         const {
           data: { user },
         } = await supabase.auth.getUser();

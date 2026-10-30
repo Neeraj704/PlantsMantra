@@ -398,13 +398,15 @@ const Orders = () => {
                             handlePaymentStatusUpdate(order.id, val)
                           }
                         >
-                          <SelectTrigger className="w-28 h-7 text-xs">
+                          <SelectTrigger className="w-36 h-7 text-xs">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="paid">🟢 Paid</SelectItem>
                             <SelectItem value="unpaid">🟠 Unpaid</SelectItem>
                             <SelectItem value="checking">🟡 Checking</SelectItem>
+                            <SelectItem value="abandoned_checkout">⚠️ Abandoned</SelectItem>
+                            <SelectItem value="failed">🔴 Failed</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

@@ -33,6 +33,7 @@ export const CheckoutRecommendations = () => {
         .from('products')
         .select('*')
         .eq('status', 'active')
+        .neq('stock_status', 'out_of_stock')
         .limit(30);
 
       if (error) throw error;

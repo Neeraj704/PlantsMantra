@@ -17,6 +17,12 @@ export const useBuyNow = create<BuyNowState>()(
       isBuyNowFlow: false,
 
       setItemAndProceed: (item) => {
+        if (
+          item.product.stock_status === 'out_of_stock' ||
+          (item.product as any).scarcity_status === 'sold_out'
+        ) {
+          return;
+        }
         set({ item, isBuyNowFlow: true });
       },
 

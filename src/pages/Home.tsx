@@ -75,6 +75,10 @@ const Home = () => {
   const handleQuickAdd = (e: React.MouseEvent, product: any) => {
     e.preventDefault();
     e.stopPropagation();
+    if (product.stock_status === 'out_of_stock' || product.scarcity_status === 'sold_out') {
+      toast.error(`${product.name} is currently out of stock`);
+      return;
+    }
     addItem(product, undefined, 1);
     toast.success(`${product.name} added to cart!`);
   };
@@ -219,15 +223,26 @@ const Home = () => {
                         </div>
 
                         {/* PlantOrbit Style Quick Add to Cart Button */}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full h-8 text-xs font-semibold rounded-lg border-emerald-700 text-emerald-800 hover:bg-emerald-700 hover:text-white transition-all flex items-center justify-center gap-1"
-                          onClick={(e) => handleQuickAdd(e, product)}
-                        >
-                          <ShoppingCart className="w-3.5 h-3.5" />
-                          <span>Add to Cart</span>
-                        </Button>
+                        {product.stock_status === 'out_of_stock' || product.scarcity_status === 'sold_out' ? (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled
+                            className="w-full h-8 text-xs font-semibold rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed flex items-center justify-center gap-1"
+                          >
+                            <span>Out of Stock</span>
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full h-8 text-xs font-semibold rounded-lg border-emerald-700 text-emerald-800 hover:bg-emerald-700 hover:text-white transition-all flex items-center justify-center gap-1"
+                            onClick={(e) => handleQuickAdd(e, product)}
+                          >
+                            <ShoppingCart className="w-3.5 h-3.5" />
+                            <span>Add to Cart</span>
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </Link>
@@ -309,15 +324,26 @@ const Home = () => {
                             )}
                           </div>
 
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full h-8 text-xs font-semibold rounded-lg border-emerald-700 text-emerald-800 hover:bg-emerald-700 hover:text-white transition-all flex items-center justify-center gap-1"
-                            onClick={(e) => handleQuickAdd(e, product)}
-                          >
-                            <ShoppingCart className="w-3.5 h-3.5" />
-                            <span>Add to Cart</span>
-                          </Button>
+                          {product.stock_status === 'out_of_stock' || product.scarcity_status === 'sold_out' ? (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled
+                              className="w-full h-8 text-xs font-semibold rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed flex items-center justify-center gap-1"
+                            >
+                              <span>Out of Stock</span>
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full h-8 text-xs font-semibold rounded-lg border-emerald-700 text-emerald-800 hover:bg-emerald-700 hover:text-white transition-all flex items-center justify-center gap-1"
+                              onClick={(e) => handleQuickAdd(e, product)}
+                            >
+                              <ShoppingCart className="w-3.5 h-3.5" />
+                              <span>Add to Cart</span>
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </Link>
